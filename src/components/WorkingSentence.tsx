@@ -87,36 +87,11 @@ export default function WorkingSentence({
   return (
     <div 
       id="working-sentence-ribbon" 
-      className="relative bg-[#1a1a1a] border-[3px] border-black px-4 py-3 rounded-none shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] dark:shadow-[4px_4px_0px_0px_rgba(255,255,255,0.1)] transition-all overflow-hidden"
+      className="relative bg-[#1a1a1a] border-[3px] border-black p-3 sm:px-4 sm:py-3 rounded-none shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] dark:shadow-[4px_4px_0px_0px_rgba(255,255,255,0.1)] transition-all overflow-hidden flex flex-col gap-2"
     >
-
- 
-      <div className="max-w-xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3 mt-2">
-        
-        {/* Left Side: Reset & Audio Buttons */}
-        <div className="flex flex-col sm:flex-row items-center gap-1.5 shrink-0 z-10">
-          {(subject || object || verb) && (
-            <button
-              onClick={onReset}
-              className="p-1.5 text-[#cc3311] hover:text-white transition-all rounded-none border-[3px] border-black bg-white hover:bg-[#cc3311] shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-[1px] active:shadow-none cursor-pointer"
-              title="Reset current sentence"
-            >
-              <RotateCcw className="w-3.5 h-3.5 stroke-[3]" />
-            </button>
-          )}
-          {activeKorean && onPlayAudio && (
-            <button
-              onClick={onPlayAudio}
-              className="p-1.5 text-slate-700 hover:text-black transition-all rounded-none border-[3px] border-black bg-[#efebe4] hover:bg-white shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-[1px] active:shadow-none cursor-pointer"
-              title="Slow Speech Audio"
-            >
-              <Volume2 className="w-3.5 h-3.5 stroke-[3]" />
-            </button>
-          )}
-        </div>
- 
-        {/* Center Sentence Display */}
-        <div className="flex-1 text-center py-0.5 overflow-x-auto">
+      
+      {/* Top: Center Sentence Display */}
+      <div className="w-full text-center overflow-x-auto min-h-[60px] flex flex-col items-center justify-center relative z-10">
           {currentKorean ? (
             <div className="flex flex-col gap-3 items-center justify-center min-h-[80px]">
               <div className="flex items-end justify-center gap-3 md:gap-4 flex-wrap">
@@ -165,15 +140,40 @@ export default function WorkingSentence({
             </div>
           )}
         </div>
- 
+
+      {/* Bottom: Unified Action Toolbar */}
+      <div className="w-full max-w-xl mx-auto flex items-center justify-between z-10">
+        
+        {/* Left Side: Reset & Audio Buttons */}
+        <div className="flex items-center gap-2">
+          {(subject || object || verb) && (
+            <button
+              onClick={onReset}
+              className="p-2 text-[#cc3311] hover:text-white transition-all rounded-none border-[3px] border-black bg-white hover:bg-[#cc3311] shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-[1px] active:shadow-none cursor-pointer flex items-center gap-1"
+              title="Reset current sentence"
+            >
+              <RotateCcw className="w-4 h-4 stroke-[3]" />
+            </button>
+          )}
+          {activeKorean && onPlayAudio && (
+            <button
+              onClick={onPlayAudio}
+              className="p-2 text-slate-700 hover:text-black transition-all rounded-none border-[3px] border-black bg-[#efebe4] hover:bg-white shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-[1px] active:shadow-none cursor-pointer flex items-center gap-1"
+              title="Slow Speech Audio"
+            >
+              <Volume2 className="w-4 h-4 stroke-[3]" />
+            </button>
+          )}
+        </div>
+
         {/* Right Side: Action Buttons */}
-        <div className="shrink-0 z-10 flex gap-2">
+        <div className="flex items-center gap-2">
           {currentKorean ? (
             <>
               {onSave && (
                 <button
                   onClick={handleSave}
-                  className={`flex flex-col items-center justify-center w-12 h-12 rounded-none border-[3px] transition-all duration-150 select-none cursor-pointer ${
+                  className={`flex items-center justify-center h-10 px-2.5 rounded-none border-[3px] transition-all duration-150 select-none cursor-pointer gap-1.5 ${
                     saved
                       ? 'bg-emerald-500 border-black text-black shadow-none'
                       : 'bg-white text-black border-black hover:bg-[#cc3311] hover:text-white shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] hover:shadow-none active:translate-y-[1px]'
@@ -182,20 +182,20 @@ export default function WorkingSentence({
                 >
                   {saved ? (
                     <>
-                      <BookmarkCheck className="w-4.5 h-4.5 stroke-[3]" />
-                      <span className="text-[8px] font-extrabold mt-0.5 uppercase tracking-wide">저장됨</span>
+                      <BookmarkCheck className="w-4 h-4 stroke-[3]" />
+                      <span className="text-[10px] font-extrabold tracking-wider uppercase hidden sm:inline">저장됨</span>
                     </>
                   ) : (
                     <>
-                      <Bookmark className="w-4.5 h-4.5 stroke-[3]" />
-                      <span className="text-[8px] font-extrabold mt-0.5 tracking-wider uppercase">저장</span>
+                      <Bookmark className="w-4 h-4 stroke-[3]" />
+                      <span className="text-[10px] font-extrabold tracking-wider uppercase hidden sm:inline">저장</span>
                     </>
                   )}
                 </button>
               )}
               <button
                 onClick={handleCopy}
-                className={`flex flex-col items-center justify-center w-12 h-12 rounded-none border-[3px] transition-all duration-150 select-none cursor-pointer ${
+                className={`flex items-center justify-center h-10 px-2.5 rounded-none border-[3px] transition-all duration-150 select-none cursor-pointer gap-1.5 ${
                   copied
                     ? 'bg-emerald-500 border-black text-black shadow-none'
                     : 'bg-white text-black border-black hover:bg-slate-100 shadow-[3px_3px_0px_0px_rgba(204,51,17,1)] hover:shadow-none active:translate-y-[1px]'
@@ -204,31 +204,30 @@ export default function WorkingSentence({
               >
                 {copied ? (
                   <>
-                    <Check className="w-4.5 h-4.5 stroke-[3]" />
-                    <span className="text-[8px] font-extrabold mt-0.5 uppercase tracking-wide">완료</span>
+                    <Check className="w-4 h-4 stroke-[3]" />
+                    <span className="text-[10px] font-extrabold tracking-wider uppercase hidden sm:inline">완료</span>
                   </>
                 ) : (
                   <>
-                    <Copy className="w-4.5 h-4.5 stroke-[3]" />
-                    <span className="text-[8px] font-extrabold mt-0.5 tracking-wider uppercase">복사</span>
+                    <Copy className="w-4 h-4 stroke-[3]" />
+                    <span className="text-[10px] font-extrabold tracking-wider uppercase hidden sm:inline">복사</span>
                   </>
                 )}
               </button>
             </>
           ) : (
             <>
-              <div className="w-12 h-12 border-[3px] border-dashed border-slate-700 rounded-none flex flex-col items-center justify-center opacity-30 select-none">
+              <div className="h-10 px-3 border-[3px] border-dashed border-slate-700 rounded-none flex items-center justify-center opacity-30 select-none gap-1.5">
                 <Bookmark className="w-4 h-4 text-slate-400 stroke-[2]" />
-                <span className="text-[8px] font-bold mt-0.5 uppercase tracking-wider text-slate-400">저장</span>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 hidden sm:inline">저장</span>
               </div>
-              <div className="w-12 h-12 border-[3px] border-dashed border-slate-700 rounded-none flex flex-col items-center justify-center opacity-30 select-none">
+              <div className="h-10 px-3 border-[3px] border-dashed border-slate-700 rounded-none flex items-center justify-center opacity-30 select-none gap-1.5">
                 <Copy className="w-4 h-4 text-slate-400 stroke-[2]" />
-                <span className="text-[8px] font-bold mt-0.5 uppercase tracking-wider text-slate-400">복사</span>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 hidden sm:inline">복사</span>
               </div>
             </>
           )}
         </div>
- 
       </div>
  
       {/* Retro 3x6 Dot Grid Matrix Decoration in bottom-right corner */}
