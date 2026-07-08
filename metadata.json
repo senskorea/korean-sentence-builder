@@ -1,0 +1,1 @@
+{"name":"Korean Sentence Builder","description":"An interactive, visual-first Korean sentence constructor with a predictive grammatical state-machine, Batchim syllable detection, and bilingual concept block grids.","requestFramePermissions":[],"majorCapabilities":["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]}
