@@ -16,7 +16,7 @@ interface WorkingSentenceProps {
   copyFormat: 'korean_only' | 'bilingual';
   englishTranslation: string;
   onPlayAudio?: () => void;
-  activeKorean?: boolean;
+  activeKorean?: string;
   onSave?: () => void;
 }
 

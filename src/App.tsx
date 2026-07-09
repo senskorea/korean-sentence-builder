@@ -5,6 +5,7 @@ import WorkingSentence from './components/WorkingSentence';
 import ConceptBlocks from './components/ConceptBlocks';
 import AgglutinationDrawer from './components/AgglutinationDrawer';
 import SavedPhrases from './components/SavedPhrases';
+import TopicGenerator from './components/TopicGenerator';
 import { 
   Smartphone, 
   Sparkles, 
@@ -494,6 +495,16 @@ export default function App() {
 
         </div>
 
+      </div>
+
+      {/* New Topic Generator Feature */}
+      <div className="max-w-4xl mx-auto mt-12 mb-4">
+        <TopicGenerator onVocabGenerated={(newVocab) => {
+          setVocab(newVocab);
+          setVocabJsonInput(JSON.stringify(newVocab, null, 2));
+          handleReset(); // reset sentence builder when vocab changes
+          showToast('Custom vocabulary loaded from AI!', 'success');
+        }} />
       </div>
 
       {/* Sleek retro footer control bar */}
