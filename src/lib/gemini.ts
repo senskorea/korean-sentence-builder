@@ -31,7 +31,7 @@ Do not provide conjugations, we will handle them dynamically.`;
 
   const client = getAIClient();
   const response = await client.models.generateContent({
-    model: 'gemini-2.5-flash',
+    model: 'gemini-flash-latest',
     contents: prompt,
     config: {
       temperature: 0.7,
