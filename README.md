@@ -1,19 +1,33 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
-</div>
+# Korean Sentence Builder 🇰🇷
 
-# Run and deploy your AI Studio app
+A modern, interactive, and AI-powered web application for learning and building Korean sentences block by block.
 
-This contains everything you need to run your app locally.
-https://ai.studio/apps/8756f783-1ed6-4863-8565-748118b80d88
+## Features
+- **Visual Sentence Construction**: Drag, drop, and click to form grammatically correct sentences.
+- **AI Topic Generator**: Type any topic (e.g., "ordering coffee") and instantly populate the app with relevant subjects, objects, and verbs using Gemini AI.
+- **Dynamic Conjugation**: Automatically conjugate verbs into past, present, future, and desiderative forms based on context.
+- **Bilingual Copying**: One-click copy of sentences to clipboard in Korean-only or Bilingual formats.
+- **Text-to-Speech**: Built-in audio playback for pronunciation practice.
+- **History Tracking**: Save your favorite generated sentences and topics.
 
 ## Run Locally
 
-**Prerequisites:**  Node.js
+**Prerequisites:** Node.js
 
+1. Clone the repository and install dependencies:
+   ```bash
+   npm install
+   ```
 
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+2. Set up your environment variables:
+   Rename `.env.example` to `.env` (or create a `.env` file) and add your Gemini API key:
+   ```env
+   VITE_GEMINI_API_KEY=your_api_key_here
+   ```
+
+3. Run the development server:
+   ```bash
+   npm run dev
+   ```
+
+4. Open [http://localhost:3000](http://localhost:3000) in your browser.
