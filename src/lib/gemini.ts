@@ -97,3 +97,57 @@ Do not provide conjugations, we will handle them dynamically.`;
 
   return JSON.parse(response.text);
 }
+
+export interface SentenceAnalysis {
+  isCorrect: boolean;
+  correctedSentence?: string;
+  explanation: string;
+  grammarPoint: {
+    title: string;
+    description: string;
+  };
+}
+
+export async function analyzeSentence(korean: string, english: string): Promise<SentenceAnalysis> {
+  const prompt = `Analyze the following Korean sentence that a learner built:
+Korean: "${korean}"
+Intended English Meaning: "${english}"
+
+Determine if it is grammatically correct and natural. If not, provide a corrected sentence.
+Provide a brief, encouraging explanation (1-2 sentences).
+Also provide a key grammar point related to this sentence.
+Always return JSON matching the schema.`;
+
+  const client = getAIClient();
+  const response = await client.models.generateContent({
+    model: 'gemini-flash-latest',
+    contents: prompt,
+    config: {
+      temperature: 0.2,
+      responseMimeType: 'application/json',
+      responseSchema: {
+        type: Type.OBJECT,
+        properties: {
+          isCorrect: { type: Type.BOOLEAN },
+          correctedSentence: { type: Type.STRING },
+          explanation: { type: Type.STRING },
+          grammarPoint: {
+            type: Type.OBJECT,
+            properties: {
+              title: { type: Type.STRING },
+              description: { type: Type.STRING }
+            },
+            required: ["title", "description"]
+          }
+        },
+        required: ["isCorrect", "explanation", "grammarPoint"]
+      }
+    }
+  });
+
+  if (!response.text) {
+    throw new Error('No response text received from Gemini for analysis');
+  }
+
+  return JSON.parse(response.text);
+}

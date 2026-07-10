@@ -1,4 +1,4 @@
-import { Copy, Check, RotateCcw, Volume2, Bookmark, BookmarkCheck } from 'lucide-react';
+import { Copy, Check, RotateCcw, Volume2, Bookmark, BookmarkCheck, Wand2, Loader2 } from 'lucide-react';
 import { Word, EndingOption } from '../types';
 import { CONJUGATIONS } from '../data';
 import { useState } from 'react';
@@ -18,6 +18,8 @@ interface WorkingSentenceProps {
   onPlayAudio?: () => void;
   activeKorean?: string;
   onSave?: () => void;
+  onAnalyze?: () => void;
+  isAnalyzing?: boolean;
 }
 
 export default function WorkingSentence({
@@ -35,6 +37,8 @@ export default function WorkingSentence({
   onPlayAudio,
   activeKorean,
   onSave,
+  onAnalyze,
+  isAnalyzing,
 }: WorkingSentenceProps) {
   const [copied, setCopied] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -193,6 +197,27 @@ export default function WorkingSentence({
                   )}
                 </button>
               )}
+              {onAnalyze && (
+                <button
+                  onClick={onAnalyze}
+                  disabled={isAnalyzing}
+                  className={`flex items-center justify-center h-10 px-2.5 rounded-none border-[3px] transition-all duration-150 select-none gap-1.5 ${
+                    isAnalyzing
+                      ? 'bg-amber-400 border-black text-black shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] opacity-70 cursor-wait'
+                      : 'bg-[#ffcc00] text-black border-black hover:bg-black hover:text-[#ffcc00] shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] hover:shadow-none active:translate-y-[1px] cursor-pointer'
+                  }`}
+                  title="Analyze AI Grammar"
+                >
+                  {isAnalyzing ? (
+                    <Loader2 className="w-4 h-4 stroke-[3] animate-spin" />
+                  ) : (
+                    <Wand2 className="w-4 h-4 stroke-[3]" />
+                  )}
+                  <span className="text-[10px] font-extrabold tracking-wider uppercase hidden sm:inline">
+                    {isAnalyzing ? '분석 중' : '분석'}
+                  </span>
+                </button>
+              )}
               <button
                 onClick={handleCopy}
                 className={`flex items-center justify-center h-10 px-2.5 rounded-none border-[3px] transition-all duration-150 select-none cursor-pointer gap-1.5 ${
@@ -220,6 +245,10 @@ export default function WorkingSentence({
               <div className="h-10 px-3 border-[3px] border-dashed border-slate-700 rounded-none flex items-center justify-center opacity-30 select-none gap-1.5">
                 <Bookmark className="w-4 h-4 text-slate-400 stroke-[2]" />
                 <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 hidden sm:inline">저장</span>
+              </div>
+              <div className="h-10 px-3 border-[3px] border-dashed border-slate-700 rounded-none flex items-center justify-center opacity-30 select-none gap-1.5">
+                <Wand2 className="w-4 h-4 text-slate-400 stroke-[2]" />
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 hidden sm:inline">분석</span>
               </div>
               <div className="h-10 px-3 border-[3px] border-dashed border-slate-700 rounded-none flex items-center justify-center opacity-30 select-none gap-1.5">
                 <Copy className="w-4 h-4 text-slate-400 stroke-[2]" />

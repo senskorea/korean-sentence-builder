@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { analyzeSentence, SentenceAnalysis } from './lib/gemini';
 import { Word, StepState, SavedSentence, AppConfig, EndingOption } from './types';
 import { getFullEnglishTranslation, CONJUGATIONS, SUBJECTS, OBJECTS, VERBS, conjugateVerbDynamically } from './data';
 import WorkingSentence from './components/WorkingSentence';
@@ -172,6 +173,11 @@ export default function App() {
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'info' } | null>(null);
   const [showConfigPanel, setShowConfigPanel] = useState<boolean>(false);
 
+  // --- AI Analysis State ---
+  const [isAnalyzing, setIsAnalyzing] = useState<boolean>(false);
+  const [analysisResult, setAnalysisResult] = useState<SentenceAnalysis | null>(null);
+  const [isConceptBlocksFlipped, setIsConceptBlocksFlipped] = useState<boolean>(false);
+
   // --- LocalStorage Persistence ---
   useEffect(() => {
     const loaded = localStorage.getItem('korean_sentences_history');
@@ -278,6 +284,8 @@ export default function App() {
 
   // --- State Machine Select Handlers ---
   const handleSelectWord = (word: Word) => {
+    setIsConceptBlocksFlipped(false);
+    setAnalysisResult(null);
     if (config.bypassMode) {
       // In bypass mode, user can select anything in any order
       if (word.type === 'subject') {
@@ -386,7 +394,30 @@ export default function App() {
     setSelectedEnding(null);
     setCurrentStep('START');
     setActiveTab('subject');
+    setIsConceptBlocksFlipped(false);
+    setAnalysisResult(null);
     showToast('Sentence builder reset.', 'info');
+  };
+
+  // --- AI Analysis Handler ---
+  const handleAnalyzeSentence = async () => {
+    if (!activeKorean || !activeEnglish) return;
+    setIsAnalyzing(true);
+    setIsConceptBlocksFlipped(true);
+    try {
+      const result = await analyzeSentence(activeKorean, activeEnglish);
+      setAnalysisResult(result);
+    } catch (error) {
+      console.error('Failed to analyze sentence', error);
+      showToast('Failed to analyze sentence', 'info');
+      setIsConceptBlocksFlipped(false);
+    } finally {
+      setIsAnalyzing(false);
+    }
+  };
+
+  const handleFlipBack = () => {
+    setIsConceptBlocksFlipped(false);
   };
 
   // --- Deletion Helpers for Saved List ---
@@ -444,6 +475,8 @@ export default function App() {
                 onPlayAudio={handlePlayAudio}
                 activeKorean={activeKorean}
                 onSave={handleSaveSentence}
+                onAnalyze={handleAnalyzeSentence}
+                isAnalyzing={isAnalyzing}
               />
 
               {/* Zone 3: Concept Blocks */}
@@ -459,6 +492,10 @@ export default function App() {
                 subjects={vocab.subjects}
                 objects={vocab.objects}
                 verbs={vocab.verbs}
+                isFlipped={isConceptBlocksFlipped}
+                isAnalyzing={isAnalyzing}
+                analysisResult={analysisResult}
+                onFlipBack={handleFlipBack}
               />
 
               {/* Zone 4: Agglutination Drawer */}

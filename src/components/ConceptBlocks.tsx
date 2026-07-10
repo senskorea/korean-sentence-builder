@@ -1,5 +1,6 @@
 import { Word, StepState } from '../types';
-import { Sparkles, Check } from 'lucide-react';
+import { SentenceAnalysis } from '../lib/gemini';
+import { Sparkles, Check, Loader2, X } from 'lucide-react';
 import { motion } from 'motion/react';
 
 interface ConceptBlocksProps {
@@ -14,6 +15,10 @@ interface ConceptBlocksProps {
   subjects: Word[];
   objects: Word[];
   verbs: Word[];
+  isFlipped?: boolean;
+  isAnalyzing?: boolean;
+  analysisResult?: SentenceAnalysis | null;
+  onFlipBack?: () => void;
 }
 
 export default function ConceptBlocks({
@@ -28,6 +33,10 @@ export default function ConceptBlocks({
   subjects,
   objects,
   verbs,
+  isFlipped,
+  isAnalyzing,
+  analysisResult,
+  onFlipBack,
 }: ConceptBlocksProps) {
   // Determine which words to display based on active tab
   const getWordsToDisplay = (): Word[] => {
@@ -82,9 +91,16 @@ export default function ConceptBlocks({
   return (
     <div 
       id="concept-blocks-container" 
-      className="bg-[#dcd6c8] dark:bg-[#1a1a1a] border-[3px] border-black rounded-none p-3.5 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] dark:shadow-[4px_4px_0px_0px_rgba(255,255,255,0.15)] flex flex-col gap-3.5"
+      className="[perspective:1000px]"
     >
-      {/* Navigation tabs for categories */}
+      <motion.div
+        className="w-full relative [transform-style:preserve-3d]"
+        animate={{ rotateY: isFlipped ? 180 : 0 }}
+        transition={{ type: 'spring', stiffness: 260, damping: 20 }}
+      >
+        {/* Front Face */}
+        <div className="w-full [backface-visibility:hidden] bg-[#dcd6c8] dark:bg-[#1a1a1a] border-[3px] border-black rounded-none p-3.5 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] dark:shadow-[4px_4px_0px_0px_rgba(255,255,255,0.15)] flex flex-col gap-3.5">
+          {/* Navigation tabs for categories */}
       <div className="grid grid-cols-3 gap-1.5">
         {(['subject', 'object', 'verb'] as const).map((tab) => {
           const isLocked = !bypassMode && (
@@ -204,7 +220,52 @@ export default function ConceptBlocks({
             </motion.button>
           );
         })}
-      </div>
+        </div>
+        </div>
+
+        {/* Back Face (AI Analysis) */}
+        <div className="absolute top-0 left-0 w-full h-full [backface-visibility:hidden] [transform:rotateY(180deg)] bg-[#fdf9f0] dark:bg-[#1a1a1a] border-[3px] border-black p-4 sm:p-5 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] dark:shadow-[4px_4px_0px_0px_rgba(255,255,255,0.15)] flex flex-col overflow-y-auto">
+          {isAnalyzing && (
+            <div className="flex-1 flex flex-col items-center justify-center gap-4 text-slate-800 dark:text-slate-200">
+              <Loader2 className="w-10 h-10 stroke-[3] animate-spin text-[#cc3311]" />
+              <p className="font-display font-black text-sm tracking-wider animate-pulse uppercase">분석 중... (ANALYZING)</p>
+            </div>
+          )}
+          {!isAnalyzing && analysisResult && (
+            <div className="flex flex-col h-full gap-3">
+              <div className="flex justify-between items-start shrink-0">
+                <div className={`border-[3px] border-black px-2.5 py-1 font-black uppercase tracking-widest text-[11px] shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] ${analysisResult.isCorrect ? 'bg-emerald-400 text-black' : 'bg-[#ffcc00] text-black'}`}>
+                  {analysisResult.isCorrect ? 'PERFECT ✨' : 'NEEDS TWEAKING 🔧'}
+                </div>
+                <button onClick={onFlipBack} className="p-1 border-[3px] border-black bg-white dark:bg-slate-800 hover:bg-[#cc3311] dark:hover:bg-[#cc3311] hover:text-white transition-colors cursor-pointer shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-[1px] active:shadow-none">
+                  <X className="w-4 h-4 stroke-[3]" />
+                </button>
+              </div>
+
+              <div className="flex-1 flex flex-col justify-center py-2 shrink-0">
+                {analysisResult.correctedSentence && (
+                  <div className="mb-3">
+                    <h4 className="font-mono text-[9px] font-bold text-slate-500 uppercase tracking-wider mb-1">Better Phrasing:</h4>
+                    <p className="font-display font-black text-xl md:text-2xl text-[#cc3311]">{analysisResult.correctedSentence}</p>
+                  </div>
+                )}
+
+                <div>
+                  <p className="font-sans font-bold text-xs md:text-sm leading-relaxed text-slate-700 dark:text-slate-300">
+                    {analysisResult.explanation}
+                  </p>
+                </div>
+              </div>
+
+              <div className="mt-auto shrink-0 border-[3px] border-black p-3 bg-white dark:bg-slate-900 shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] dark:shadow-[3px_3px_0px_0px_rgba(255,255,255,0.1)]">
+                <h4 className="font-mono font-bold text-[9px] text-indigo-600 dark:text-indigo-400 uppercase mb-1.5 flex items-center gap-1"><Sparkles className="w-3 h-3" /> GRAMMAR POINT</h4>
+                <p className="font-display font-black text-sm mb-1 text-slate-900 dark:text-white leading-tight">{analysisResult.grammarPoint.title}</p>
+                <p className="font-sans font-medium text-[11px] text-slate-600 dark:text-slate-400 leading-snug">{analysisResult.grammarPoint.description}</p>
+              </div>
+            </div>
+          )}
+        </div>
+      </motion.div>
     </div>
   );
 }
