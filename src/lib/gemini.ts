@@ -2,8 +2,18 @@
 import { GoogleGenAI, Type } from '@google/genai';
 import { Word } from '../types';
 
-const ai = new GoogleGenAI({ apiKey: import.meta.env.VITE_GEMINI_API_KEY });
+let ai: GoogleGenAI | null = null;
 
+function getAIClient() {
+  if (!ai) {
+    const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+    if (!apiKey) {
+      throw new Error("Missing VITE_GEMINI_API_KEY environment variable");
+    }
+    ai = new GoogleGenAI({ apiKey });
+  }
+  return ai;
+}
 export interface GeneratedVocab {
   subjects: Word[];
   objects: Word[];
@@ -19,7 +29,8 @@ For verbs, "stem" must be the dictionary form minus "다" (e.g., "가다" -> "�
 Provide emojis for each.
 Do not provide conjugations, we will handle them dynamically.`;
 
-  const response = await ai.models.generateContent({
+  const client = getAIClient();
+  const response = await client.models.generateContent({
     model: 'gemini-2.5-flash',
     contents: prompt,
     config: {
