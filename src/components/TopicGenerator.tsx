@@ -57,7 +57,7 @@ export default function TopicGenerator({ onVocabGenerated }: TopicGeneratorProps
   return (
     <div className="w-full max-w-4xl mx-auto my-4 [perspective:1000px]">
       <motion.div
-        className="relative w-full h-56 transition-all duration-700 [transform-style:preserve-3d]"
+        className="relative w-full h-64 transition-all duration-700 [transform-style:preserve-3d]"
         initial={false}
         animate={{ rotateY: isFlipped ? 180 : 0 }}
       >
@@ -94,6 +94,18 @@ export default function TopicGenerator({ onVocabGenerated }: TopicGeneratorProps
             >
               Space
             </button>
+          </div>
+
+          <div className="flex flex-wrap gap-2 justify-center max-w-lg mt-6">
+            {['Dating 💖', 'Travel ✈️', 'Ordering Food 🍕', 'Job Interview 💼'].map((scenario) => (
+              <button
+                key={scenario}
+                onClick={() => setTopic(scenario.replace(/[\u{1F300}-\u{1F6FF}\u{1F900}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu, '').trim())}
+                className="text-[10px] font-extrabold px-3 py-1.5 bg-[#fdf9f0] hover:bg-[#efebe4] dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 border-2 border-black uppercase tracking-wider transition-all cursor-pointer shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-[2px] active:shadow-none"
+              >
+                {scenario}
+              </button>
+            ))}
           </div>
         </div>
 
