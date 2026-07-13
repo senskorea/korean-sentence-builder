@@ -443,7 +443,7 @@ export default function App() {
 
 
       {/* Layout Content wrapper */}
-      <div className="max-w-4xl mx-auto flex flex-col lg:flex-row items-stretch justify-center gap-6">
+      <div className="max-w-6xl mx-auto flex flex-col items-stretch justify-center gap-6">
         
         {/* Main interactive application sandbox */}
         <div className={`flex-1 ${deviceFrameMode ? 'max-w-md mx-auto w-full' : 'w-full'}`}>
@@ -519,6 +519,7 @@ export default function App() {
                 objectParticle={objectParticle}
                   selectedEnding={selectedEnding}
                 />
+                </>
               )}
 
             </div>
@@ -527,7 +528,7 @@ export default function App() {
         </div>
 
         {/* Sidebar displaying saved sentences and comprehensive explanations */}
-        <div className="w-full lg:w-80 flex flex-col gap-6 shrink-0 justify-start">
+        <div className="w-full flex flex-col gap-6 shrink-0 justify-start">
           {/* Saved phrase history */}
           <SavedPhrases
             phrases={savedPhrases}
@@ -542,7 +543,7 @@ export default function App() {
       </div>
 
       {/* New Topic Generator Feature */}
-      <div className="max-w-4xl mx-auto mt-12 mb-4">
+      <div className="max-w-6xl mx-auto mt-12 mb-4">
         <TopicGenerator onVocabGenerated={(newVocab) => {
           setVocab(newVocab);
           setVocabJsonInput(JSON.stringify(newVocab, null, 2));
@@ -552,7 +553,7 @@ export default function App() {
       </div>
 
       {/* Sleek retro footer control bar */}
-      <footer className="max-w-4xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4 mt-8 mb-8 border-t-[3px] border-black pt-5">
+      <footer className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4 mt-8 mb-8 border-t-[3px] border-black pt-5">
         <div className="text-[10px] font-mono font-bold text-slate-500 uppercase tracking-wider">
           © SYSTEM.BUILDER // VER 2.1
         </div>
@@ -628,7 +629,7 @@ export default function App() {
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
-            className="max-w-4xl mx-auto mb-6 p-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-lg text-xs"
+            className="max-w-6xl mx-auto mb-6 p-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-lg text-xs"
           >
             <h3 className="font-extrabold font-display text-slate-900 dark:text-white mb-3 text-sm flex items-center gap-1.5 uppercase tracking-wider">
               <Settings className="w-4 h-4 text-indigo-500" />
@@ -715,7 +716,7 @@ export default function App() {
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
-            className="max-w-4xl mx-auto mt-10 mb-6 p-5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-xl text-xs"
+            className="max-w-6xl mx-auto mt-10 mb-6 p-5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-xl text-xs"
           >
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between border-b border-slate-200 dark:border-slate-800 pb-3 mb-4 gap-2">
               <h3 className="font-extrabold font-display text-slate-900 dark:text-white text-sm flex items-center gap-1.5 uppercase tracking-wider">

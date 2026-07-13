@@ -124,8 +124,6 @@ export default function LearnMode({ vocab }: LearnModeProps) {
   };
 
   const startDrawing = (e: React.PointerEvent<HTMLCanvasElement>) => {
-    if (isRevealed) return; // don't draw if revealed
-    
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
@@ -138,13 +136,14 @@ export default function LearnMode({ vocab }: LearnModeProps) {
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
 
+    ctx.strokeStyle = isRevealed ? '#ef4444' : '#1e293b'; // Use red for tracing over answers
     ctx.beginPath();
     ctx.moveTo(x, y);
     setIsDrawing(true);
   };
 
   const draw = (e: React.PointerEvent<HTMLCanvasElement>) => {
-    if (!isDrawing || isRevealed) return;
+    if (!isDrawing) return;
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
