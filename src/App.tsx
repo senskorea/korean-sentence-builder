@@ -7,6 +7,7 @@ import ConceptBlocks from './components/ConceptBlocks';
 import AgglutinationDrawer from './components/AgglutinationDrawer';
 import SavedPhrases from './components/SavedPhrases';
 import TopicGenerator from './components/TopicGenerator';
+import LearnMode from './components/LearnMode';
 import { 
   Smartphone, 
   Sparkles, 
@@ -26,7 +27,8 @@ import {
   Bookmark,
   Upload,
   Database,
-  FileText
+  FileText,
+  PenTool
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -162,6 +164,7 @@ export default function App() {
   const [vocabError, setVocabError] = useState<string | null>(null);
 
   // --- Configuration & Utilities State ---
+  const [appMode, setAppMode] = useState<'build' | 'learn'>('build');
   const [config, setConfig] = useState<AppConfig>({
     copyFormat: 'bilingual',
     bypassMode: false,
@@ -459,8 +462,12 @@ export default function App() {
             )}
 
             <div className={deviceFrameMode ? 'pt-6 flex-1 flex flex-col justify-between gap-4' : 'flex flex-col gap-4'}>
-              {/* Zone 1 & 2: Working Sentence Ribbon (Blended with Roadmap) */}
-              <WorkingSentence
+              {appMode === 'learn' ? (
+                <LearnMode vocab={vocab} />
+              ) : (
+                <>
+                  {/* Zone 1 & 2: Working Sentence Ribbon (Blended with Roadmap) */}
+                  <WorkingSentence
                 subject={selectedSubject}
                 subjectParticle={subjectParticle}
                 object={selectedObject}
@@ -510,9 +517,9 @@ export default function App() {
                 onSelectEnding={handleSelectEnding}
                 subjectParticle={subjectParticle}
                 objectParticle={objectParticle}
-                selectedEnding={selectedEnding}
-              />
-
+                  selectedEnding={selectedEnding}
+                />
+              )}
 
             </div>
 
@@ -552,6 +559,21 @@ export default function App() {
         
         {/* Compact Global Toolbar */}
         <div className="flex flex-wrap items-center gap-2">
+          {/* Learn Mode Toggler */}
+          <button
+            onClick={() => {
+              setAppMode(appMode === 'build' ? 'learn' : 'build');
+            }}
+            className={`flex items-center gap-1.5 px-3 py-1.5 border-2 border-black rounded-none font-extrabold transition-all cursor-pointer text-[11px] ${
+              appMode === 'learn'
+                ? 'bg-indigo-600 text-white'
+                : 'bg-white dark:bg-slate-900 hover:bg-slate-50 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-[1px] active:shadow-none'
+            }`}
+          >
+            <PenTool className={`w-3.5 h-3.5 ${appMode === 'learn' ? 'text-white' : 'text-indigo-500'}`} />
+            <span>{appMode === 'build' ? 'Enter Learn Mode' : 'Back to Builder'}</span>
+          </button>
+
           {/* Custom Vocabulary Toggler */}
           <button
             onClick={() => {
