@@ -94,7 +94,8 @@ export default function LearnMode({ vocab }: LearnModeProps) {
           ctx.lineCap = 'round';
           ctx.lineJoin = 'round';
           ctx.lineWidth = 12; // Thick for stylus/finger
-          ctx.strokeStyle = '#1e293b'; // slate-800
+          const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+          ctx.strokeStyle = isDark ? '#f8fafc' : '#1e293b'; // slate-50 (light) for dark mode, else slate-800
         }
       }
     };
@@ -136,7 +137,9 @@ export default function LearnMode({ vocab }: LearnModeProps) {
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
 
-    ctx.strokeStyle = isRevealed ? '#ef4444' : '#1e293b'; // Use red for tracing over answers
+    const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    const defaultColor = isDark ? '#f8fafc' : '#1e293b';
+    ctx.strokeStyle = isRevealed ? '#ef4444' : defaultColor; // Use red for tracing over answers
     ctx.beginPath();
     ctx.moveTo(x, y);
     setIsDrawing(true);
