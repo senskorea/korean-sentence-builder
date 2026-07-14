@@ -139,7 +139,7 @@ export default function LearnMode({ vocab }: LearnModeProps) {
 
     const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
     const defaultColor = isDark ? '#f8fafc' : '#1e293b';
-    ctx.strokeStyle = isRevealed ? '#ef4444' : defaultColor; // Use red for tracing over answers
+    ctx.strokeStyle = isRevealed ? '#22c55e' : defaultColor; // Use green for tracing over answers
     ctx.beginPath();
     ctx.moveTo(x, y);
     setIsDrawing(true);
@@ -187,7 +187,7 @@ export default function LearnMode({ vocab }: LearnModeProps) {
   }
 
   return (
-    <div className="flex-1 flex flex-col h-full bg-[#fdf9f0] dark:bg-slate-900 rounded-[3rem] overflow-hidden shadow-2xl border-4 border-slate-900 dark:border-slate-800 relative min-h-[780px]">
+    <div className="flex-1 flex flex-col h-full bg-[#fdf9f0] dark:bg-slate-900 rounded-[3rem] overflow-hidden shadow-2xl border-4 border-slate-900 dark:border-slate-800 relative min-h-[780px] select-none touch-none">
       {/* Header */}
       <div className="p-6 border-b-2 border-slate-900 dark:border-slate-800 flex justify-between items-center bg-white dark:bg-slate-950 z-10 relative">
         <div className="flex items-center gap-3">
@@ -222,7 +222,7 @@ export default function LearnMode({ vocab }: LearnModeProps) {
           onPointerUp={stopDrawing}
           onPointerOut={stopDrawing}
           onPointerCancel={stopDrawing}
-          className="absolute inset-0 w-full h-full touch-none z-10"
+          className="absolute inset-0 w-full h-full touch-none z-30"
           style={{ touchAction: 'none' }}
         />
         
