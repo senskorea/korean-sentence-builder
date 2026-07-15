@@ -28,7 +28,7 @@ export default function LearnMode({ vocab }: LearnModeProps) {
   // Canvas ref
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  const [isDrawing, setIsDrawing] = useState(false);
+  const isDrawing = useRef(false);
 
   // Initialize word pool and stats
   useEffect(() => {
@@ -130,9 +130,6 @@ export default function LearnMode({ vocab }: LearnModeProps) {
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    // Prevent scrolling when touching the canvas on iPad
-    (e.target as HTMLElement).releasePointerCapture(e.pointerId);
-
     const rect = canvas.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
@@ -142,11 +139,11 @@ export default function LearnMode({ vocab }: LearnModeProps) {
     ctx.strokeStyle = isRevealed ? '#22c55e' : defaultColor; // Use green for tracing over answers
     ctx.beginPath();
     ctx.moveTo(x, y);
-    setIsDrawing(true);
+    isDrawing.current = true;
   };
 
   const draw = (e: React.PointerEvent<HTMLCanvasElement>) => {
-    if (!isDrawing) return;
+    if (!isDrawing.current) return;
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
@@ -161,8 +158,8 @@ export default function LearnMode({ vocab }: LearnModeProps) {
   };
 
   const stopDrawing = () => {
-    if (!isDrawing) return;
-    setIsDrawing(false);
+    if (!isDrawing.current) return;
+    isDrawing.current = false;
   };
 
   const handleRank = (score: number) => {
@@ -215,17 +212,6 @@ export default function LearnMode({ vocab }: LearnModeProps) {
           <span className="text-[150px] font-black">✍️</span>
         </div>
 
-        <canvas
-          ref={canvasRef}
-          onPointerDown={startDrawing}
-          onPointerMove={draw}
-          onPointerUp={stopDrawing}
-          onPointerOut={stopDrawing}
-          onPointerCancel={stopDrawing}
-          className="absolute inset-0 w-full h-full touch-none z-30"
-          style={{ touchAction: 'none' }}
-        />
-        
         {/* Answer Overlay */}
         <AnimatePresence>
           {isRevealed && (
@@ -244,6 +230,17 @@ export default function LearnMode({ vocab }: LearnModeProps) {
             </motion.div>
           )}
         </AnimatePresence>
+
+        <canvas
+          ref={canvasRef}
+          onPointerDown={startDrawing}
+          onPointerMove={draw}
+          onPointerUp={stopDrawing}
+          onPointerOut={stopDrawing}
+          onPointerCancel={stopDrawing}
+          className="absolute inset-0 w-full h-full touch-none z-30"
+          style={{ touchAction: 'none' }}
+        />
       </div>
 
       {/* Footer Controls */}
