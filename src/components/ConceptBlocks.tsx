@@ -1,5 +1,5 @@
 import { Word, StepState } from '../types';
-import { SentenceAnalysis } from '../lib/gemini';
+import { SentenceAnalysis } from '../lib/ai';
 import { Sparkles, Check, Loader2, X } from 'lucide-react';
 import { motion } from 'motion/react';
 

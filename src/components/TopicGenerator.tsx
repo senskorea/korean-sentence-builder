@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { Sparkles, History, Loader2, ArrowRight } from 'lucide-react';
-import { generateVocabForTopic, GeneratedVocab } from '../lib/gemini';
+import { generateVocabForTopic, GeneratedVocab } from '../lib/ai';
 
 interface TopicGeneratorProps {
   onVocabGenerated: (vocab: GeneratedVocab) => void;
@@ -97,13 +97,19 @@ export default function TopicGenerator({ onVocabGenerated }: TopicGeneratorProps
           </div>
 
           <div className="flex flex-wrap gap-2 justify-center max-w-lg mt-6">
-            {['Dating 💖', 'Travel ✈️', 'Ordering Food 🍕', 'Job Interview 💼'].map((scenario) => (
+            {[
+              { label: 'Greetings 👋', topic: 'Greetings' },
+              { label: 'Ordering Food 🍕', topic: 'Ordering Food' },
+              { label: 'Shopping 🛍️', topic: 'Shopping' },
+              { label: 'Travel ✈️', topic: 'Travel' },
+              { label: 'Hobbies 🎨', topic: 'Hobbies' }
+            ].map((scenario) => (
               <button
-                key={scenario}
-                onClick={() => setTopic(scenario.replace(/[\u{1F300}-\u{1F6FF}\u{1F900}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu, '').trim())}
+                key={scenario.topic}
+                onClick={() => setTopic(scenario.topic)}
                 className="text-[10px] font-extrabold px-3 py-1.5 bg-[#fdf9f0] hover:bg-[#efebe4] dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 border-2 border-black uppercase tracking-wider transition-all cursor-pointer shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-[2px] active:shadow-none"
               >
-                {scenario}
+                {scenario.label}
               </button>
             ))}
           </div>

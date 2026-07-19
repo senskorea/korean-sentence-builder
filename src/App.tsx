@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { analyzeSentence, SentenceAnalysis } from './lib/gemini';
+import { analyzeSentence, SentenceAnalysis } from './lib/ai';
 import { Word, StepState, SavedSentence, AppConfig, EndingOption } from './types';
 import { getFullEnglishTranslation, CONJUGATIONS, SUBJECTS, OBJECTS, VERBS, conjugateVerbDynamically } from './data';
 import WorkingSentence from './components/WorkingSentence';
