@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { Sparkles, History, Loader2, ArrowRight } from 'lucide-react';
 import { generateVocabForTopic, GeneratedVocab } from '../lib/ai';
+import { PREGENERATED_TOPICS } from '../pregenerated';
 
 interface TopicGeneratorProps {
   onVocabGenerated: (vocab: GeneratedVocab) => void;
@@ -24,14 +25,28 @@ export default function TopicGenerator({ onVocabGenerated }: TopicGeneratorProps
     }
   }, []);
 
-  const handleGenerate = async () => {
-    if (!topic.trim()) return;
+  const handleGenerate = async (overrideTopic?: string) => {
+    const targetTopic = typeof overrideTopic === 'string' ? overrideTopic : topic;
+    if (!targetTopic.trim()) return;
+
+    if (PREGENERATED_TOPICS[targetTopic.trim()]) {
+      const vocab = PREGENERATED_TOPICS[targetTopic.trim()];
+      const newEntry = { topic: targetTopic.trim(), vocab, timestamp: Date.now() };
+      const updatedTopics = [newEntry, ...savedTopics.filter(t => t.topic !== targetTopic.trim())].slice(0, 10);
+      setSavedTopics(updatedTopics);
+      localStorage.setItem('korean_sentences_generated_topics', JSON.stringify(updatedTopics));
+      onVocabGenerated(vocab);
+      localStorage.setItem('korean_sentences_custom_vocab', JSON.stringify(vocab));
+      if (typeof overrideTopic !== 'string') setTopic('');
+      return;
+    }
+
     setIsGenerating(true);
     try {
-      const vocab = await generateVocabForTopic(topic.trim());
+      const vocab = await generateVocabForTopic(targetTopic.trim());
       
-      const newEntry = { topic: topic.trim(), vocab, timestamp: Date.now() };
-      const updatedTopics = [newEntry, ...savedTopics.filter(t => t.topic !== topic.trim())].slice(0, 10);
+      const newEntry = { topic: targetTopic.trim(), vocab, timestamp: Date.now() };
+      const updatedTopics = [newEntry, ...savedTopics.filter(t => t.topic !== targetTopic.trim())].slice(0, 10);
       setSavedTopics(updatedTopics);
       localStorage.setItem('korean_sentences_generated_topics', JSON.stringify(updatedTopics));
       
@@ -39,7 +54,7 @@ export default function TopicGenerator({ onVocabGenerated }: TopicGeneratorProps
       
       localStorage.setItem('korean_sentences_custom_vocab', JSON.stringify(vocab));
       
-      setTopic('');
+      if (typeof overrideTopic !== 'string') setTopic('');
     } catch (error) {
       console.error('Error generating vocab:', error);
       alert('Failed to generate vocabulary. Please try again.');
@@ -106,7 +121,7 @@ export default function TopicGenerator({ onVocabGenerated }: TopicGeneratorProps
             ].map((scenario) => (
               <button
                 key={scenario.topic}
-                onClick={() => setTopic(scenario.topic)}
+                onClick={() => handleGenerate(scenario.topic)}
                 className="text-[10px] font-extrabold px-3 py-1.5 bg-[#fdf9f0] hover:bg-[#efebe4] dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 border-2 border-black uppercase tracking-wider transition-all cursor-pointer shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-[2px] active:shadow-none"
               >
                 {scenario.label}
