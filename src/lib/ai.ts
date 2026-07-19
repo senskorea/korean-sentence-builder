@@ -12,7 +12,7 @@ function getAIClient() {
     }
     openaiClient = new OpenAI({
       apiKey,
-      baseURL: 'https://integrate.api.nvidia.com/v1',
+      baseURL: '/api/nim',
       dangerouslyAllowBrowser: true
     });
   }
