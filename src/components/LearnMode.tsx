@@ -94,8 +94,7 @@ export default function LearnMode({ vocab }: LearnModeProps) {
           ctx.lineCap = 'round';
           ctx.lineJoin = 'round';
           ctx.lineWidth = 12; // Thick for stylus/finger
-          const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-          ctx.strokeStyle = isDark ? '#f8fafc' : '#1e293b'; // slate-50 (light) for dark mode, else slate-800
+          ctx.strokeStyle = '#22c55e'; // Always green for visibility
         }
       }
     };
@@ -130,13 +129,13 @@ export default function LearnMode({ vocab }: LearnModeProps) {
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
+    (e.target as HTMLElement).setPointerCapture(e.pointerId);
+
     const rect = canvas.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
 
-    const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-    const defaultColor = isDark ? '#f8fafc' : '#1e293b';
-    ctx.strokeStyle = isRevealed ? '#22c55e' : defaultColor; // Use green for tracing over answers
+    ctx.strokeStyle = '#22c55e'; // Always green
     ctx.beginPath();
     ctx.moveTo(x, y);
     isDrawing.current = true;
@@ -150,11 +149,21 @@ export default function LearnMode({ vocab }: LearnModeProps) {
     if (!ctx) return;
 
     const rect = canvas.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-
-    ctx.lineTo(x, y);
-    ctx.stroke();
+    
+    // Process coalesced events if available for smoother drawing
+    const events = e.nativeEvent && typeof (e.nativeEvent as any).getCoalescedEvents === 'function'
+      ? (e.nativeEvent as any).getCoalescedEvents()
+      : [e.nativeEvent];
+      
+    for (const event of events) {
+      const x = event.clientX - rect.left;
+      const y = event.clientY - rect.top;
+      
+      ctx.lineTo(x, y);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(x, y);
+    }
   };
 
   const stopDrawing = () => {
