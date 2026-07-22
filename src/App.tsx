@@ -438,7 +438,7 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-[#fdf9f0] dark:bg-[#100f0d] font-sans text-slate-800 dark:text-slate-100 py-6 px-4 md:px-8 transition-colors duration-300">
+    <div className="min-h-screen bg-[#fdf9f0] dark:bg-[#100f0d] dot-pattern font-sans text-slate-800 dark:text-slate-100 py-6 px-4 md:px-8 transition-colors duration-300">
       
 
 
@@ -567,8 +567,8 @@ export default function App() {
             }}
             className={`flex items-center gap-1.5 px-3 py-1.5 border-2 border-black rounded-none font-extrabold transition-all cursor-pointer text-[11px] ${
               appMode === 'learn'
-                ? 'bg-indigo-600 text-white'
-                : 'bg-white dark:bg-slate-900 hover:bg-slate-50 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-[1px] active:shadow-none'
+                ? 'bg-indigo-600 text-white shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:-translate-y-0.5 hover:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]'
+                : 'bg-white dark:bg-slate-900 hover:bg-slate-50 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:-translate-y-0.5 hover:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] active:translate-y-[1px] active:shadow-none'
             }`}
           >
             <PenTool className={`w-3.5 h-3.5 ${appMode === 'learn' ? 'text-white' : 'text-indigo-500'}`} />
@@ -586,8 +586,8 @@ export default function App() {
             }}
             className={`flex items-center gap-1.5 px-3 py-1.5 bg-white dark:bg-slate-900 border-2 border-black rounded-none hover:bg-slate-50 font-extrabold transition-all cursor-pointer text-[11px] ${
               showVocabPanel
-                ? 'bg-[#cc3311] text-white'
-                : 'shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-[1px] active:shadow-none'
+                ? 'bg-[#cc3311] text-white shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:-translate-y-0.5 hover:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]'
+                : 'shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:-translate-y-0.5 hover:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] active:translate-y-[1px] active:shadow-none'
             }`}
           >
             <Database className="w-3.5 h-3.5" />
@@ -602,8 +602,8 @@ export default function App() {
             }}
             className={`flex items-center gap-1.5 px-3 py-1.5 bg-white dark:bg-slate-900 border-2 border-black rounded-none hover:bg-slate-50 font-extrabold transition-all cursor-pointer text-[11px] ${
               showConfigPanel
-                ? 'bg-[#cc3311] text-white'
-                : 'shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-[1px] active:shadow-none'
+                ? 'bg-[#cc3311] text-white shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:-translate-y-0.5 hover:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]'
+                : 'shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:-translate-y-0.5 hover:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] active:translate-y-[1px] active:shadow-none'
             }`}
           >
             <Settings className="w-3.5 h-3.5 text-rose-500" />
@@ -613,7 +613,7 @@ export default function App() {
           {/* Desktop/Bezel Mockup Toggler */}
           <button
             onClick={() => setDeviceFrameMode(!deviceFrameMode)}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-white dark:bg-slate-900 border-2 border-black rounded-none hover:bg-[#efebe4] font-extrabold shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-[1px] active:shadow-none transition-all cursor-pointer text-[11px]"
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-white dark:bg-slate-900 border-2 border-black rounded-none hover:bg-[#efebe4] font-extrabold shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:-translate-y-0.5 hover:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] active:translate-y-[1px] active:shadow-none transition-all cursor-pointer text-[11px]"
             title="Toggle smartphone viewport framing"
           >
             <Smartphone className="w-3.5 h-3.5 text-sky-500" />
