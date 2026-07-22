@@ -91,7 +91,7 @@ export default function WorkingSentence({
   return (
     <div 
       id="working-sentence-ribbon" 
-      className="relative bg-[#1a1a1a] border-[3px] border-black p-3 sm:px-4 sm:py-3 rounded-none shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] dark:shadow-[4px_4px_0px_0px_rgba(255,255,255,0.1)] transition-all overflow-hidden flex flex-col gap-2"
+      className="relative bg-brand-surface-dark border-[3px] border-black p-3 sm:px-4 sm:py-3 rounded-none shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] dark:shadow-[4px_4px_0px_0px_rgba(255,255,255,0.1)] transition-all overflow-hidden flex flex-col gap-2"
     >
       
       {/* Top: Center Sentence Display */}
@@ -101,46 +101,46 @@ export default function WorkingSentence({
               <div className="flex items-end justify-center gap-3 md:gap-4 flex-wrap">
                 {subject && (
                   <div className="flex flex-col items-center gap-1.5 animate-in slide-in-from-bottom-2 duration-300">
-                    <div className="w-8 h-8 md:w-10 md:h-10 bg-[#f7f5f0] dark:bg-slate-800 rounded-full flex items-center justify-center text-lg md:text-xl border-[2px] border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] dark:shadow-none">
+                    <div className="w-8 h-8 md:w-10 md:h-10 bg-brand-surface-light dark:bg-slate-800 rounded-full flex items-center justify-center text-lg md:text-xl border-[2px] border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] dark:shadow-none">
                       {subject.emoji}
                     </div>
-                    <span className="text-2xl md:text-3xl font-extrabold tracking-wide text-white font-display leading-none underline decoration-[#cc3311] decoration-3 underline-offset-4">
+                    <span className="text-2xl md:text-3xl font-extrabold tracking-wide text-white font-display leading-none underline decoration-brand-primary decoration-3 underline-offset-4">
                       {subject.korean}{subjectParticle}
                     </span>
                   </div>
                 )}
                 {object && (
                   <div className="flex flex-col items-center gap-1.5 animate-in slide-in-from-bottom-2 duration-300">
-                    <div className="w-8 h-8 md:w-10 md:h-10 bg-[#f7f5f0] dark:bg-slate-800 rounded-full flex items-center justify-center text-lg md:text-xl border-[2px] border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] dark:shadow-none">
+                    <div className="w-8 h-8 md:w-10 md:h-10 bg-brand-surface-light dark:bg-slate-800 rounded-full flex items-center justify-center text-lg md:text-xl border-[2px] border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] dark:shadow-none">
                       {object.emoji}
                     </div>
-                    <span className="text-2xl md:text-3xl font-extrabold tracking-wide text-white font-display leading-none underline decoration-[#cc3311] decoration-3 underline-offset-4">
+                    <span className="text-2xl md:text-3xl font-extrabold tracking-wide text-white font-display leading-none underline decoration-brand-primary decoration-3 underline-offset-4">
                       {object.korean}{objectParticle}
                     </span>
                   </div>
                 )}
                 {verb && (
                   <div className="flex flex-col items-center gap-1.5 animate-in slide-in-from-bottom-2 duration-300">
-                    <div className="w-8 h-8 md:w-10 md:h-10 bg-[#f7f5f0] dark:bg-slate-800 rounded-full flex items-center justify-center text-lg md:text-xl border-[2px] border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] dark:shadow-none">
+                    <div className="w-8 h-8 md:w-10 md:h-10 bg-brand-surface-light dark:bg-slate-800 rounded-full flex items-center justify-center text-lg md:text-xl border-[2px] border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] dark:shadow-none">
                       {verb.emoji}
                     </div>
-                    <span className="text-2xl md:text-3xl font-extrabold tracking-wide text-white font-display leading-none underline decoration-[#cc3311] decoration-3 underline-offset-4 flex items-baseline">
+                    <span className="text-2xl md:text-3xl font-extrabold tracking-wide text-white font-display leading-none underline decoration-brand-primary decoration-3 underline-offset-4 flex items-baseline">
                       {ending ? (CONJUGATIONS[verb.id]?.[ending.id]?.korean || verb.korean) : verb.korean}
-                      <span className="font-bold text-[#cc3311] ml-0.5">.</span>
+                      <span className="font-bold text-brand-primary ml-0.5">.</span>
                     </span>
                   </div>
                 )}
               </div>
  
               {englishTranslation && (
-                <p className="text-xs md:text-sm font-bold text-[#cc3311] font-mono tracking-wide uppercase leading-none mt-1">
+                <p className="text-xs md:text-sm font-bold text-brand-primary font-mono tracking-wide uppercase leading-none mt-1">
                   {englishTranslation}
                 </p>
               )}
             </div>
           ) : (
             <div className="flex flex-col items-center justify-center gap-1 text-slate-400 min-h-[80px]">
-              <span className="w-4 h-1 bg-[#cc3311] animate-pulse"></span>
+              <span className="w-4 h-1 bg-brand-primary animate-pulse"></span>
             </div>
           )}
         </div>
@@ -153,7 +153,7 @@ export default function WorkingSentence({
           {(subject || object || verb) && (
             <button
               onClick={onReset}
-              className="p-2 text-[#cc3311] hover:text-white transition-all rounded-none border-[3px] border-black bg-white hover:bg-[#cc3311] shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-[1px] active:shadow-none cursor-pointer flex items-center gap-1"
+              className="p-2 text-brand-primary hover:text-white transition-all rounded-none border-[3px] border-black bg-white hover:bg-brand-primary shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-[1px] active:shadow-none cursor-pointer flex items-center gap-1"
               title="Reset current sentence"
             >
               <RotateCcw className="w-4 h-4 stroke-[3]" />
@@ -162,7 +162,7 @@ export default function WorkingSentence({
           {activeKorean && onPlayAudio && (
             <button
               onClick={onPlayAudio}
-              className="p-2 text-slate-700 hover:text-black transition-all rounded-none border-[3px] border-black bg-[#efebe4] hover:bg-white shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-[1px] active:shadow-none cursor-pointer flex items-center gap-1"
+              className="p-2 text-slate-700 hover:text-black transition-all rounded-none border-[3px] border-black bg-brand-surface-light hover:bg-white shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-[1px] active:shadow-none cursor-pointer flex items-center gap-1"
               title="Slow Speech Audio"
             >
               <Volume2 className="w-4 h-4 stroke-[3]" />
@@ -180,7 +180,7 @@ export default function WorkingSentence({
                   className={`flex items-center justify-center h-10 px-2.5 rounded-none border-[3px] transition-all duration-150 select-none cursor-pointer gap-1.5 ${
                     saved
                       ? 'bg-emerald-500 border-black text-black shadow-none'
-                      : 'bg-white text-black border-black hover:bg-[#cc3311] hover:text-white shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] hover:shadow-none active:translate-y-[1px]'
+                      : 'bg-white text-black border-black hover:bg-brand-primary hover:text-white shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] hover:shadow-none active:translate-y-[1px]'
                   }`}
                   title="Save to Notebook"
                 >
@@ -204,7 +204,7 @@ export default function WorkingSentence({
                   className={`flex items-center justify-center h-10 px-2.5 rounded-none border-[3px] transition-all duration-150 select-none gap-1.5 ${
                     isAnalyzing
                       ? 'bg-amber-400 border-black text-black shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] opacity-70 cursor-wait'
-                      : 'bg-[#ffcc00] text-black border-black hover:bg-black hover:text-[#ffcc00] shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] hover:shadow-none active:translate-y-[1px] cursor-pointer'
+                      : 'bg-brand-accent text-black border-black hover:bg-black hover:text-brand-accent shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] hover:shadow-none active:translate-y-[1px] cursor-pointer'
                   }`}
                   title="Analyze AI Grammar"
                 >

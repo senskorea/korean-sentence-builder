@@ -5,6 +5,13 @@
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
   --font-display: "Space Grotesk", sans-serif;
   --font-mono: "JetBrains Mono", monospace;
+  
+  --color-brand-primary: #E63946;
+  --color-brand-bg-light: #F8F9FA;
+  --color-brand-surface-light: #FFFFFF;
+  --color-brand-bg-dark: #0F172A;
+  --color-brand-surface-dark: #1E293B;
+  --color-brand-accent: #FBBF24;
 }
 
 /* Custom global animations or utility classes if needed */
@@ -23,30 +30,30 @@
 .diagonal-stripes {
   background: repeating-linear-gradient(
     45deg,
-    #cc3311,
-    #cc3311 8px,
-    #efebe4 8px,
-    #efebe4 16px
+    var(--color-brand-primary),
+    var(--color-brand-primary) 8px,
+    var(--color-brand-surface-light) 8px,
+    var(--color-brand-surface-light) 16px
   );
 }
 
 .diagonal-stripes-dark {
   background: repeating-linear-gradient(
     45deg,
-    #cc3311,
-    #cc3311 8px,
-    #1a1a1a 8px,
-    #1a1a1a 16px
+    var(--color-brand-primary),
+    var(--color-brand-primary) 8px,
+    var(--color-brand-surface-dark) 8px,
+    var(--color-brand-surface-dark) 16px
   );
 }
 
 .dot-pattern {
-  background-image: radial-gradient(rgba(0, 0, 0, 0.1) 1px, transparent 1px);
+  background-image: radial-gradient(rgba(0, 0, 0, 0.05) 1px, transparent 1px);
   background-size: 20px 20px;
 }
 
 .dark .dot-pattern {
-  background-image: radial-gradient(rgba(255, 255, 255, 0.1) 1px, transparent 1px);
+  background-image: radial-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px);
 }
 
 

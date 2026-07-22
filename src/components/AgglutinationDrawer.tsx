@@ -103,13 +103,13 @@ export default function AgglutinationDrawer({
       <div className={`relative w-full h-full transition-all duration-700 [transform-style:preserve-3d] ${isFlipped ? '[transform:rotateY(180deg)]' : ''}`}>
         
         {/* Front Face: Controls */}
-        <div className="[backface-visibility:hidden] flex flex-col h-full bg-[#121212] border-[3px] border-black rounded-none p-2.5 py-3 sm:p-3.5 sm:py-4 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] dark:shadow-[4px_4px_0px_0px_rgba(255,255,255,0.1)]">
+        <div className="[backface-visibility:hidden] flex flex-col h-full bg-brand-surface-dark border-[3px] border-black rounded-none p-2.5 py-3 sm:p-3.5 sm:py-4 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] dark:shadow-[4px_4px_0px_0px_rgba(255,255,255,0.1)]">
           <div className="grid grid-cols-2 gap-4 md:gap-8 w-full max-w-2xl mx-auto flex-1">
         
         {/* Column 1: PARTICLES */}
         <div className="flex flex-col gap-2">
           <div className="flex items-center justify-center gap-1.5 text-[9px] sm:text-[10px] font-black tracking-widest font-mono text-slate-400 uppercase select-none mb-1 relative">
-            <span className="w-1.5 h-1.5 bg-[#cc3311] block" />
+            <span className="w-1.5 h-1.5 bg-brand-primary block" />
             PARTICLES
             <button onClick={() => flipToLesson('particles')} className="absolute right-0 hover:text-white transition-colors" title="Learn about Particles">
               <Info className="w-3.5 h-3.5" />
@@ -127,10 +127,10 @@ export default function AgglutinationDrawer({
               disabled={!selectedSubject && !bypassMode}
               className={`flex flex-col items-center justify-center p-2.5 rounded-none border-[3px] text-center transition-all cursor-pointer ${
                 (subjectParticle === '은' || subjectParticle === '는')
-                  ? 'bg-[#cc3311] border-black text-white font-extrabold translate-y-[2px]'
+                  ? 'bg-brand-primary border-black text-white font-extrabold translate-y-[2px]'
                   : (!selectedSubject && !bypassMode)
-                  ? 'bg-[#1a1a1a] border-dashed border-slate-800 text-slate-700 cursor-not-allowed opacity-20'
-                  : 'bg-[#efebe4] text-black border-black font-extrabold hover:translate-y-[1px] shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]'
+                  ? 'bg-brand-surface-dark border-dashed border-slate-800 text-slate-700 cursor-not-allowed opacity-20'
+                  : 'bg-brand-surface-light text-black border-black font-extrabold hover:translate-y-[1px] shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]'
               }`}
               style={{ minHeight: '44px' }}
             >
@@ -152,10 +152,10 @@ export default function AgglutinationDrawer({
               disabled={!selectedSubject && !bypassMode}
               className={`flex flex-col items-center justify-center p-2.5 rounded-none border-[3px] text-center transition-all cursor-pointer ${
                 (subjectParticle === '이' || subjectParticle === '가')
-                  ? 'bg-[#cc3311] border-black text-white font-extrabold translate-y-[2px]'
+                  ? 'bg-brand-primary border-black text-white font-extrabold translate-y-[2px]'
                   : (!selectedSubject && !bypassMode)
-                  ? 'bg-[#1a1a1a] border-dashed border-slate-800 text-slate-700 cursor-not-allowed opacity-20'
-                  : 'bg-[#efebe4] text-black border-black font-extrabold hover:translate-y-[1px] shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]'
+                  ? 'bg-brand-surface-dark border-dashed border-slate-800 text-slate-700 cursor-not-allowed opacity-20'
+                  : 'bg-brand-surface-light text-black border-black font-extrabold hover:translate-y-[1px] shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]'
               }`}
               style={{ minHeight: '44px' }}
             >
@@ -177,10 +177,10 @@ export default function AgglutinationDrawer({
               disabled={!selectedObject && !bypassMode}
               className={`flex flex-col items-center justify-center p-2.5 rounded-none border-[3px] text-center transition-all cursor-pointer ${
                 (objectParticle === '을' || objectParticle === '를')
-                  ? 'bg-[#cc3311] border-black text-white font-extrabold translate-y-[2px]'
+                  ? 'bg-brand-primary border-black text-white font-extrabold translate-y-[2px]'
                   : (!selectedObject && !bypassMode)
-                  ? 'bg-[#1a1a1a] border-dashed border-slate-800 text-slate-700 cursor-not-allowed opacity-20'
-                  : 'bg-[#efebe4] text-black border-black font-extrabold hover:translate-y-[1px] shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]'
+                  ? 'bg-brand-surface-dark border-dashed border-slate-800 text-slate-700 cursor-not-allowed opacity-20'
+                  : 'bg-brand-surface-light text-black border-black font-extrabold hover:translate-y-[1px] shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]'
               }`}
               style={{ minHeight: '44px' }}
             >
@@ -197,7 +197,7 @@ export default function AgglutinationDrawer({
         {/* Column 2: TENSE & MOOD */}
         <div className="flex flex-col gap-2">
           <div className="flex items-center justify-center gap-1.5 text-[9px] sm:text-[10px] font-black tracking-widest font-mono text-slate-400 uppercase select-none mb-1 relative">
-            <span className="w-1.5 h-1.5 bg-[#cc3311] block" />
+            <span className="w-1.5 h-1.5 bg-brand-primary block" />
             TENSE & MOOD
             <button onClick={() => flipToLesson('tense')} className="absolute right-0 hover:text-white transition-colors" title="Learn about Tense & Mood">
               <Info className="w-3.5 h-3.5" />
@@ -215,10 +215,10 @@ export default function AgglutinationDrawer({
               disabled={!selectedVerb && !bypassMode}
               className={`flex flex-col items-center justify-center p-2.5 rounded-none border-[3px] text-center transition-all cursor-pointer ${
                 selectedEnding?.id === 'end_present'
-                  ? 'bg-[#cc3311] border-black text-white font-extrabold translate-y-[2px]'
+                  ? 'bg-brand-primary border-black text-white font-extrabold translate-y-[2px]'
                   : (!selectedVerb && !bypassMode)
-                  ? 'bg-[#1a1a1a] border-dashed border-slate-800 text-slate-700 cursor-not-allowed opacity-20'
-                  : 'bg-[#efebe4] text-black border-black font-extrabold hover:translate-y-[1px] shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]'
+                  ? 'bg-brand-surface-dark border-dashed border-slate-800 text-slate-700 cursor-not-allowed opacity-20'
+                  : 'bg-brand-surface-light text-black border-black font-extrabold hover:translate-y-[1px] shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]'
               }`}
               style={{ minHeight: '44px' }}
             >
@@ -243,10 +243,10 @@ export default function AgglutinationDrawer({
               disabled={!selectedVerb && !bypassMode}
               className={`flex flex-col items-center justify-center p-2.5 rounded-none border-[3px] text-center transition-all cursor-pointer ${
                 selectedEnding?.id === 'end_past'
-                  ? 'bg-[#cc3311] border-black text-white font-extrabold translate-y-[2px]'
+                  ? 'bg-brand-primary border-black text-white font-extrabold translate-y-[2px]'
                   : (!selectedVerb && !bypassMode)
-                  ? 'bg-[#1a1a1a] border-dashed border-slate-800 text-slate-700 cursor-not-allowed opacity-20'
-                  : 'bg-[#efebe4] text-black border-black font-extrabold hover:translate-y-[1px] shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]'
+                  ? 'bg-brand-surface-dark border-dashed border-slate-800 text-slate-700 cursor-not-allowed opacity-20'
+                  : 'bg-brand-surface-light text-black border-black font-extrabold hover:translate-y-[1px] shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]'
               }`}
               style={{ minHeight: '44px' }}
             >
@@ -271,10 +271,10 @@ export default function AgglutinationDrawer({
               disabled={!selectedVerb && !bypassMode}
               className={`flex flex-col items-center justify-center p-2.5 rounded-none border-[3px] text-center transition-all cursor-pointer ${
                 selectedEnding?.id === 'end_future'
-                  ? 'bg-[#cc3311] border-black text-white font-extrabold translate-y-[2px]'
+                  ? 'bg-brand-primary border-black text-white font-extrabold translate-y-[2px]'
                   : (!selectedVerb && !bypassMode)
-                  ? 'bg-[#1a1a1a] border-dashed border-slate-800 text-slate-700 cursor-not-allowed opacity-20'
-                  : 'bg-[#efebe4] text-black border-black font-extrabold hover:translate-y-[1px] shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]'
+                  ? 'bg-brand-surface-dark border-dashed border-slate-800 text-slate-700 cursor-not-allowed opacity-20'
+                  : 'bg-brand-surface-light text-black border-black font-extrabold hover:translate-y-[1px] shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]'
               }`}
               style={{ minHeight: '44px' }}
             >
@@ -298,10 +298,10 @@ export default function AgglutinationDrawer({
               disabled={!selectedVerb && !bypassMode}
               className={`flex flex-col items-center justify-center p-2.5 rounded-none border-[3px] text-center transition-all cursor-pointer ${
                 selectedEnding?.id === 'end_want'
-                  ? 'bg-[#cc3311] border-black text-white font-extrabold translate-y-[2px]'
+                  ? 'bg-brand-primary border-black text-white font-extrabold translate-y-[2px]'
                   : (!selectedVerb && !bypassMode)
-                  ? 'bg-[#1a1a1a] border-dashed border-slate-800 text-slate-700 cursor-not-allowed opacity-20'
-                  : 'bg-[#efebe4] text-black border-black font-extrabold hover:translate-y-[1px] shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]'
+                  ? 'bg-brand-surface-dark border-dashed border-slate-800 text-slate-700 cursor-not-allowed opacity-20'
+                  : 'bg-brand-surface-light text-black border-black font-extrabold hover:translate-y-[1px] shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]'
               }`}
               style={{ minHeight: '44px' }}
             >
@@ -317,14 +317,14 @@ export default function AgglutinationDrawer({
         </div>
 
         {/* Back Face: Mini Lessons Carousel */}
-        <div className="absolute top-0 left-0 w-full h-full [backface-visibility:hidden] [transform:rotateY(180deg)] bg-[#121212] border-[3px] border-black p-4 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] dark:shadow-[4px_4px_0px_0px_rgba(255,255,255,0.1)] flex flex-col overflow-hidden text-slate-200">
+        <div className="absolute top-0 left-0 w-full h-full [backface-visibility:hidden] [transform:rotateY(180deg)] bg-brand-surface-dark border-[3px] border-black p-4 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] dark:shadow-[4px_4px_0px_0px_rgba(255,255,255,0.1)] flex flex-col overflow-hidden text-slate-200">
           {/* Header */}
           <div className="flex justify-between items-center shrink-0 mb-4 border-b-2 border-[#333] pb-2">
             <div className="flex items-center gap-2">
-              <span className="w-2 h-2 bg-[#cc3311] block" />
+              <span className="w-2 h-2 bg-brand-primary block" />
               <h3 className="font-mono font-black tracking-widest uppercase text-sm">{lessonType === 'particles' ? 'PARTICLES' : 'TENSE & MOOD'}</h3>
             </div>
-            <button onClick={() => setIsFlipped(false)} className="p-1 hover:bg-[#cc3311] hover:text-white transition-colors cursor-pointer active:translate-y-[1px]">
+            <button onClick={() => setIsFlipped(false)} className="p-1 hover:bg-brand-primary hover:text-white transition-colors cursor-pointer active:translate-y-[1px]">
               <X className="w-5 h-5 stroke-[3]" />
             </button>
           </div>
@@ -336,8 +336,8 @@ export default function AgglutinationDrawer({
               <p className="text-sm md:text-base leading-relaxed text-slate-400">{currentLesson[currentSlide].content}</p>
             </div>
             
-            <div className="mt-4 bg-[#1a1a1a] border border-slate-700 p-3 rounded-md">
-              <span className="text-[10px] font-mono font-bold text-[#cc3311] uppercase tracking-widest block mb-1">Example</span>
+            <div className="mt-4 bg-brand-surface-dark border border-slate-700 p-3 rounded-md">
+              <span className="text-[10px] font-mono font-bold text-brand-primary uppercase tracking-widest block mb-1">Example</span>
               <span className="font-display font-bold text-slate-200 text-sm md:text-base">{currentLesson[currentSlide].example}</span>
             </div>
           </div>
@@ -357,7 +357,7 @@ export default function AgglutinationDrawer({
                 <button 
                   key={idx} 
                   onClick={() => setCurrentSlide(idx)}
-                  className={`h-2 rounded-full transition-all ${idx === currentSlide ? 'w-6 bg-[#cc3311]' : 'w-2 bg-slate-700'}`}
+                  className={`h-2 rounded-full transition-all ${idx === currentSlide ? 'w-6 bg-brand-primary' : 'w-2 bg-slate-700'}`}
                   aria-label={`Go to slide ${idx + 1}`}
                 />
               ))}
