@@ -17,6 +17,25 @@ interface WordStats {
   lastReviewed: number;
 }
 
+import { getStroke } from 'perfect-freehand';
+
+// Helper to generate SVG path data from the stroke points
+function getSvgPathFromStroke(stroke: number[][]) {
+  if (!stroke.length) return '';
+
+  const d = stroke.reduce(
+    (acc, [x0, y0], i, arr) => {
+      const [x1, y1] = arr[(i + 1) % arr.length];
+      acc.push(x0, y0, (x0 + x1) / 2, (y0 + y1) / 2);
+      return acc;
+    },
+    ['M', ...stroke[0], 'Q']
+  );
+
+  d.push('Z');
+  return d.join(' ');
+}
+
 export default function LearnMode({ vocab }: LearnModeProps) {
   const [wordPool, setWordPool] = useState<Word[]>([]);
   const [currentWord, setCurrentWord] = useState<Word | null>(null);
@@ -29,6 +48,10 @@ export default function LearnMode({ vocab }: LearnModeProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const isDrawing = useRef(false);
+
+  // Drawing state
+  const linesRef = useRef<number[][][]>([]);
+  const currentLineRef = useRef<number[][] | null>(null);
 
   // Initialize word pool and stats
   useEffect(() => {
@@ -44,6 +67,43 @@ export default function LearnMode({ vocab }: LearnModeProps) {
     const allWords = [...vocab.subjects, ...vocab.objects, ...vocab.verbs];
     setWordPool(allWords);
   }, [vocab]);
+
+  const renderCanvas = useCallback(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    const dpr = window.devicePixelRatio || 1;
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.scale(dpr, dpr);
+
+    ctx.fillStyle = '#22c55e';
+
+    const allLines = [...linesRef.current];
+    if (currentLineRef.current && currentLineRef.current.length > 0) {
+      allLines.push(currentLineRef.current);
+    }
+
+    for (const line of allLines) {
+      if (line.length === 0) continue;
+      
+      const stroke = getStroke(line, {
+        size: 14,
+        thinning: 0.6,
+        smoothing: 0.5,
+        streamline: 0.5,
+        simulatePressure: false // Allows actual iPad pencil pressure
+      });
+      
+      if (stroke.length > 0) {
+        const pathData = getSvgPathFromStroke(stroke);
+        const path = new Path2D(pathData);
+        ctx.fill(path);
+      }
+    }
+  }, []);
 
   // Pick a word when pool is ready or stats change
   const pickNextWord = useCallback(() => {
@@ -88,14 +148,7 @@ export default function LearnMode({ vocab }: LearnModeProps) {
         canvas.width = rect.width * dpr;
         canvas.height = rect.height * dpr;
         
-        const ctx = canvas.getContext('2d');
-        if (ctx) {
-          ctx.scale(dpr, dpr);
-          ctx.lineCap = 'round';
-          ctx.lineJoin = 'round';
-          ctx.lineWidth = 12; // Thick for stylus/finger
-          ctx.strokeStyle = '#22c55e'; // Always green for visibility
-        }
+        renderCanvas();
       }
     };
 
@@ -106,47 +159,35 @@ export default function LearnMode({ vocab }: LearnModeProps) {
     setTimeout(resizeCanvas, 100);
 
     return () => window.removeEventListener('resize', resizeCanvas);
-  }, [currentWord]); // re-run if needed when UI changes
+  }, [currentWord, renderCanvas]); // re-run if needed when UI changes
 
   const clearCanvas = () => {
-    const canvas = canvasRef.current;
-    if (canvas) {
-      const ctx = canvas.getContext('2d');
-      if (ctx) {
-        // Need to clear accounting for dpr
-        const dpr = window.devicePixelRatio || 1;
-        // reset transform to clear the whole canvas, then re-apply scale
-        ctx.setTransform(1, 0, 0, 1, 0, 0);
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        ctx.scale(dpr, dpr);
-      }
-    }
+    linesRef.current = [];
+    currentLineRef.current = null;
+    renderCanvas();
   };
 
   const startDrawing = (e: React.PointerEvent<HTMLCanvasElement>) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
 
     (e.target as HTMLElement).setPointerCapture(e.pointerId);
 
     const rect = canvas.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
+    let pressure = e.pressure !== undefined ? e.pressure : 0.5;
+    if (pressure === 0) pressure = 0.5; // Fallback for some mice
 
-    ctx.strokeStyle = '#22c55e'; // Always green
-    ctx.beginPath();
-    ctx.moveTo(x, y);
+    currentLineRef.current = [[x, y, pressure]];
     isDrawing.current = true;
+    renderCanvas();
   };
 
   const draw = (e: React.PointerEvent<HTMLCanvasElement>) => {
-    if (!isDrawing.current) return;
+    if (!isDrawing.current || !currentLineRef.current) return;
     const canvas = canvasRef.current;
     if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
 
     const rect = canvas.getBoundingClientRect();
     
@@ -158,17 +199,24 @@ export default function LearnMode({ vocab }: LearnModeProps) {
     for (const event of events) {
       const x = event.clientX - rect.left;
       const y = event.clientY - rect.top;
+      let pressure = event.pressure !== undefined ? event.pressure : 0.5;
+      if (pressure === 0) pressure = 0.5;
       
-      ctx.lineTo(x, y);
-      ctx.stroke();
-      ctx.beginPath();
-      ctx.moveTo(x, y);
+      currentLineRef.current.push([x, y, pressure]);
     }
+    
+    renderCanvas();
   };
 
   const stopDrawing = () => {
     if (!isDrawing.current) return;
     isDrawing.current = false;
+    
+    if (currentLineRef.current && currentLineRef.current.length > 0) {
+      linesRef.current.push([...currentLineRef.current]);
+    }
+    currentLineRef.current = null;
+    renderCanvas();
   };
 
   const handleRank = (score: number) => {
@@ -193,7 +241,7 @@ export default function LearnMode({ vocab }: LearnModeProps) {
   }
 
   return (
-    <div className="flex-1 flex flex-col h-full bg-[#fdf9f0] dark:bg-slate-900 rounded-[3rem] overflow-hidden shadow-2xl border-4 border-slate-900 dark:border-slate-800 relative min-h-[780px] select-none touch-none">
+    <div className="flex-1 flex flex-col h-full bg-brand-bg-light dark:bg-slate-900 rounded-[3rem] overflow-hidden shadow-2xl border-4 border-slate-900 dark:border-slate-800 relative min-h-[780px] select-none touch-none">
       {/* Header */}
       <div className="p-6 border-b-2 border-slate-900 dark:border-slate-800 flex justify-between items-center bg-white dark:bg-slate-950 z-10 relative">
         <div className="flex items-center gap-3">

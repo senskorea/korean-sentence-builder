@@ -79,7 +79,7 @@ export default function TopicGenerator({ onVocabGenerated }: TopicGeneratorProps
         {/* Front Face: Generator */}
         <div className="absolute w-full h-full [backface-visibility:hidden] bg-white dark:bg-slate-900 border-[3px] border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] flex flex-col justify-center items-center p-6 text-center">
           <h2 className="text-xl font-extrabold font-display text-slate-900 dark:text-white mb-2 flex items-center gap-2 uppercase tracking-wider">
-            <Sparkles className="w-6 h-6 text-[#cc3311]" />
+            <Sparkles className="w-6 h-6 text-brand-primary" />
             AI Topic Generator
           </h2>
           <p className="text-xs font-bold text-slate-600 dark:text-slate-400 mb-6 uppercase tracking-wide">
@@ -99,7 +99,7 @@ export default function TopicGenerator({ onVocabGenerated }: TopicGeneratorProps
             <button
               onClick={handleGenerate}
               disabled={isGenerating || !topic.trim()}
-              className="px-8 bg-[#cc3311] hover:bg-[#aa2200] disabled:bg-slate-400 text-white font-extrabold border-2 border-black flex items-center gap-2 transition-all cursor-pointer shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-[2px] active:shadow-none uppercase tracking-wider"
+              className="px-8 bg-brand-primary hover:bg-red-700 disabled:bg-slate-400 text-white font-extrabold border-2 border-black flex items-center gap-2 transition-all cursor-pointer shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-[2px] active:shadow-none uppercase tracking-wider"
             >
               {isGenerating ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Go'}
             </button>
@@ -122,7 +122,7 @@ export default function TopicGenerator({ onVocabGenerated }: TopicGeneratorProps
               <button
                 key={scenario.topic}
                 onClick={() => handleGenerate(scenario.topic)}
-                className="text-[10px] font-extrabold px-3 py-1.5 bg-[#fdf9f0] hover:bg-[#efebe4] dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 border-2 border-black uppercase tracking-wider transition-all cursor-pointer shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-[2px] active:shadow-none"
+                className="text-[10px] font-extrabold px-3 py-1.5 bg-brand-bg-light hover:bg-brand-surface-light dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 border-2 border-black uppercase tracking-wider transition-all cursor-pointer shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-[2px] active:shadow-none"
               >
                 {scenario.label}
               </button>
@@ -131,7 +131,7 @@ export default function TopicGenerator({ onVocabGenerated }: TopicGeneratorProps
         </div>
 
         {/* Back Face: History */}
-        <div className="absolute w-full h-full [backface-visibility:hidden] bg-[#fdf9f0] dark:bg-slate-900 border-[3px] border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] p-6 overflow-hidden flex flex-col" style={{ transform: 'rotateY(180deg)' }}>
+        <div className="absolute w-full h-full [backface-visibility:hidden] bg-brand-bg-light dark:bg-slate-900 border-[3px] border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] p-6 overflow-hidden flex flex-col" style={{ transform: 'rotateY(180deg)' }}>
           <div className="flex justify-between items-center mb-4 border-b-2 border-black pb-3">
             <h2 className="text-sm font-extrabold font-display text-slate-900 dark:text-white flex items-center gap-2 uppercase tracking-wider">
               <History className="w-5 h-5 text-slate-800 dark:text-slate-200" />
@@ -155,7 +155,7 @@ export default function TopicGenerator({ onVocabGenerated }: TopicGeneratorProps
                 <button
                   key={item.timestamp}
                   onClick={() => handleLoadSaved(item.vocab)}
-                  className="w-full text-left px-4 py-3 bg-white hover:bg-[#efebe4] dark:bg-slate-950 border-2 border-black transition-all flex items-center justify-between group cursor-pointer shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-[2px] active:shadow-none"
+                  className="w-full text-left px-4 py-3 bg-white hover:bg-brand-surface-light dark:bg-slate-950 border-2 border-black transition-all flex items-center justify-between group cursor-pointer shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-[2px] active:shadow-none"
                 >
                   <span className="font-extrabold text-slate-900 dark:text-slate-100 uppercase tracking-wide">{item.topic}</span>
                   <ArrowRight className="w-5 h-5 text-slate-900 dark:text-slate-100 group-hover:translate-x-1 transition-transform" />

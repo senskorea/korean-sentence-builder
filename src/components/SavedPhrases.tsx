@@ -27,10 +27,10 @@ export default function SavedPhrases({
   return (
     <div 
       id="saved-phrases-history" 
-      className="bg-[#efebe4] dark:bg-[#151515] border-[3px] border-black rounded-none p-4 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] dark:shadow-[4px_4px_0px_0px_rgba(255,255,255,0.15)] flex flex-col gap-3.5"
+      className="bg-brand-surface-light dark:bg-brand-surface-dark border-[3px] border-black rounded-none p-4 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] dark:shadow-[4px_4px_0px_0px_rgba(255,255,255,0.15)] flex flex-col gap-3.5"
     >
       <div className="flex items-center justify-between">
-        <div className="bg-[#cc3311] text-white font-black px-3.5 py-1.5 border-[3px] border-black rounded-none text-xs flex items-center gap-1.5 shadow-xs font-sans tracking-wide uppercase">
+        <div className="bg-brand-primary text-white font-black px-3.5 py-1.5 border-[3px] border-black rounded-none text-xs flex items-center gap-1.5 shadow-xs font-sans tracking-wide uppercase">
           <History className="w-3.5 h-3.5 text-white" />
           노트 ✍ (SAVED)
         </div>
@@ -46,7 +46,7 @@ export default function SavedPhrases({
 
       {phrases.length === 0 ? (
         <div className="text-center py-6 border-2 border-dashed border-black rounded-none bg-white">
-          <Sparkles className="w-6 h-6 text-[#cc3311] mx-auto mb-1.5 animate-pulse" />
+          <Sparkles className="w-6 h-6 text-brand-primary mx-auto mb-1.5 animate-pulse" />
           <p className="text-xs font-extrabold text-black">No phrases saved yet</p>
           <p className="text-[10px] text-slate-500 mt-0.5">Complete a sentence flow to save it here</p>
         </div>
@@ -57,7 +57,7 @@ export default function SavedPhrases({
             return (
               <div
                 key={phrase.id}
-                className="bg-white dark:bg-slate-950 border-2 border-black rounded-none p-2.5 flex items-start justify-between gap-3 hover:bg-[#efebe4] transition-colors group"
+                className="bg-white dark:bg-slate-950 border-2 border-black rounded-none p-2.5 flex items-start justify-between gap-3 hover:bg-brand-surface-light transition-colors group"
               >
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1">
