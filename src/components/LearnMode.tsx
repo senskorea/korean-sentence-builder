@@ -38,11 +38,19 @@ function getSvgPathFromStroke(stroke: number[][]) {
 
 export default function LearnMode({ vocab }: LearnModeProps) {
   const [wordPool, setWordPool] = useState<Word[]>([]);
-  const [currentWord, setCurrentWord] = useState<Word | null>(null);
+
+const [currentWord, setCurrentWord] = useState<Word | null>(null);
   const [isRevealed, setIsRevealed] = useState(false);
   
   // Stats
   const [stats, setStats] = useState<Record<string, WordStats>>({});
+
+  // Calculate Overall Mastery Score
+  const totalWords = wordPool.length;
+  const totalScore = Object.values(stats).reduce((acc: number, stat: any) => acc + (stat.score > -1 ? stat.score : 0), 0 as number);
+  const maxPossibleScore = totalWords * 2;
+  const masteryPercentage: number = maxPossibleScore > 0 ? Math.round((Number(totalScore) / maxPossibleScore) * 100) : 0;
+
 
   // Canvas ref
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -241,17 +249,30 @@ export default function LearnMode({ vocab }: LearnModeProps) {
   }
 
   return (
-    <div className="flex-1 flex flex-col h-full bg-brand-bg-light dark:bg-slate-900 rounded-[3rem] overflow-hidden shadow-2xl border-4 border-slate-900 dark:border-slate-800 relative min-h-[780px] select-none touch-none">
+    <div className="flex-1 flex flex-col h-full bg-white dark:bg-slate-900 rounded-3xl dark:rounded-[3rem] overflow-hidden shadow-2xl border border-slate-200 dark:border-4 dark:border-slate-800 relative min-h-[780px] select-none touch-none">
       {/* Header */}
-      <div className="p-6 border-b-2 border-slate-900 dark:border-slate-800 flex justify-between items-center bg-white dark:bg-slate-950 z-10 relative">
+      <div className="p-6 border-b border-slate-200 dark:border-b-2 dark:border-slate-900 dark:border-slate-800 flex justify-between items-center bg-white dark:bg-slate-950 z-10 relative">
         <div className="flex items-center gap-3">
-          <span className="font-black text-2xl tracking-tighter text-indigo-600 dark:text-indigo-400">LEARN MODE</span>
+          <span className="font-bold dark:font-black text-2xl tracking-tighter text-indigo-600 dark:text-indigo-400">LEARN MODE</span>
           <span className="px-3 py-1 bg-slate-900 text-white text-xs font-bold rounded-full">iPad Stylus Ready</span>
+        </div>
+
+        <div className="hidden sm:flex items-center bg-slate-100 dark:bg-slate-800 rounded-full px-4 py-1.5 shadow-inner">
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-bold text-slate-500 dark:text-slate-400">MASTERY</span>
+            <div className="w-24 h-2 bg-slate-300 dark:bg-slate-700 rounded-full overflow-hidden">
+              <div
+                className="h-full bg-emerald-500 transition-all duration-500 ease-out"
+                style={{ width: `${masteryPercentage}%` }}
+              ></div>
+            </div>
+            <span className="text-sm font-black text-slate-900 dark:text-white w-8 text-right">{masteryPercentage}%</span>
+          </div>
         </div>
         <div className="flex gap-2">
           <button 
             onClick={clearCanvas}
-            className="p-3 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-full transition-colors border-2 border-transparent hover:border-slate-900"
+            className="p-3 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-full transition-colors border border-slate-200 dark:border-2 dark:border-transparent hover:border-slate-900"
             title="Clear Canvas"
           >
             <RefreshCw className="w-5 h-5 text-slate-900 dark:text-white" />
@@ -266,7 +287,7 @@ export default function LearnMode({ vocab }: LearnModeProps) {
       >
         {/* Helper text if nothing is drawn yet - could add state for this, but simple background works too */}
         <div className="absolute inset-0 flex items-center justify-center opacity-10 pointer-events-none">
-          <span className="text-[150px] font-black">✍️</span>
+          <span className="text-[150px] font-bold dark:font-black">✍️</span>
         </div>
 
         {/* Answer Overlay */}
@@ -279,7 +300,7 @@ export default function LearnMode({ vocab }: LearnModeProps) {
               className="absolute inset-0 flex items-center justify-center bg-white/90 dark:bg-slate-950/90 backdrop-blur-md z-20 pointer-events-none"
             >
               <div className="text-center">
-                <div className="text-[160px] md:text-[200px] font-black text-slate-900 dark:text-white leading-none drop-shadow-2xl mb-6">
+                <div className="text-[160px] md:text-[200px] font-bold dark:font-black text-slate-900 dark:text-white leading-none drop-shadow-2xl mb-6">
                   {currentWord.korean}
                 </div>
                 <div className="text-6xl text-slate-500 font-bold">{currentWord.emoji}</div>
@@ -301,11 +322,11 @@ export default function LearnMode({ vocab }: LearnModeProps) {
       </div>
 
       {/* Footer Controls */}
-      <div className="p-8 bg-white dark:bg-slate-950 border-t-2 border-slate-900 dark:border-slate-800 z-10 relative">
+      <div className="p-8 bg-white dark:bg-slate-950 border-t border-slate-200 dark:border-t-2 dark:border-slate-900 dark:border-slate-800 z-10 relative">
         <div className="flex flex-col items-center gap-8">
           {/* Prompt */}
           <div className="text-center">
-            <h2 className="text-5xl md:text-7xl font-black text-slate-900 dark:text-white uppercase tracking-tight">
+            <h2 className="text-5xl md:text-7xl font-bold dark:font-black text-slate-900 dark:text-white uppercase tracking-tight">
               {currentWord.english}
             </h2>
             {!isRevealed && <p className="text-lg text-slate-500 mt-2 font-bold">Draw the Korean word above</p>}
@@ -316,7 +337,7 @@ export default function LearnMode({ vocab }: LearnModeProps) {
             {!isRevealed ? (
               <button 
                 onClick={() => setIsRevealed(true)}
-                className="w-full py-6 bg-indigo-600 hover:bg-indigo-700 text-white rounded-[2rem] font-black text-3xl shadow-[0_8px_0_0_rgba(49,46,129,1)] active:translate-y-[8px] active:shadow-none transition-all border-4 border-slate-900"
+                className="w-full py-6 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl dark:rounded-[2rem] font-bold dark:font-black text-3xl shadow-md dark:shadow-[0_8px_0_0_rgba(49,46,129,1)] active:translate-y-[8px] active:shadow-none transition-all border border-slate-200 dark:border-4 dark:border-slate-900"
               >
                 CHECK ANSWER
               </button>
@@ -328,24 +349,24 @@ export default function LearnMode({ vocab }: LearnModeProps) {
               >
                 <button 
                   onClick={() => handleRank(0)}
-                  className="flex flex-col items-center justify-center py-6 bg-rose-100 dark:bg-rose-950/50 hover:bg-rose-200 dark:hover:bg-rose-900 text-rose-800 dark:text-rose-400 rounded-[2rem] border-4 border-slate-900 dark:border-rose-800 shadow-[0_6px_0_0_rgba(15,23,42,1)] active:translate-y-[6px] active:shadow-none transition-all"
+                  className="flex flex-col items-center justify-center py-6 bg-rose-100 dark:bg-rose-950/50 hover:bg-rose-200 dark:hover:bg-rose-900 text-rose-800 dark:text-rose-400 rounded-2xl dark:rounded-[2rem] border border-slate-200 dark:border-4 dark:border-rose-800 shadow-md dark:shadow-[0_6px_0_0_rgba(15,23,42,1)] active:translate-y-[6px] active:shadow-none transition-all"
                 >
                   <XCircle className="w-12 h-12 mb-3" />
-                  <span className="font-black text-xl">Didn't Know</span>
+                  <span className="font-bold dark:font-black text-xl">Didn't Know</span>
                 </button>
                 <button 
                   onClick={() => handleRank(1)}
-                  className="flex flex-col items-center justify-center py-6 bg-amber-100 dark:bg-amber-950/50 hover:bg-amber-200 dark:hover:bg-amber-900 text-amber-800 dark:text-amber-400 rounded-[2rem] border-4 border-slate-900 dark:border-amber-800 shadow-[0_6px_0_0_rgba(15,23,42,1)] active:translate-y-[6px] active:shadow-none transition-all"
+                  className="flex flex-col items-center justify-center py-6 bg-amber-100 dark:bg-amber-950/50 hover:bg-amber-200 dark:hover:bg-amber-900 text-amber-800 dark:text-amber-400 rounded-2xl dark:rounded-[2rem] border border-slate-200 dark:border-4 dark:border-amber-800 shadow-md dark:shadow-[0_6px_0_0_rgba(15,23,42,1)] active:translate-y-[6px] active:shadow-none transition-all"
                 >
                   <AlertCircle className="w-12 h-12 mb-3" />
-                  <span className="font-black text-xl">Somewhat</span>
+                  <span className="font-bold dark:font-black text-xl">Somewhat</span>
                 </button>
                 <button 
                   onClick={() => handleRank(2)}
-                  className="flex flex-col items-center justify-center py-6 bg-emerald-100 dark:bg-emerald-950/50 hover:bg-emerald-200 dark:hover:bg-emerald-900 text-emerald-800 dark:text-emerald-400 rounded-[2rem] border-4 border-slate-900 dark:border-emerald-800 shadow-[0_6px_0_0_rgba(15,23,42,1)] active:translate-y-[6px] active:shadow-none transition-all"
+                  className="flex flex-col items-center justify-center py-6 bg-emerald-100 dark:bg-emerald-950/50 hover:bg-emerald-200 dark:hover:bg-emerald-900 text-emerald-800 dark:text-emerald-400 rounded-2xl dark:rounded-[2rem] border border-slate-200 dark:border-4 dark:border-emerald-800 shadow-md dark:shadow-[0_6px_0_0_rgba(15,23,42,1)] active:translate-y-[6px] active:shadow-none transition-all"
                 >
                   <CheckCircle2 className="w-12 h-12 mb-3" />
-                  <span className="font-black text-xl">Knew Well</span>
+                  <span className="font-bold dark:font-black text-xl">Knew Well</span>
                 </button>
               </motion.div>
             )}
