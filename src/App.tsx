@@ -113,6 +113,48 @@ const DATING_VOCAB_TEMPLATE = {
   }
 };
 
+
+// Top 10 Words
+const TOP_10_VOCAB_TEMPLATE = {
+  subjects: [
+    { id: "sub_i", korean: "저", english: "I", emoji: "👤", type: "subject", hasBatchim: false },
+    { id: "sub_we", korean: "우리", english: "We", emoji: "👥", type: "subject", hasBatchim: false },
+    { id: "sub_this", korean: "이것", english: "This", emoji: "👉", type: "subject", hasBatchim: true }
+  ],
+  objects: [
+    { id: "obj_thing", korean: "것", english: "Thing", emoji: "📦", type: "object", hasBatchim: true },
+    { id: "obj_people", korean: "사람", english: "People", emoji: "🧍", type: "object", hasBatchim: true },
+    { id: "obj_house", korean: "집", english: "House", emoji: "🏠", type: "object", hasBatchim: true }
+  ],
+  verbs: [
+    { id: "verb_do", korean: "하다", english: "To do", emoji: "💪", type: "verb", hasBatchim: false, stem: "하", requiresObject: true, requiresSubject: true },
+    { id: "verb_be", korean: "있다", english: "To be/exist", emoji: "✨", type: "verb", hasBatchim: true, stem: "있", requiresObject: false, requiresSubject: true },
+    { id: "verb_not_be", korean: "없다", english: "To not be/exist", emoji: "❌", type: "verb", hasBatchim: true, stem: "없", requiresObject: false, requiresSubject: true },
+    { id: "verb_go", korean: "가다", english: "To go", emoji: "🚶", type: "verb", hasBatchim: false, stem: "가", requiresObject: false, requiresSubject: true }
+  ]
+};
+
+// Food Ordering
+const FOOD_VOCAB_TEMPLATE = {
+  subjects: [
+    { id: "sub_i", korean: "저", english: "I", emoji: "👤", type: "subject", hasBatchim: false },
+    { id: "sub_we", korean: "우리", english: "We", emoji: "👥", type: "subject", hasBatchim: false },
+    { id: "sub_friend", korean: "친구", english: "Friend", emoji: "🧑‍🤝‍🧑", type: "subject", hasBatchim: false }
+  ],
+  objects: [
+    { id: "obj_rice", korean: "밥", english: "Rice/Meal", emoji: "🍚", type: "object", hasBatchim: true },
+    { id: "obj_meat", korean: "고기", english: "Meat", emoji: "🥩", type: "object", hasBatchim: false },
+    { id: "obj_water", korean: "물", english: "Water", emoji: "💧", type: "object", hasBatchim: true },
+    { id: "obj_kimchi", korean: "김치", english: "Kimchi", emoji: "🥬", type: "object", hasBatchim: false },
+    { id: "obj_beer", korean: "맥주", english: "Beer", emoji: "🍺", type: "object", hasBatchim: false }
+  ],
+  verbs: [
+    { id: "verb_eat", korean: "먹다", english: "To eat", emoji: "😋", type: "verb", hasBatchim: true, stem: "먹", requiresObject: true, requiresSubject: true },
+    { id: "verb_drink", korean: "마시다", english: "To drink", emoji: "🥤", type: "verb", hasBatchim: false, stem: "마시", requiresObject: true, requiresSubject: true },
+    { id: "verb_order", korean: "주문하다", english: "To order", emoji: "🛎️", type: "verb", hasBatchim: false, stem: "주문하", requiresObject: true, requiresSubject: true },
+    { id: "verb_give", korean: "주다", english: "To give", emoji: "🤲", type: "verb", hasBatchim: false, stem: "주", requiresObject: true, requiresSubject: true }
+  ]
+};
 const TRAVEL_VOCAB_TEMPLATE = {
   subjects: [
     { id: "sub_i", korean: "저", english: "I", emoji: "👤", type: "subject", hasBatchim: false },
@@ -165,6 +207,15 @@ export default function App() {
 
   // --- Configuration & Utilities State ---
   const [appMode, setAppMode] = useState<'build' | 'learn'>('build');
+  const [isDarkMode, setIsDarkMode] = useState<boolean>(false);
+
+  useEffect(() => {
+    if (isDarkMode) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  }, [isDarkMode]);
   const [config, setConfig] = useState<AppConfig>({
     copyFormat: 'bilingual',
     bypassMode: false,
@@ -438,7 +489,7 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-brand-bg-light dark:bg-brand-bg-dark dot-pattern font-sans text-slate-800 dark:text-slate-100 py-6 px-4 md:px-8 transition-colors duration-300">
+    <div className="min-h-screen bg-white dark:bg-brand-bg-dark dark:dot-pattern font-sans text-slate-800 dark:text-slate-100 py-6 px-4 md:px-8 transition-colors duration-300">
       
 
 
@@ -450,7 +501,7 @@ export default function App() {
           {/* Smartphone Frame Wrapper */}
           <div className={`${
             deviceFrameMode 
-              ? 'border-8 border-slate-900 dark:border-slate-800 rounded-[3rem] p-4 bg-slate-50 dark:bg-slate-900 shadow-2xl relative overflow-hidden min-h-[780px] flex flex-col justify-between' 
+              ? 'border border-slate-200 dark:border-8 dark:border-slate-800 rounded-3xl dark:rounded-[3rem] p-4 bg-slate-50 dark:bg-slate-900 shadow-lg dark:shadow-2xl relative overflow-hidden min-h-[780px] flex flex-col justify-between'
               : 'w-full flex flex-col gap-5'
           }`}>
             
@@ -565,10 +616,10 @@ export default function App() {
             onClick={() => {
               setAppMode(appMode === 'build' ? 'learn' : 'build');
             }}
-            className={`flex items-center gap-1.5 px-3 py-1.5 border-2 border-black rounded-none font-extrabold transition-all cursor-pointer text-[11px] ${
+            className={`flex items-center gap-1.5 px-3 py-1.5 border border-slate-200 dark:border-2 dark:border-black rounded-none font-semibold dark:font-extrabold transition-all cursor-pointer text-[11px] ${
               appMode === 'learn'
-                ? 'bg-indigo-600 text-white shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:-translate-y-0.5 hover:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]'
-                : 'bg-white dark:bg-slate-900 hover:bg-slate-50 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:-translate-y-0.5 hover:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] active:translate-y-[1px] active:shadow-none'
+                ? 'bg-indigo-600 text-white shadow-sm dark:shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:-translate-y-0.5 hover:shadow-md dark:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]'
+                : 'bg-white dark:bg-slate-900 hover:bg-slate-50 shadow-sm dark:shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:-translate-y-0.5 hover:shadow-md dark:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] active:translate-y-[1px] active:shadow-none'
             }`}
           >
             <PenTool className={`w-3.5 h-3.5 ${appMode === 'learn' ? 'text-white' : 'text-indigo-500'}`} />
@@ -584,10 +635,10 @@ export default function App() {
                 setVocabJsonInput(JSON.stringify(vocab, null, 2));
               }
             }}
-            className={`flex items-center gap-1.5 px-3 py-1.5 bg-white dark:bg-slate-900 border-2 border-black rounded-none hover:bg-slate-50 font-extrabold transition-all cursor-pointer text-[11px] ${
+            className={`flex items-center gap-1.5 px-3 py-1.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-2 dark:border-black rounded-none hover:bg-slate-50 font-semibold dark:font-extrabold transition-all cursor-pointer text-[11px] ${
               showVocabPanel
-                ? 'bg-brand-primary text-white shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:-translate-y-0.5 hover:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]'
-                : 'shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:-translate-y-0.5 hover:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] active:translate-y-[1px] active:shadow-none'
+                ? 'bg-brand-primary text-white shadow-sm dark:shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:-translate-y-0.5 hover:shadow-md dark:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]'
+                : 'shadow-sm dark:shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:-translate-y-0.5 hover:shadow-md dark:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] active:translate-y-[1px] active:shadow-none'
             }`}
           >
             <Database className="w-3.5 h-3.5" />
@@ -600,10 +651,10 @@ export default function App() {
               setShowConfigPanel(!showConfigPanel);
               setShowVocabPanel(false); // close other panel
             }}
-            className={`flex items-center gap-1.5 px-3 py-1.5 bg-white dark:bg-slate-900 border-2 border-black rounded-none hover:bg-slate-50 font-extrabold transition-all cursor-pointer text-[11px] ${
+            className={`flex items-center gap-1.5 px-3 py-1.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-2 dark:border-black rounded-none hover:bg-slate-50 font-semibold dark:font-extrabold transition-all cursor-pointer text-[11px] ${
               showConfigPanel
-                ? 'bg-brand-primary text-white shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:-translate-y-0.5 hover:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]'
-                : 'shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:-translate-y-0.5 hover:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] active:translate-y-[1px] active:shadow-none'
+                ? 'bg-brand-primary text-white shadow-sm dark:shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:-translate-y-0.5 hover:shadow-md dark:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]'
+                : 'shadow-sm dark:shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:-translate-y-0.5 hover:shadow-md dark:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] active:translate-y-[1px] active:shadow-none'
             }`}
           >
             <Settings className="w-3.5 h-3.5 text-rose-500" />
@@ -612,8 +663,15 @@ export default function App() {
 
           {/* Desktop/Bezel Mockup Toggler */}
           <button
+            onClick={() => setIsDarkMode(!isDarkMode)}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-2 dark:border-black rounded-none hover:bg-slate-50 font-semibold dark:font-extrabold shadow-sm dark:shadow-sm dark:shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:-translate-y-0.5 hover:shadow-md dark:hover:shadow-md dark:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] active:translate-y-[1px] active:shadow-none transition-all cursor-pointer text-[11px]"
+            title="Toggle Dark Mode"
+          >
+            <span>{isDarkMode ? '🌞 Light' : '🌙 Dark'}</span>
+          </button>
+          <button
             onClick={() => setDeviceFrameMode(!deviceFrameMode)}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-white dark:bg-slate-900 border-2 border-black rounded-none hover:bg-brand-surface-light font-extrabold shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:-translate-y-0.5 hover:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] active:translate-y-[1px] active:shadow-none transition-all cursor-pointer text-[11px]"
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-2 dark:border-black rounded-none hover:bg-brand-surface-light font-semibold dark:font-extrabold shadow-sm dark:shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:-translate-y-0.5 hover:shadow-md dark:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] active:translate-y-[1px] active:shadow-none transition-all cursor-pointer text-[11px]"
             title="Toggle smartphone viewport framing"
           >
             <Smartphone className="w-3.5 h-3.5 text-sky-500" />
@@ -631,7 +689,7 @@ export default function App() {
             exit={{ opacity: 0, y: -10 }}
             className="max-w-6xl mx-auto mb-6 p-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-lg text-xs"
           >
-            <h3 className="font-extrabold font-display text-slate-900 dark:text-white mb-3 text-sm flex items-center gap-1.5 uppercase tracking-wider">
+            <h3 className="font-semibold dark:font-extrabold font-display text-slate-900 dark:text-white mb-3 text-sm flex items-center gap-1.5 uppercase tracking-wider">
               <Settings className="w-4 h-4 text-indigo-500" />
               FORMATTING & BEHAVIOR PREFERENCES
             </h3>
@@ -719,13 +777,13 @@ export default function App() {
             className="max-w-6xl mx-auto mt-10 mb-6 p-5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-xl text-xs"
           >
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between border-b border-slate-200 dark:border-slate-800 pb-3 mb-4 gap-2">
-              <h3 className="font-extrabold font-display text-slate-900 dark:text-white text-sm flex items-center gap-1.5 uppercase tracking-wider">
+              <h3 className="font-semibold dark:font-extrabold font-display text-slate-900 dark:text-white text-sm flex items-center gap-1.5 uppercase tracking-wider">
                 <Database className="w-4 h-4 text-indigo-500" />
                 VOCABULARY MANAGER & JSON IMPORT
               </h3>
               <div className="flex items-center gap-1.5">
                 <span className="text-[10px] text-slate-400 dark:text-slate-500 font-bold uppercase">Active Set:</span>
-                <span className="bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 font-extrabold px-2 py-0.5 rounded-md border border-indigo-200/50 dark:border-indigo-900/40">
+                <span className="bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 font-semibold dark:font-extrabold px-2 py-0.5 rounded-md border border-indigo-200/50 dark:border-indigo-900/40">
                   {localStorage.getItem('korean_sentences_custom_vocab') ? '🔮 Custom Loaded' : '💘 Dating Theme (Default)'}
                 </span>
               </div>
@@ -739,7 +797,7 @@ export default function App() {
               {/* Left Column: Quick Templates */}
               <div className="md:col-span-1 bg-slate-50 dark:bg-slate-950 p-4 border border-slate-200/50 dark:border-slate-850 rounded-xl flex flex-col justify-between gap-3">
                 <div>
-                  <h4 className="font-extrabold text-slate-800 dark:text-slate-200 mb-2 uppercase tracking-wide text-[10px] flex items-center gap-1">
+                  <h4 className="font-semibold dark:font-extrabold text-slate-800 dark:text-slate-200 mb-2 uppercase tracking-wide text-[10px] flex items-center gap-1">
                     <FileText className="w-3.5 h-3.5 text-indigo-500" /> Load Templates
                   </h4>
                   <p className="text-[10px] text-slate-500 dark:text-slate-400 mb-3">
@@ -754,7 +812,7 @@ export default function App() {
                       }}
                       className="w-full text-left p-2 border border-slate-200 dark:border-slate-800 hover:border-indigo-500 dark:hover:border-indigo-400 bg-white dark:bg-slate-900 rounded-lg transition-all"
                     >
-                      <div className="font-bold text-[11px] text-indigo-600 dark:text-indigo-400">💘 Dating & Romance</div>
+                      <div className="font-bold text-[11px] text-indigo-600 dark:text-indigo-400">💘 Dating & Charisma</div>
                       <div className="text-[9px] text-slate-400 dark:text-slate-500 mt-0.5">Boyfriend, girlfriend, love, confess, meet, flowers...</div>
                     </button>
 
@@ -767,7 +825,29 @@ export default function App() {
                     >
                       <div className="font-bold text-[11px] text-indigo-600 dark:text-indigo-400">✈️ Travel & Shopping</div>
                       <div className="text-[9px] text-slate-400 dark:text-slate-500 mt-0.5">Tickets, hotels, buying, coffee, going...</div>
+
+                    <button
+                      onClick={() => {
+                        setVocabJsonInput(JSON.stringify(TOP_10_VOCAB_TEMPLATE, null, 2));
+                        setVocabError(null);
+                      }}
+                      className="w-full text-left p-2 border border-slate-200 dark:border-slate-800 hover:border-indigo-500 dark:hover:border-indigo-400 bg-white dark:bg-slate-900 rounded-lg transition-all"
+                    >
+                      <div className="font-bold text-[11px] text-indigo-600 dark:text-indigo-400">🔥 Top 10 Words</div>
+                      <div className="text-[9px] text-slate-400 dark:text-slate-500 mt-0.5">I, this, thing, do, be, go...</div>
                     </button>
+
+                    <button
+                      onClick={() => {
+                        setVocabJsonInput(JSON.stringify(FOOD_VOCAB_TEMPLATE, null, 2));
+                        setVocabError(null);
+                      }}
+                      className="w-full text-left p-2 border border-slate-200 dark:border-slate-800 hover:border-indigo-500 dark:hover:border-indigo-400 bg-white dark:bg-slate-900 rounded-lg transition-all"
+                    >
+                      <div className="font-bold text-[11px] text-indigo-600 dark:text-indigo-400">🍚 Food Ordering</div>
+                      <div className="text-[9px] text-slate-400 dark:text-slate-500 mt-0.5">Rice, meat, water, eat, order...</div>
+                    </button>
+</button>
                   </div>
                 </div>
 
@@ -784,7 +864,7 @@ export default function App() {
                         setShowVocabPanel(false);
                       }
                     }}
-                    className="w-full py-2 bg-slate-200 hover:bg-slate-300 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-extrabold rounded-lg transition-colors text-center block"
+                    className="w-full py-2 bg-slate-200 hover:bg-slate-300 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-semibold dark:font-extrabold rounded-lg transition-colors text-center block"
                   >
                     Restore Default Dating Set
                   </button>
@@ -867,7 +947,7 @@ export default function App() {
                         setVocabError(err?.message || 'Invalid JSON format.');
                       }
                     }}
-                    className="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold rounded-lg transition-colors shadow-sm flex items-center gap-1"
+                    className="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold dark:font-extrabold rounded-lg transition-colors shadow-sm flex items-center gap-1"
                   >
                     <Upload className="w-3.5 h-3.5" />
                     <span>Apply Custom Vocab</span>
