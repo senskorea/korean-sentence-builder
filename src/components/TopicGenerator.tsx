@@ -117,7 +117,9 @@ export default function TopicGenerator({ onVocabGenerated }: TopicGeneratorProps
               { label: 'Ordering Food 🍕', topic: 'Ordering Food' },
               { label: 'Shopping 🛍️', topic: 'Shopping' },
               { label: 'Travel ✈️', topic: 'Travel' },
-              { label: 'Hobbies 🎨', topic: 'Hobbies' }
+              { label: 'Hobbies 🎨', topic: 'Hobbies' },
+              { label: 'Dating 💘', topic: 'Dating (Vanilla)' },
+              { label: 'Romance 💖', topic: 'Dating (Romance)' }
             ].map((scenario) => (
               <button
                 key={scenario.topic}

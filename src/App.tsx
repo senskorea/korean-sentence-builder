@@ -8,6 +8,7 @@ import AgglutinationDrawer from './components/AgglutinationDrawer';
 import SavedPhrases from './components/SavedPhrases';
 import TopicGenerator from './components/TopicGenerator';
 import LearnMode from './components/LearnMode';
+import { PREGENERATED_TOPICS } from './pregenerated';
 import { 
   Smartphone, 
   Sparkles, 
@@ -749,12 +750,23 @@ export default function App() {
                   <div className="space-y-2">
                     <button
                       onClick={() => {
+                        setVocabJsonInput(JSON.stringify(PREGENERATED_TOPICS['Dating (Romance)'], null, 2));
+                        setVocabError(null);
+                      }}
+                      className="w-full text-left p-2 border border-slate-200 dark:border-slate-800 hover:border-indigo-500 dark:hover:border-indigo-400 bg-white dark:bg-slate-900 rounded-lg transition-all"
+                    >
+                      <div className="font-bold text-[11px] text-indigo-600 dark:text-indigo-400">💖 Romance (New)</div>
+                      <div className="text-[9px] text-slate-400 dark:text-slate-500 mt-0.5">Sun, good weather, blind date, breakup...</div>
+                    </button>
+
+                    <button
+                      onClick={() => {
                         setVocabJsonInput(JSON.stringify(DATING_VOCAB_TEMPLATE, null, 2));
                         setVocabError(null);
                       }}
                       className="w-full text-left p-2 border border-slate-200 dark:border-slate-800 hover:border-indigo-500 dark:hover:border-indigo-400 bg-white dark:bg-slate-900 rounded-lg transition-all"
                     >
-                      <div className="font-bold text-[11px] text-indigo-600 dark:text-indigo-400">💘 Dating & Romance</div>
+                      <div className="font-bold text-[11px] text-indigo-600 dark:text-indigo-400">💘 Dating (Vanilla)</div>
                       <div className="text-[9px] text-slate-400 dark:text-slate-500 mt-0.5">Boyfriend, girlfriend, love, confess, meet, flowers...</div>
                     </button>
 

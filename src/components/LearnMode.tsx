@@ -43,6 +43,7 @@ export default function LearnMode({ vocab }: LearnModeProps) {
   
   // Stats
   const [stats, setStats] = useState<Record<string, WordStats>>({});
+  const [sessionLearnedCount, setSessionLearnedCount] = useState(0);
 
   // Canvas ref
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -233,6 +234,7 @@ export default function LearnMode({ vocab }: LearnModeProps) {
     
     setStats(newStats);
     localStorage.setItem('korean_learn_stats', JSON.stringify(newStats));
+    setSessionLearnedCount(prev => prev + 1);
     pickNextWord();
   };
 
@@ -246,7 +248,10 @@ export default function LearnMode({ vocab }: LearnModeProps) {
       <div className="p-6 border-b-2 border-slate-900 dark:border-slate-800 flex justify-between items-center bg-white dark:bg-slate-950 z-10 relative">
         <div className="flex items-center gap-3">
           <span className="font-black text-2xl tracking-tighter text-indigo-600 dark:text-indigo-400">LEARN MODE</span>
-          <span className="px-3 py-1 bg-slate-900 text-white text-xs font-bold rounded-full">iPad Stylus Ready</span>
+          <span className="px-3 py-1 bg-slate-900 text-white text-xs font-bold rounded-full hidden sm:inline-block">iPad Stylus Ready</span>
+          <span className="px-3 py-1 bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-300 text-xs font-bold rounded-full border border-emerald-200 dark:border-emerald-800">
+            Learned: {sessionLearnedCount}
+          </span>
         </div>
         <div className="flex gap-2">
           <button 
