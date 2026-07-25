@@ -2,6 +2,53 @@ import { GeneratedVocab } from './lib/ai';
 import { Word } from './types';
 
 export const PREGENERATED_TOPICS: Record<string, GeneratedVocab> = {
+  "Dating (Romance)": {
+    subjects: [
+      { id: "sub_rom2_bf", korean: "남자친구", english: "Boyfriend", emoji: "🧑", type: "subject", hasBatchim: false },
+      { id: "sub_rom2_gf", korean: "여자친구", english: "Girlfriend", emoji: "👩", type: "subject", hasBatchim: false },
+      { id: "sub_rom2_some_guy", korean: "썸남", english: "Guy you are seeing", emoji: "👦", type: "subject", hasBatchim: true },
+      { id: "sub_rom2_some_girl", korean: "썸녀", english: "Girl you are seeing", emoji: "👧", type: "subject", hasBatchim: false },
+      { id: "sub_rom2_couple", korean: "커플", english: "Couple", emoji: "👩‍❤️‍👨", type: "subject", hasBatchim: true },
+      { id: "sub_rom2_single", korean: "모태솔로", english: "Single since birth", emoji: "🧍", type: "subject", hasBatchim: false }
+    ],
+    objects: [
+      { id: "obj_rom2_blind_date", korean: "소개팅", english: "Blind date", emoji: "☕", type: "object", hasBatchim: true },
+      { id: "obj_rom2_confession", korean: "고백", english: "Confession", emoji: "💌", type: "object", hasBatchim: true },
+      { id: "obj_rom2_date", korean: "데이트", english: "Date", emoji: "🍷", type: "object", hasBatchim: false },
+      { id: "obj_rom2_contact", korean: "연락", english: "Contact/Messages", emoji: "📱", type: "object", hasBatchim: true },
+      { id: "obj_rom2_heart", korean: "마음", english: "Heart", emoji: "❤️", type: "object", hasBatchim: true },
+      { id: "obj_rom2_sun", korean: "태양", english: "Sun", emoji: "☀️", type: "object", hasBatchim: true },
+      { id: "obj_rom2_weather", korean: "좋은 날씨", english: "Good weather", emoji: "🌈", type: "object", hasBatchim: false }
+    ],
+    verbs: [
+      { id: "verb_rom2_date", korean: "사귀다", english: "To date/go out with", emoji: "👫", type: "verb", hasBatchim: false, stem: "사귀" },
+      { id: "verb_rom2_some", korean: "썸 타다", english: "To be in the talking stage", emoji: "💬", type: "verb", hasBatchim: false, stem: "썸 타" },
+      { id: "verb_rom2_breakup", korean: "헤어지다", english: "To break up", emoji: "💔", type: "verb", hasBatchim: false, stem: "헤어지" },
+      { id: "verb_rom2_dumped", korean: "차이다", english: "To get dumped", emoji: "😭", type: "verb", hasBatchim: false, stem: "차이" },
+      { id: "verb_rom2_bring", korean: "가져오다", english: "To bring", emoji: "🤲", type: "verb", hasBatchim: false, stem: "가져오" },
+      { id: "verb_rom2_dazzling", korean: "눈부시다", english: "To be dazzling", emoji: "✨", type: "verb", hasBatchim: false, stem: "눈부시" }
+    ]
+  },
+  "Dating (Vanilla)": {
+    subjects: [
+      { id: "sub_rom_i", korean: "저", english: "I", emoji: "👤", type: "subject", hasBatchim: false },
+      { id: "sub_rom_she", korean: "그녀", english: "She", emoji: "👩", type: "subject", hasBatchim: false },
+      { id: "sub_rom_iu", korean: "아이유", english: "IU", emoji: "🎤", type: "subject", hasBatchim: false },
+      { id: "sub_rom_you", korean: "당신", english: "You", emoji: "👉", type: "subject", hasBatchim: true }
+    ],
+    objects: [
+      { id: "obj_rom_sun", korean: "태양", english: "Sun", emoji: "☀️", type: "object", hasBatchim: true },
+      { id: "obj_rom_iu", korean: "아이유", english: "IU", emoji: "🎤", type: "object", hasBatchim: false },
+      { id: "obj_rom_flower", korean: "꽃", english: "Flower", emoji: "🌸", type: "object", hasBatchim: true },
+      { id: "obj_rom_love", korean: "사랑", english: "Love", emoji: "❤️", type: "object", hasBatchim: true }
+    ],
+    verbs: [
+      { id: "verb_rom_pretty", korean: "예쁘다", english: "To be pretty", emoji: "✨", type: "verb", hasBatchim: false, stem: "예쁘" },
+      { id: "verb_rom_like", korean: "좋아하다", english: "To like", emoji: "🥰", type: "verb", hasBatchim: false, stem: "좋아하" },
+      { id: "verb_rom_shine", korean: "빛나다", english: "To shine", emoji: "🌟", type: "verb", hasBatchim: false, stem: "빛나" },
+      { id: "verb_rom_love", korean: "사랑하다", english: "To love", emoji: "❤️", type: "verb", hasBatchim: false, stem: "사랑하" }
+    ]
+  },
   "Greetings": {
     subjects: [
       { id: "sub_greet_i", korean: "저", english: "I", emoji: "👤", type: "subject", hasBatchim: false },
