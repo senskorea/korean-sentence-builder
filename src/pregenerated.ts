@@ -178,5 +178,27 @@ export const PREGENERATED_TOPICS: Record<string, GeneratedVocab> = {
       { id: "verb_hobby_draw", korean: "그리다", english: "To draw", emoji: "🖌️", type: "verb", hasBatchim: false, stem: "그리" },
       { id: "verb_hobby_do", korean: "하다", english: "To do", emoji: "💪", type: "verb", hasBatchim: false, stem: "하" }
     ]
+  },
+  "Huena": {
+    subjects: [
+      { id: "sub_huena_cg", korean: "유교걸", english: "Confucian Girl", emoji: "👧", type: "subject", hasBatchim: true },
+      { id: "sub_huena_woman", korean: "여자", english: "Woman / Girl", emoji: "👩", type: "subject", hasBatchim: false },
+      { id: "sub_huena_man", korean: "남자", english: "Man / Boy", emoji: "👨", type: "subject", hasBatchim: false },
+      { id: "sub_huena_pretty_girl", korean: "예쁜 여자", english: "Beautiful girl", emoji: "✨", type: "subject", hasBatchim: false },
+      { id: "sub_huena_student", korean: "학생", english: "Student", emoji: "🎒", type: "subject", hasBatchim: true },
+      { id: "sub_huena_grandma", korean: "할머니", english: "Grandma", emoji: "👵", type: "subject", hasBatchim: false }
+    ],
+    objects: [
+      { id: "obj_huena_school", korean: "학교", english: "School", emoji: "🏫", type: "object", hasBatchim: false },
+      { id: "obj_huena_joseon", korean: "조선", english: "Joseon Dynasty", emoji: "📜", type: "object", hasBatchim: true },
+      { id: "obj_huena_derien", korean: "De rien", english: "You're welcome", emoji: "🙏", type: "object", hasBatchim: true },
+      { id: "obj_huena_ciao", korean: "Ciao", english: "Bye / See you", emoji: "👋", type: "object", hasBatchim: false },
+      { id: "obj_huena_jeong", korean: "정", english: "Deep emotional bond", emoji: "🫂", type: "object", hasBatchim: true }
+    ],
+    verbs: [
+      { id: "verb_huena_pretty", korean: "예쁘다", english: "To be pretty", emoji: "✨", type: "verb", hasBatchim: false, stem: "예쁘" },
+      { id: "verb_huena_cute", korean: "귀엽다", english: "To be cute", emoji: "🥺", type: "verb", hasBatchim: true, stem: "귀엽" },
+      { id: "verb_huena_cheers", korean: "짠!", english: "Cheers!", emoji: "🍻", type: "verb", hasBatchim: true, stem: "짠!" }
+    ]
   }
 };

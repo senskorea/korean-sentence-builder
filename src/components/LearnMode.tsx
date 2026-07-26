@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Word } from '../types';
+import { Word, SavedSentence } from '../types';
 import { RefreshCw, CheckCircle2, AlertCircle, XCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import { getStroke } from 'perfect-freehand';
 
 interface LearnModeProps {
   vocab: {
@@ -9,15 +10,14 @@ interface LearnModeProps {
     objects: Word[];
     verbs: Word[];
   };
+  savedPhrases?: SavedSentence[];
 }
 
-interface WordStats {
+interface ItemStats {
   id: string;
-  score: number; // e.g., 0 for don't know, 1 for somewhat, 2 for well.
+  score: number; // 0 for don't know, 1 for somewhat, 2 for well.
   lastReviewed: number;
 }
-
-import { getStroke } from 'perfect-freehand';
 
 // Helper to generate SVG path data from the stroke points
 function getSvgPathFromStroke(stroke: number[][]) {
@@ -36,14 +36,20 @@ function getSvgPathFromStroke(stroke: number[][]) {
   return d.join(' ');
 }
 
-export default function LearnMode({ vocab }: LearnModeProps) {
+export default function LearnMode({ vocab, savedPhrases = [] }: LearnModeProps) {
+  const [learnType, setLearnType] = useState<'words' | 'sentences'>('words');
+  
   const [wordPool, setWordPool] = useState<Word[]>([]);
+  const [sentencePool, setSentencePool] = useState<SavedSentence[]>([]);
+  
   const [currentWord, setCurrentWord] = useState<Word | null>(null);
+  const [currentSentence, setCurrentSentence] = useState<SavedSentence | null>(null);
+  
   const [isRevealed, setIsRevealed] = useState(false);
   
   // Stats
-  const [stats, setStats] = useState<Record<string, WordStats>>({});
-  const [sessionLearnedCount, setSessionLearnedCount] = useState(0);
+  const [wordStats, setWordStats] = useState<Record<string, ItemStats>>({});
+  const [sentenceStats, setSentenceStats] = useState<Record<string, ItemStats>>({});
 
   // Canvas ref
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -56,18 +62,27 @@ export default function LearnMode({ vocab }: LearnModeProps) {
 
   // Initialize word pool and stats
   useEffect(() => {
-    const loadedStats = localStorage.getItem('korean_learn_stats');
-    if (loadedStats) {
+    const loadedWordStats = localStorage.getItem('korean_learn_stats');
+    if (loadedWordStats) {
       try {
-        setStats(JSON.parse(loadedStats));
+        setWordStats(JSON.parse(loadedWordStats));
       } catch (e) {
-        console.error('Failed to parse stats', e);
+        console.error('Failed to parse word stats', e);
+      }
+    }
+    const loadedSentenceStats = localStorage.getItem('korean_learn_sentence_stats');
+    if (loadedSentenceStats) {
+      try {
+        setSentenceStats(JSON.parse(loadedSentenceStats));
+      } catch (e) {
+        console.error('Failed to parse sentence stats', e);
       }
     }
 
     const allWords = [...vocab.subjects, ...vocab.objects, ...vocab.verbs];
     setWordPool(allWords);
-  }, [vocab]);
+    setSentencePool(savedPhrases);
+  }, [vocab, savedPhrases]);
 
   const renderCanvas = useCallback(() => {
     const canvas = canvasRef.current;
@@ -106,19 +121,21 @@ export default function LearnMode({ vocab }: LearnModeProps) {
     }
   }, []);
 
-  // Pick a word when pool is ready or stats change
+  const clearCanvas = () => {
+    linesRef.current = [];
+    currentLineRef.current = null;
+    renderCanvas();
+  };
+
   const pickNextWord = useCallback(() => {
     if (wordPool.length === 0) return;
     
-    // Simple logic: favor words with lower scores, or words not yet seen.
-    // We sort the pool by score (undefined/not seen = -1) and take one of the lowest.
     const sortedPool = [...wordPool].sort((a, b) => {
-      const scoreA = stats[a.id]?.score ?? -1;
-      const scoreB = stats[b.id]?.score ?? -1;
+      const scoreA = wordStats[a.id]?.score ?? -1;
+      const scoreB = wordStats[b.id]?.score ?? -1;
       return scoreA - scoreB;
     });
 
-    // Pick from the bottom 30% of the pool for some randomness but focusing on weak words
     const sliceIndex = Math.max(1, Math.floor(sortedPool.length * 0.3));
     const candidates = sortedPool.slice(0, sliceIndex);
     const randomIndex = Math.floor(Math.random() * candidates.length);
@@ -126,14 +143,34 @@ export default function LearnMode({ vocab }: LearnModeProps) {
     setCurrentWord(candidates[randomIndex]);
     setIsRevealed(false);
     clearCanvas();
-  }, [wordPool, stats]);
+  }, [wordPool, wordStats]);
 
-  // Initialize first word
+  const pickNextSentence = useCallback(() => {
+    if (sentencePool.length === 0) return;
+    
+    const sortedPool = [...sentencePool].sort((a, b) => {
+      const scoreA = sentenceStats[a.id]?.score ?? -1;
+      const scoreB = sentenceStats[b.id]?.score ?? -1;
+      return scoreA - scoreB;
+    });
+
+    const sliceIndex = Math.max(1, Math.floor(sortedPool.length * 0.3));
+    const candidates = sortedPool.slice(0, sliceIndex);
+    const randomIndex = Math.floor(Math.random() * candidates.length);
+    
+    setCurrentSentence(candidates[randomIndex]);
+    setIsRevealed(false);
+    clearCanvas();
+  }, [sentencePool, sentenceStats]);
+
+  // Initialize first word/sentence
   useEffect(() => {
-    if (wordPool.length > 0 && !currentWord) {
+    if (learnType === 'words' && wordPool.length > 0 && !currentWord) {
       pickNextWord();
+    } else if (learnType === 'sentences' && sentencePool.length > 0 && !currentSentence) {
+      pickNextSentence();
     }
-  }, [wordPool, currentWord, pickNextWord]);
+  }, [learnType, wordPool, sentencePool, currentWord, currentSentence, pickNextWord, pickNextSentence]);
 
   // Resize canvas to fit container
   useEffect(() => {
@@ -141,32 +178,20 @@ export default function LearnMode({ vocab }: LearnModeProps) {
       const canvas = canvasRef.current;
       const container = containerRef.current;
       if (canvas && container) {
-        // Get CSS dimensions
         const rect = container.getBoundingClientRect();
-        // Set internal dimensions to match CSS dimensions for 1:1 mapping
-        // Can optionally multiply by devicePixelRatio for sharper lines on retina
         const dpr = window.devicePixelRatio || 1;
         canvas.width = rect.width * dpr;
         canvas.height = rect.height * dpr;
-        
         renderCanvas();
       }
     };
 
     window.addEventListener('resize', resizeCanvas);
     resizeCanvas(); // initial size
-
-    // Adding a slight delay for initial render sizing in flex layouts
     setTimeout(resizeCanvas, 100);
 
     return () => window.removeEventListener('resize', resizeCanvas);
-  }, [currentWord, renderCanvas]); // re-run if needed when UI changes
-
-  const clearCanvas = () => {
-    linesRef.current = [];
-    currentLineRef.current = null;
-    renderCanvas();
-  };
+  }, [currentWord, currentSentence, learnType, renderCanvas]);
 
   const startDrawing = (e: React.PointerEvent<HTMLCanvasElement>) => {
     const canvas = canvasRef.current;
@@ -178,7 +203,7 @@ export default function LearnMode({ vocab }: LearnModeProps) {
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
     let pressure = e.pressure !== undefined ? e.pressure : 0.5;
-    if (pressure === 0) pressure = 0.5; // Fallback for some mice
+    if (pressure === 0) pressure = 0.5;
 
     currentLineRef.current = [[x, y, pressure]];
     isDrawing.current = true;
@@ -191,8 +216,6 @@ export default function LearnMode({ vocab }: LearnModeProps) {
     if (!canvas) return;
 
     const rect = canvas.getBoundingClientRect();
-    
-    // Process coalesced events if available for smoother drawing
     const events = e.nativeEvent && typeof (e.nativeEvent as any).getCoalescedEvents === 'function'
       ? (e.nativeEvent as any).getCoalescedEvents()
       : [e.nativeEvent];
@@ -221,42 +244,114 @@ export default function LearnMode({ vocab }: LearnModeProps) {
   };
 
   const handleRank = (score: number) => {
-    if (!currentWord) return;
-    
-    const newStats = {
-      ...stats,
-      [currentWord.id]: {
-        id: currentWord.id,
-        score: score,
-        lastReviewed: Date.now()
-      }
-    };
-    
-    setStats(newStats);
-    localStorage.setItem('korean_learn_stats', JSON.stringify(newStats));
-    setSessionLearnedCount(prev => prev + 1);
-    pickNextWord();
+    if (learnType === 'words') {
+      if (!currentWord) return;
+      const newStats = {
+        ...wordStats,
+        [currentWord.id]: {
+          id: currentWord.id,
+          score: score,
+          lastReviewed: Date.now()
+        }
+      };
+      setWordStats(newStats);
+      localStorage.setItem('korean_learn_stats', JSON.stringify(newStats));
+      pickNextWord();
+    } else {
+      if (!currentSentence) return;
+      const newStats = {
+        ...sentenceStats,
+        [currentSentence.id]: {
+          id: currentSentence.id,
+          score: score,
+          lastReviewed: Date.now()
+        }
+      };
+      setSentenceStats(newStats);
+      localStorage.setItem('korean_learn_sentence_stats', JSON.stringify(newStats));
+      pickNextSentence();
+    }
   };
 
-  if (!currentWord) {
-    return <div className="flex-1 flex items-center justify-center">Loading words...</div>;
+  const switchLearnType = (type: 'words' | 'sentences') => {
+    setLearnType(type);
+    setIsRevealed(false);
+    clearCanvas();
+  };
+
+  const masteredWordsCount = wordPool.filter(w => (wordStats[w.id]?.score || 0) >= 2).length;
+  const masteredSentencesCount = sentencePool.filter(s => (sentenceStats[s.id]?.score || 0) >= 2).length;
+
+  const currentItemLabel = learnType === 'words' 
+    ? (currentWord?.english || "Loading...") 
+    : (currentSentence?.english || "Loading...");
+
+  const currentItemAnswer = learnType === 'words'
+    ? currentWord?.korean
+    : currentSentence?.korean;
+
+  const currentItemEmoji = learnType === 'words'
+    ? currentWord?.emoji
+    : currentSentence?.emojis;
+
+  if (learnType === 'words' && !currentWord) {
+    return <div className="flex-1 flex items-center justify-center font-bold text-slate-500">Loading words...</div>;
+  }
+  
+  if (learnType === 'sentences' && sentencePool.length === 0) {
+    return (
+      <div className="flex-1 flex flex-col items-center justify-center p-8 text-center bg-brand-bg-light dark:bg-slate-900 rounded-[3rem] border-4 border-slate-900 dark:border-slate-800 relative min-h-[780px]">
+        <div className="flex bg-slate-200 dark:bg-slate-800 p-1 rounded-full w-48 mb-8">
+          <button onClick={() => switchLearnType('words')} className="flex-1 text-xs font-bold py-1.5 rounded-full text-slate-500 hover:text-slate-900 dark:hover:text-white">Words</button>
+          <button className="flex-1 text-xs font-bold py-1.5 rounded-full bg-white dark:bg-slate-900 shadow-sm text-slate-900 dark:text-white">Sentences</button>
+        </div>
+        <h2 className="text-2xl font-black mb-4">No Saved Sentences</h2>
+        <p className="text-slate-500 font-bold max-w-md">
+          You don't have any saved sentences yet. Build some sentences in the Builder mode and click "Save Phrase" to unlock sentence flashcards!
+        </p>
+        <button 
+          onClick={() => switchLearnType('words')}
+          className="mt-8 px-6 py-3 bg-indigo-600 text-white font-black rounded-full shadow-[0_4px_0_0_rgba(49,46,129,1)] active:translate-y-[4px] active:shadow-none transition-all"
+        >
+          Back to Words
+        </button>
+      </div>
+    );
   }
 
   return (
     <div className="flex-1 flex flex-col h-full bg-brand-bg-light dark:bg-slate-900 rounded-[3rem] overflow-hidden shadow-2xl border-4 border-slate-900 dark:border-slate-800 relative min-h-[780px] select-none touch-none">
       {/* Header */}
-      <div className="p-6 border-b-2 border-slate-900 dark:border-slate-800 flex justify-between items-center bg-white dark:bg-slate-950 z-10 relative">
-        <div className="flex items-center gap-3">
-          <span className="font-black text-2xl tracking-tighter text-indigo-600 dark:text-indigo-400">LEARN MODE</span>
-          <span className="px-3 py-1 bg-slate-900 text-white text-xs font-bold rounded-full hidden sm:inline-block">iPad Stylus Ready</span>
-          <span className="px-3 py-1 bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-300 text-xs font-bold rounded-full border border-emerald-200 dark:border-emerald-800">
-            Learned: {sessionLearnedCount}
-          </span>
+      <div className="p-6 border-b-2 border-slate-900 dark:border-slate-800 flex flex-wrap gap-4 justify-between items-center bg-white dark:bg-slate-950 z-10 relative">
+        <div className="flex flex-col gap-3">
+          <div className="flex items-center gap-3">
+            <span className="font-black text-2xl tracking-tighter text-indigo-600 dark:text-indigo-400">LEARN MODE</span>
+            <span className="px-3 py-1 bg-slate-900 text-white text-xs font-bold rounded-full hidden sm:inline-block">iPad Stylus Ready</span>
+            <span className="px-3 py-1 bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-300 text-xs font-bold rounded-full border border-emerald-200 dark:border-emerald-800">
+              {learnType === 'words' 
+                ? `Mastered: ${masteredWordsCount} / ${wordPool.length}`
+                : `Mastered: ${masteredSentencesCount} / ${sentencePool.length}`}
+            </span>
+          </div>
+          <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-full w-48 border-2 border-slate-900 dark:border-slate-700">
+            <button
+              onClick={() => switchLearnType('words')}
+              className={`flex-1 text-xs font-extrabold py-1.5 rounded-full transition-all ${learnType === 'words' ? 'bg-white dark:bg-slate-900 shadow-sm text-slate-900 dark:text-white border-2 border-slate-900' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
+            >
+              Words
+            </button>
+            <button
+              onClick={() => switchLearnType('sentences')}
+              className={`flex-1 text-xs font-extrabold py-1.5 rounded-full transition-all ${learnType === 'sentences' ? 'bg-white dark:bg-slate-900 shadow-sm text-slate-900 dark:text-white border-2 border-slate-900' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
+            >
+              Sentences
+            </button>
+          </div>
         </div>
         <div className="flex gap-2">
           <button 
             onClick={clearCanvas}
-            className="p-3 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-full transition-colors border-2 border-transparent hover:border-slate-900"
+            className="p-3 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-full transition-colors border-2 border-transparent hover:border-slate-900 cursor-pointer"
             title="Clear Canvas"
           >
             <RefreshCw className="w-5 h-5 text-slate-900 dark:text-white" />
@@ -269,7 +364,6 @@ export default function LearnMode({ vocab }: LearnModeProps) {
         ref={containerRef} 
         className="flex-1 relative bg-white dark:bg-slate-900 overflow-hidden cursor-crosshair touch-none"
       >
-        {/* Helper text if nothing is drawn yet - could add state for this, but simple background works too */}
         <div className="absolute inset-0 flex items-center justify-center opacity-10 pointer-events-none">
           <span className="text-[150px] font-black">✍️</span>
         </div>
@@ -283,11 +377,11 @@ export default function LearnMode({ vocab }: LearnModeProps) {
               exit={{ opacity: 0 }}
               className="absolute inset-0 flex items-center justify-center bg-white/90 dark:bg-slate-950/90 backdrop-blur-md z-20 pointer-events-none"
             >
-              <div className="text-center">
-                <div className="text-[160px] md:text-[200px] font-black text-slate-900 dark:text-white leading-none drop-shadow-2xl mb-6">
-                  {currentWord.korean}
+              <div className="text-center p-8 max-w-full">
+                <div className={`${learnType === 'sentences' ? 'text-4xl md:text-6xl' : 'text-[160px] md:text-[200px]'} font-black text-slate-900 dark:text-white leading-tight drop-shadow-2xl mb-6 break-words`}>
+                  {currentItemAnswer}
                 </div>
-                <div className="text-6xl text-slate-500 font-bold">{currentWord.emoji}</div>
+                <div className="text-4xl md:text-6xl text-slate-500 font-bold break-words">{currentItemEmoji}</div>
               </div>
             </motion.div>
           )}
@@ -310,10 +404,10 @@ export default function LearnMode({ vocab }: LearnModeProps) {
         <div className="flex flex-col items-center gap-8">
           {/* Prompt */}
           <div className="text-center">
-            <h2 className="text-5xl md:text-7xl font-black text-slate-900 dark:text-white uppercase tracking-tight">
-              {currentWord.english}
+            <h2 className={`${learnType === 'sentences' ? 'text-3xl md:text-5xl' : 'text-5xl md:text-7xl'} font-black text-slate-900 dark:text-white uppercase tracking-tight break-words max-w-3xl`}>
+              {currentItemLabel}
             </h2>
-            {!isRevealed && <p className="text-lg text-slate-500 mt-2 font-bold">Draw the Korean word above</p>}
+            {!isRevealed && <p className="text-lg text-slate-500 mt-2 font-bold">Draw the Korean {learnType === 'sentences' ? 'sentence' : 'word'} above</p>}
           </div>
 
           {/* Actions */}
@@ -321,7 +415,7 @@ export default function LearnMode({ vocab }: LearnModeProps) {
             {!isRevealed ? (
               <button 
                 onClick={() => setIsRevealed(true)}
-                className="w-full py-6 bg-indigo-600 hover:bg-indigo-700 text-white rounded-[2rem] font-black text-3xl shadow-[0_8px_0_0_rgba(49,46,129,1)] active:translate-y-[8px] active:shadow-none transition-all border-4 border-slate-900"
+                className="w-full py-6 bg-indigo-600 hover:bg-indigo-700 text-white rounded-[2rem] font-black text-3xl shadow-[0_8px_0_0_rgba(49,46,129,1)] active:translate-y-[8px] active:shadow-none transition-all border-4 border-slate-900 cursor-pointer"
               >
                 CHECK ANSWER
               </button>
@@ -329,28 +423,28 @@ export default function LearnMode({ vocab }: LearnModeProps) {
               <motion.div 
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="grid grid-cols-3 gap-6"
+                className="grid grid-cols-3 gap-3 md:gap-6"
               >
                 <button 
                   onClick={() => handleRank(0)}
-                  className="flex flex-col items-center justify-center py-6 bg-rose-100 dark:bg-rose-950/50 hover:bg-rose-200 dark:hover:bg-rose-900 text-rose-800 dark:text-rose-400 rounded-[2rem] border-4 border-slate-900 dark:border-rose-800 shadow-[0_6px_0_0_rgba(15,23,42,1)] active:translate-y-[6px] active:shadow-none transition-all"
+                  className="flex flex-col items-center justify-center py-4 md:py-6 bg-rose-100 dark:bg-rose-950/50 hover:bg-rose-200 dark:hover:bg-rose-900 text-rose-800 dark:text-rose-400 rounded-[2rem] border-4 border-slate-900 dark:border-rose-800 shadow-[0_6px_0_0_rgba(15,23,42,1)] active:translate-y-[6px] active:shadow-none transition-all cursor-pointer"
                 >
-                  <XCircle className="w-12 h-12 mb-3" />
-                  <span className="font-black text-xl">Didn't Know</span>
+                  <XCircle className="w-8 h-8 md:w-12 md:h-12 mb-2 md:mb-3" />
+                  <span className="font-black text-sm md:text-xl text-center">Didn't Know</span>
                 </button>
                 <button 
                   onClick={() => handleRank(1)}
-                  className="flex flex-col items-center justify-center py-6 bg-amber-100 dark:bg-amber-950/50 hover:bg-amber-200 dark:hover:bg-amber-900 text-amber-800 dark:text-amber-400 rounded-[2rem] border-4 border-slate-900 dark:border-amber-800 shadow-[0_6px_0_0_rgba(15,23,42,1)] active:translate-y-[6px] active:shadow-none transition-all"
+                  className="flex flex-col items-center justify-center py-4 md:py-6 bg-amber-100 dark:bg-amber-950/50 hover:bg-amber-200 dark:hover:bg-amber-900 text-amber-800 dark:text-amber-400 rounded-[2rem] border-4 border-slate-900 dark:border-amber-800 shadow-[0_6px_0_0_rgba(15,23,42,1)] active:translate-y-[6px] active:shadow-none transition-all cursor-pointer"
                 >
-                  <AlertCircle className="w-12 h-12 mb-3" />
-                  <span className="font-black text-xl">Somewhat</span>
+                  <AlertCircle className="w-8 h-8 md:w-12 md:h-12 mb-2 md:mb-3" />
+                  <span className="font-black text-sm md:text-xl text-center">Somewhat</span>
                 </button>
                 <button 
                   onClick={() => handleRank(2)}
-                  className="flex flex-col items-center justify-center py-6 bg-emerald-100 dark:bg-emerald-950/50 hover:bg-emerald-200 dark:hover:bg-emerald-900 text-emerald-800 dark:text-emerald-400 rounded-[2rem] border-4 border-slate-900 dark:border-emerald-800 shadow-[0_6px_0_0_rgba(15,23,42,1)] active:translate-y-[6px] active:shadow-none transition-all"
+                  className="flex flex-col items-center justify-center py-4 md:py-6 bg-emerald-100 dark:bg-emerald-950/50 hover:bg-emerald-200 dark:hover:bg-emerald-900 text-emerald-800 dark:text-emerald-400 rounded-[2rem] border-4 border-slate-900 dark:border-emerald-800 shadow-[0_6px_0_0_rgba(15,23,42,1)] active:translate-y-[6px] active:shadow-none transition-all cursor-pointer"
                 >
-                  <CheckCircle2 className="w-12 h-12 mb-3" />
-                  <span className="font-black text-xl">Knew Well</span>
+                  <CheckCircle2 className="w-8 h-8 md:w-12 md:h-12 mb-2 md:mb-3" />
+                  <span className="font-black text-sm md:text-xl text-center">Knew Well</span>
                 </button>
               </motion.div>
             )}
