@@ -119,7 +119,8 @@ export default function TopicGenerator({ onVocabGenerated }: TopicGeneratorProps
               { label: 'Travel ✈️', topic: 'Travel' },
               { label: 'Hobbies 🎨', topic: 'Hobbies' },
               { label: 'Dating 💘', topic: 'Dating (Vanilla)' },
-              { label: 'Romance 💖', topic: 'Dating (Romance)' }
+              { label: 'Romance 💖', topic: 'Dating (Romance)' },
+              { label: 'Huena 👧', topic: 'Huena' }
             ].map((scenario) => (
               <button
                 key={scenario.topic}
