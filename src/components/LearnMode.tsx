@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Word, SavedSentence } from '../types';
-import { RefreshCw, CheckCircle2, AlertCircle, XCircle } from 'lucide-react';
+import { RefreshCw, CheckCircle2, AlertCircle, XCircle, Award } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { getStroke } from 'perfect-freehand';
 
@@ -15,8 +15,14 @@ interface LearnModeProps {
 
 interface ItemStats {
   id: string;
-  score: number; // 0 for don't know, 1 for somewhat, 2 for well.
-  lastReviewed: number;
+  repetition: number;
+  interval: number;
+  easeFactor: number;
+  nextReviewDate: number;
+  
+  // Legacy support
+  score?: number;
+  lastReviewed?: number;
 }
 
 // Helper to generate SVG path data from the stroke points
@@ -46,6 +52,7 @@ export default function LearnMode({ vocab, savedPhrases = [] }: LearnModeProps) 
   const [currentSentence, setCurrentSentence] = useState<SavedSentence | null>(null);
   
   const [isRevealed, setIsRevealed] = useState(false);
+  const [hasDismissedCelebration, setHasDismissedCelebration] = useState(false);
   
   // Stats
   const [wordStats, setWordStats] = useState<Record<string, ItemStats>>({});
@@ -62,10 +69,30 @@ export default function LearnMode({ vocab, savedPhrases = [] }: LearnModeProps) 
 
   // Initialize word pool and stats
   useEffect(() => {
+    const migrateStats = (rawStats: any) => {
+      const migrated: Record<string, ItemStats> = {};
+      for (const key in rawStats) {
+        const stat = rawStats[key];
+        if (stat.score !== undefined && stat.repetition === undefined) {
+          // It's old format
+          migrated[key] = {
+            id: stat.id,
+            repetition: stat.score >= 2 ? 3 : (stat.score === 1 ? 1 : 0),
+            interval: stat.score >= 2 ? 3 : (stat.score === 1 ? 1 : 0.5),
+            easeFactor: 2.5,
+            nextReviewDate: stat.lastReviewed || Date.now()
+          };
+        } else {
+          migrated[key] = stat;
+        }
+      }
+      return migrated;
+    };
+
     const loadedWordStats = localStorage.getItem('korean_learn_stats');
     if (loadedWordStats) {
       try {
-        setWordStats(JSON.parse(loadedWordStats));
+        setWordStats(migrateStats(JSON.parse(loadedWordStats)));
       } catch (e) {
         console.error('Failed to parse word stats', e);
       }
@@ -73,7 +100,7 @@ export default function LearnMode({ vocab, savedPhrases = [] }: LearnModeProps) 
     const loadedSentenceStats = localStorage.getItem('korean_learn_sentence_stats');
     if (loadedSentenceStats) {
       try {
-        setSentenceStats(JSON.parse(loadedSentenceStats));
+        setSentenceStats(migrateStats(JSON.parse(loadedSentenceStats)));
       } catch (e) {
         console.error('Failed to parse sentence stats', e);
       }
@@ -82,6 +109,7 @@ export default function LearnMode({ vocab, savedPhrases = [] }: LearnModeProps) 
     const allWords = [...vocab.subjects, ...vocab.objects, ...vocab.verbs];
     setWordPool(allWords);
     setSentencePool(savedPhrases);
+    setHasDismissedCelebration(false);
   }, [vocab, savedPhrases]);
 
   const renderCanvas = useCallback(() => {
@@ -127,38 +155,46 @@ export default function LearnMode({ vocab, savedPhrases = [] }: LearnModeProps) 
     renderCanvas();
   };
 
-  const pickNextWord = useCallback(() => {
+  const pickNextWord = useCallback((stats?: Record<string, ItemStats>) => {
+    const currentStats = stats || wordStats;
     if (wordPool.length === 0) return;
     
-    const sortedPool = [...wordPool].sort((a, b) => {
-      const scoreA = wordStats[a.id]?.score ?? -1;
-      const scoreB = wordStats[b.id]?.score ?? -1;
-      return scoreA - scoreB;
-    });
-
-    const sliceIndex = Math.max(1, Math.floor(sortedPool.length * 0.3));
-    const candidates = sortedPool.slice(0, sliceIndex);
-    const randomIndex = Math.floor(Math.random() * candidates.length);
+    const now = Date.now();
+    const unmastered = wordPool.filter(w => (currentStats[w.id]?.repetition || 0) < 5);
+    let candidates = unmastered.filter(w => !currentStats[w.id] || currentStats[w.id].nextReviewDate <= now);
     
-    setCurrentWord(candidates[randomIndex]);
+    if (candidates.length === 0 && unmastered.length > 0) candidates = unmastered;
+    
+    let nextWord;
+    if (candidates.length > 0) {
+      nextWord = candidates[Math.floor(Math.random() * candidates.length)];
+    } else {
+      nextWord = wordPool[Math.floor(Math.random() * wordPool.length)];
+    }
+    
+    setCurrentWord(nextWord);
     setIsRevealed(false);
     clearCanvas();
   }, [wordPool, wordStats]);
 
-  const pickNextSentence = useCallback(() => {
+  const pickNextSentence = useCallback((stats?: Record<string, ItemStats>) => {
+    const currentStats = stats || sentenceStats;
     if (sentencePool.length === 0) return;
     
-    const sortedPool = [...sentencePool].sort((a, b) => {
-      const scoreA = sentenceStats[a.id]?.score ?? -1;
-      const scoreB = sentenceStats[b.id]?.score ?? -1;
-      return scoreA - scoreB;
-    });
-
-    const sliceIndex = Math.max(1, Math.floor(sortedPool.length * 0.3));
-    const candidates = sortedPool.slice(0, sliceIndex);
-    const randomIndex = Math.floor(Math.random() * candidates.length);
+    const now = Date.now();
+    const unmastered = sentencePool.filter(s => (currentStats[s.id]?.repetition || 0) < 5);
+    let candidates = unmastered.filter(s => !currentStats[s.id] || currentStats[s.id].nextReviewDate <= now);
     
-    setCurrentSentence(candidates[randomIndex]);
+    if (candidates.length === 0 && unmastered.length > 0) candidates = unmastered;
+    
+    let nextSentence;
+    if (candidates.length > 0) {
+      nextSentence = candidates[Math.floor(Math.random() * candidates.length)];
+    } else {
+      nextSentence = sentencePool[Math.floor(Math.random() * sentencePool.length)];
+    }
+    
+    setCurrentSentence(nextSentence);
     setIsRevealed(false);
     clearCanvas();
   }, [sentencePool, sentenceStats]);
@@ -244,32 +280,57 @@ export default function LearnMode({ vocab, savedPhrases = [] }: LearnModeProps) 
   };
 
   const handleRank = (score: number) => {
-    if (learnType === 'words') {
-      if (!currentWord) return;
-      const newStats = {
-        ...wordStats,
-        [currentWord.id]: {
-          id: currentWord.id,
-          score: score,
-          lastReviewed: Date.now()
-        }
-      };
+    const isWord = learnType === 'words';
+    const currentItem = isWord ? currentWord : currentSentence;
+    if (!currentItem) return;
+
+    const stats = isWord ? wordStats : sentenceStats;
+    const oldStat = stats[currentItem.id] || { id: currentItem.id, repetition: 0, interval: 1, easeFactor: 2.5, nextReviewDate: Date.now() };
+
+    // Map 0, 1, 2 scores to SM-2 quality (0-5)
+    const q = score === 0 ? 0 : score === 1 ? 3 : 5;
+    
+    let newRepetition = oldStat.repetition || 0;
+    let newInterval = oldStat.interval || 1;
+    let newEaseFactor = oldStat.easeFactor || 2.5;
+
+    if (q < 3) {
+      newRepetition = 0;
+      newInterval = 1;
+    } else {
+      if (newRepetition === 0) {
+        newInterval = 1;
+      } else if (newRepetition === 1) {
+        newInterval = 6;
+      } else {
+        newInterval = Math.round(newInterval * newEaseFactor);
+      }
+      newRepetition += 1;
+    }
+
+    newEaseFactor = newEaseFactor + (0.1 - (5 - q) * (0.08 + (5 - q) * 0.02));
+    if (newEaseFactor < 1.3) newEaseFactor = 1.3;
+
+    if (newRepetition > 5) newRepetition = 5; // Cap for mastery progress
+
+    const newStat: ItemStats = {
+      id: currentItem.id,
+      repetition: newRepetition,
+      interval: newInterval,
+      easeFactor: newEaseFactor,
+      nextReviewDate: Date.now() + newInterval * 24 * 60 * 60 * 1000
+    };
+
+    const newStats = { ...stats, [currentItem.id]: newStat };
+
+    if (isWord) {
       setWordStats(newStats);
       localStorage.setItem('korean_learn_stats', JSON.stringify(newStats));
-      pickNextWord();
+      pickNextWord(newStats);
     } else {
-      if (!currentSentence) return;
-      const newStats = {
-        ...sentenceStats,
-        [currentSentence.id]: {
-          id: currentSentence.id,
-          score: score,
-          lastReviewed: Date.now()
-        }
-      };
       setSentenceStats(newStats);
       localStorage.setItem('korean_learn_sentence_stats', JSON.stringify(newStats));
-      pickNextSentence();
+      pickNextSentence(newStats);
     }
   };
 
@@ -279,8 +340,26 @@ export default function LearnMode({ vocab, savedPhrases = [] }: LearnModeProps) 
     clearCanvas();
   };
 
-  const masteredWordsCount = wordPool.filter(w => (wordStats[w.id]?.score || 0) >= 2).length;
-  const masteredSentencesCount = sentencePool.filter(s => (sentenceStats[s.id]?.score || 0) >= 2).length;
+  const calculateProgress = () => {
+    const totalItems = wordPool.length + sentencePool.length;
+    if (totalItems === 0) return 0;
+    
+    let totalRepetitions = 0;
+    wordPool.forEach(w => {
+      totalRepetitions += Math.min(wordStats[w.id]?.repetition || 0, 5);
+    });
+    sentencePool.forEach(s => {
+      totalRepetitions += Math.min(sentenceStats[s.id]?.repetition || 0, 5);
+    });
+    
+    return totalRepetitions / (totalItems * 5);
+  };
+
+  const progress = calculateProgress();
+  const isModuleMastered = progress >= 1;
+
+  const masteredWordsCount = wordPool.filter(w => (wordStats[w.id]?.repetition || 0) >= 5).length;
+  const masteredSentencesCount = sentencePool.filter(s => (sentenceStats[s.id]?.repetition || 0) >= 5).length;
 
   const currentItemLabel = learnType === 'words' 
     ? (currentWord?.english || "Loading...") 
@@ -322,40 +401,53 @@ export default function LearnMode({ vocab, savedPhrases = [] }: LearnModeProps) 
   return (
     <div className="flex-1 flex flex-col h-full bg-brand-bg-light dark:bg-slate-900 rounded-[3rem] overflow-hidden shadow-2xl border-4 border-slate-900 dark:border-slate-800 relative min-h-[780px] select-none touch-none">
       {/* Header */}
-      <div className="p-6 border-b-2 border-slate-900 dark:border-slate-800 flex flex-wrap gap-4 justify-between items-center bg-white dark:bg-slate-950 z-10 relative">
-        <div className="flex flex-col gap-3">
-          <div className="flex items-center gap-3">
-            <span className="font-black text-2xl tracking-tighter text-indigo-600 dark:text-indigo-400">LEARN MODE</span>
-            <span className="px-3 py-1 bg-slate-900 text-white text-xs font-bold rounded-full hidden sm:inline-block">iPad Stylus Ready</span>
-            <span className="px-3 py-1 bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-300 text-xs font-bold rounded-full border border-emerald-200 dark:border-emerald-800">
-              {learnType === 'words' 
-                ? `Mastered: ${masteredWordsCount} / ${wordPool.length}`
-                : `Mastered: ${masteredSentencesCount} / ${sentencePool.length}`}
-            </span>
+      <div className="p-6 border-b-2 border-slate-900 dark:border-slate-800 flex flex-col gap-4 bg-white dark:bg-slate-950 z-10 relative">
+        <div className="flex flex-wrap gap-4 justify-between items-center">
+          <div className="flex flex-col gap-3">
+            <div className="flex items-center gap-3">
+              <span className="font-black text-2xl tracking-tighter text-indigo-600 dark:text-indigo-400">LEARN MODE</span>
+              <span className="px-3 py-1 bg-slate-900 text-white text-xs font-bold rounded-full hidden sm:inline-block">iPad Stylus Ready</span>
+              <span className="px-3 py-1 bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-300 text-xs font-bold rounded-full border border-emerald-200 dark:border-emerald-800">
+                {learnType === 'words' 
+                  ? `Mastered: ${masteredWordsCount} / ${wordPool.length}`
+                  : `Mastered: ${masteredSentencesCount} / ${sentencePool.length}`}
+              </span>
+            </div>
+            <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-full w-48 border-2 border-slate-900 dark:border-slate-700">
+              <button
+                onClick={() => switchLearnType('words')}
+                className={`flex-1 text-xs font-extrabold py-1.5 rounded-full transition-all ${learnType === 'words' ? 'bg-white dark:bg-slate-900 shadow-sm text-slate-900 dark:text-white border-2 border-slate-900' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
+              >
+                Words
+              </button>
+              <button
+                onClick={() => switchLearnType('sentences')}
+                className={`flex-1 text-xs font-extrabold py-1.5 rounded-full transition-all ${learnType === 'sentences' ? 'bg-white dark:bg-slate-900 shadow-sm text-slate-900 dark:text-white border-2 border-slate-900' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
+              >
+                Sentences
+              </button>
+            </div>
           </div>
-          <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-full w-48 border-2 border-slate-900 dark:border-slate-700">
-            <button
-              onClick={() => switchLearnType('words')}
-              className={`flex-1 text-xs font-extrabold py-1.5 rounded-full transition-all ${learnType === 'words' ? 'bg-white dark:bg-slate-900 shadow-sm text-slate-900 dark:text-white border-2 border-slate-900' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
+          <div className="flex gap-2">
+            <button 
+              onClick={clearCanvas}
+              className="p-3 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-full transition-colors border-2 border-transparent hover:border-slate-900 cursor-pointer"
+              title="Clear Canvas"
             >
-              Words
-            </button>
-            <button
-              onClick={() => switchLearnType('sentences')}
-              className={`flex-1 text-xs font-extrabold py-1.5 rounded-full transition-all ${learnType === 'sentences' ? 'bg-white dark:bg-slate-900 shadow-sm text-slate-900 dark:text-white border-2 border-slate-900' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
-            >
-              Sentences
+              <RefreshCw className="w-5 h-5 text-slate-900 dark:text-white" />
             </button>
           </div>
         </div>
-        <div className="flex gap-2">
-          <button 
-            onClick={clearCanvas}
-            className="p-3 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-full transition-colors border-2 border-transparent hover:border-slate-900 cursor-pointer"
-            title="Clear Canvas"
-          >
-            <RefreshCw className="w-5 h-5 text-slate-900 dark:text-white" />
-          </button>
+
+        {/* Progress Bar */}
+        <div className="w-full bg-slate-100 dark:bg-slate-800 rounded-full h-3 overflow-hidden border-2 border-slate-200 dark:border-slate-700 relative">
+          <div 
+            className="h-full bg-emerald-500 transition-all duration-1000 ease-out"
+            style={{ width: `${Math.max(0, Math.min(100, progress * 100))}%` }}
+          />
+          <div className="absolute inset-0 flex items-center justify-center text-[9px] font-black mix-blend-difference text-white">
+            MODULE PROGRESS: {Math.round(progress * 100)}%
+          </div>
         </div>
       </div>
 
@@ -364,6 +456,38 @@ export default function LearnMode({ vocab, savedPhrases = [] }: LearnModeProps) 
         ref={containerRef} 
         className="flex-1 relative bg-white dark:bg-slate-900 overflow-hidden cursor-crosshair touch-none"
       >
+        <AnimatePresence>
+          {isModuleMastered && !hasDismissedCelebration && (
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 flex flex-col items-center justify-center bg-white/95 dark:bg-slate-900/95 backdrop-blur-sm z-50 p-8 text-center"
+            >
+              <motion.div 
+                initial={{ scale: 0.5, y: 20 }}
+                animate={{ scale: 1, y: 0 }}
+                transition={{ type: "spring", bounce: 0.6 }}
+                className="flex flex-col items-center"
+              >
+                <div className="bg-emerald-100 dark:bg-emerald-900/50 p-6 rounded-full mb-6 shadow-xl border-4 border-emerald-500">
+                  <Award className="w-24 h-24 text-emerald-500" />
+                </div>
+                <h2 className="text-4xl md:text-6xl font-black text-slate-900 dark:text-white mb-4 uppercase tracking-tight">Module Mastered!</h2>
+                <p className="text-lg md:text-xl text-slate-500 font-bold mb-10 max-w-md">
+                  You've successfully reached the highest mastery level for every word and sentence in this module. Incredible job!
+                </p>
+                <button
+                  onClick={() => setHasDismissedCelebration(true)}
+                  className="px-8 py-4 bg-emerald-500 hover:bg-emerald-600 text-white rounded-full font-black text-xl shadow-[0_6px_0_0_rgba(4,120,87,1)] active:translate-y-[6px] active:shadow-none transition-all cursor-pointer border-4 border-emerald-700"
+                >
+                  Keep Reviewing
+                </button>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
         <div className="absolute inset-0 flex items-center justify-center opacity-10 pointer-events-none">
           <span className="text-[150px] font-black">✍️</span>
         </div>
