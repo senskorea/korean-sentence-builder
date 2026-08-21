@@ -528,30 +528,29 @@ export default function App() {
           </div>
         </div>
 
-        {/* Sidebar displaying saved sentences and comprehensive explanations */}
-        <div className="w-full flex flex-col gap-6 shrink-0 justify-start">
-          {/* Saved phrase history */}
-          <SavedPhrases
-            phrases={savedPhrases}
-            onCopy={handleCopyText}
-            onDelete={handleDeletePhrase}
-            onClearAll={handleClearAllHistory}
-          />
+        {appMode === 'build' && (
+          <div className="w-full flex flex-col gap-6 shrink-0 justify-start">
+            <SavedPhrases
+              phrases={savedPhrases}
+              onCopy={handleCopyText}
+              onDelete={handleDeletePhrase}
+              onClearAll={handleClearAllHistory}
+            />
+          </div>
+        )}
 
+      </div>
 
+      {appMode === 'build' && (
+        <div className="max-w-6xl mx-auto mt-12 mb-4">
+          <TopicGenerator onVocabGenerated={(newVocab) => {
+            setVocab(newVocab);
+            setVocabJsonInput(JSON.stringify(newVocab, null, 2));
+            handleReset();
+            showToast('Custom vocabulary loaded from AI!', 'success');
+          }} />
         </div>
-
-      </div>
-
-      {/* New Topic Generator Feature */}
-      <div className="max-w-6xl mx-auto mt-12 mb-4">
-        <TopicGenerator onVocabGenerated={(newVocab) => {
-          setVocab(newVocab);
-          setVocabJsonInput(JSON.stringify(newVocab, null, 2));
-          handleReset(); // reset sentence builder when vocab changes
-          showToast('Custom vocabulary loaded from AI!', 'success');
-        }} />
-      </div>
+      )}
 
       {/* Sleek retro footer control bar */}
       <footer className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4 mt-8 mb-8 border-t-[3px] border-black pt-5">
@@ -576,6 +575,7 @@ export default function App() {
             <span>{appMode === 'build' ? 'Enter Learn Mode' : 'Back to Builder'}</span>
           </button>
 
+          {appMode === 'build' && <>
           {/* Custom Vocabulary Toggler */}
           <button
             onClick={() => {
@@ -620,6 +620,7 @@ export default function App() {
             <Smartphone className="w-3.5 h-3.5 text-sky-500" />
             <span>{deviceFrameMode ? 'Full Viewport' : 'Mobile Bezel'}</span>
           </button>
+          </>}
         </div>
       </footer>
 
