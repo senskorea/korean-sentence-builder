@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type PointerEvent } from 'react';
-import { Award, Eraser, PenTool, RotateCcw, Sparkles, X } from 'lucide-react';
+import { ArrowLeft, Award, Eraser, PenTool, RotateCcw, Sparkles, X } from 'lucide-react';
 import { motion } from 'motion/react';
 import { getStroke } from 'perfect-freehand';
 import { SavedSentence, Word } from '../types';
@@ -7,6 +7,7 @@ import { SavedSentence, Word } from '../types';
 interface Props {
   vocab: { subjects: Word[]; objects: Word[]; verbs: Word[] };
   savedPhrases?: SavedSentence[];
+  onExit: () => void;
 }
 
 interface Stats {
@@ -44,7 +45,7 @@ function migrate(raw: Record<string, Stats>) {
   return result;
 }
 
-export default function LearnMode({ vocab, savedPhrases = [] }: Props) {
+export default function LearnMode({ vocab, savedPhrases = [], onExit }: Props) {
   const words = [...vocab.subjects, ...vocab.objects, ...vocab.verbs];
   const sentences = savedPhrases;
   const [screen, setScreen] = useState<'home' | 'session' | 'summary'>('home');
@@ -202,7 +203,7 @@ export default function LearnMode({ vocab, savedPhrases = [] }: Props) {
     const allMastered = mastered(words, wordStats) + mastered(sentences, sentenceStats);
     return (
       <div className="w-full max-w-5xl mx-auto bg-white dark:bg-slate-950 border-[3px] border-black shadow-[5px_5px_0_0_rgba(0,0,0,1)] p-5 sm:p-8">
-        <p className="text-xs font-black uppercase tracking-[.2em] text-indigo-600 mb-2">Learn</p>
+        <div className="flex items-center justify-between gap-4 mb-2"><p className="text-xs font-black uppercase tracking-[.2em] text-indigo-600">Learn</p><button onClick={onExit} className="min-h-11 px-4 flex items-center gap-2 border-2 border-black bg-white font-black text-xs"><ArrowLeft className="w-4 h-4" />Builder</button></div>
         <h2 className="text-3xl sm:text-4xl font-black tracking-tight">What do you want to practise?</h2>
         <p className="text-slate-500 font-semibold mt-2 mb-7">Write each answer with your stylus, then check it and rate your recall.</p>
         <div className="grid md:grid-cols-2 gap-4 mb-7">
@@ -245,19 +246,19 @@ export default function LearnMode({ vocab, savedPhrases = [] }: Props) {
   const english = isWord ? (item as Word).english : (item as SavedSentence).english;
   const emoji = isWord ? (item as Word).emoji : (item as SavedSentence).emojis;
   return (
-    <div className="w-full max-w-4xl mx-auto min-h-[680px] bg-white dark:bg-slate-950 border-[3px] border-black shadow-[5px_5px_0_0_rgba(0,0,0,1)] flex flex-col overflow-hidden select-none">
-      <header className="flex items-center gap-4 p-4 border-b-2 border-black"><button onClick={() => setScreen('home')} className="w-12 h-12 grid place-items-center border-2 border-black" aria-label="Exit session"><X /></button><div className="flex-1 h-3 bg-slate-200 border-2 border-black"><div className="h-full bg-indigo-600" style={{ width: `${((index + 1) / items.length) * 100}%` }} /></div><strong>{index + 1} / {items.length}</strong></header>
-      <main className="flex-1 flex flex-col p-4 sm:p-7 gap-4">
-        <div className="text-center pt-3"><span className="inline-block px-3 py-1 bg-slate-100 dark:bg-slate-800 text-xs font-black uppercase tracking-wider">{writingCard ? (revealed ? 'Trace or rewrite the answer' : 'Write the Korean') : 'Recall the Korean'}</span><h2 className={`${learnType === 'sentences' ? 'text-3xl sm:text-5xl' : 'text-5xl sm:text-7xl'} font-black mt-5 break-words`}>{english}</h2></div>
+    <div className="w-full min-h-[100dvh] h-[100dvh] bg-white flex flex-col overflow-hidden select-none">
+      <header className="flex items-center gap-3 px-2 py-2 border-b border-slate-200"><button onClick={() => setScreen('home')} className="w-10 h-10 shrink-0 grid place-items-center border-2 border-black" aria-label="Exit session"><X className="w-4 h-4" /></button><div className="flex-1 h-2 bg-slate-200 overflow-hidden"><div className="h-full bg-indigo-600" style={{ width: `${((index + 1) / items.length) * 100}%` }} /></div><strong className="text-xs tabular-nums">{index + 1}/{items.length}</strong></header>
+      <main className="flex-1 min-h-0 flex flex-col p-2 sm:p-3 gap-2">
+        <div className="flex items-center justify-between gap-3 px-1"><span className="text-[10px] sm:text-xs font-black uppercase tracking-wider text-indigo-600">{writingCard ? (revealed ? 'Trace the answer' : 'Write in Korean') : 'Recall the Korean'}</span><h2 className={`${learnType === 'sentences' ? 'text-lg sm:text-2xl' : 'text-2xl sm:text-3xl'} font-black text-right truncate`}>{english}</h2></div>
         {writingCard ? (
-          <div ref={canvasBoxRef} className="relative flex-1 min-h-80 bg-slate-50 dark:bg-slate-900 border-[3px] border-black overflow-hidden">
+          <div ref={canvasBoxRef} className="relative flex-1 min-h-0 bg-white border-[3px] border-black overflow-hidden">
             <div className="absolute inset-0 grid place-items-center pointer-events-none text-slate-200 dark:text-slate-800"><PenTool className="w-24 h-24" /></div>
             {revealed && <Answer korean={korean} emoji={emoji} sentence={learnType === 'sentences'} overlay />}
             <canvas ref={canvasRef} onPointerDown={beginStroke} onPointerMove={continueStroke} onPointerUp={endStroke} onPointerCancel={endStroke} className="absolute inset-0 z-10 w-full h-full touch-none cursor-crosshair" />
             <div className="absolute z-20 top-3 right-3 flex gap-2"><button onClick={undoStroke} className="h-12 px-3 bg-white dark:bg-slate-950 border-2 border-black flex items-center gap-2 font-black text-xs"><RotateCcw className="w-4 h-4" />Undo</button><button onClick={clearCanvas} className="h-12 px-3 bg-white dark:bg-slate-950 border-2 border-black flex items-center gap-2 font-black text-xs"><Eraser className="w-4 h-4" />Clear</button></div>
           </div>
         ) : <div className="flex-1 min-h-64 grid place-items-center bg-slate-50 dark:bg-slate-900 border-[3px] border-black p-6 text-center">{revealed ? <motion.div initial={{ opacity: 0, scale: .95 }} animate={{ opacity: 1, scale: 1 }}><Answer korean={korean} emoji={emoji} sentence={learnType === 'sentences'} /></motion.div> : <span className="text-slate-400 font-bold">Think of the answer, then reveal it.</span>}</div>}
-        {!revealed ? <button onClick={() => setRevealed(true)} className="w-full min-h-16 bg-indigo-600 text-white border-[3px] border-black font-black text-xl shadow-[4px_4px_0_0_rgba(0,0,0,1)]">Reveal answer</button> : <div className="grid grid-cols-3 gap-2 sm:gap-4"><RatingButton label="Again" hint="Later today" color="bg-rose-100" onClick={() => rate(0)} /><RatingButton label="Hard" hint="Tomorrow" color="bg-amber-100" onClick={() => rate(1)} /><RatingButton label="Good" hint="Several days" color="bg-emerald-100" onClick={() => rate(2)} /></div>}
+        {!revealed ? <button onClick={() => setRevealed(true)} className="w-full min-h-14 bg-indigo-600 text-white border-[3px] border-black font-black text-lg">Reveal answer</button> : <div className="grid grid-cols-3 gap-2"><RatingButton label="Again" hint="Later today" color="bg-rose-100" onClick={() => rate(0)} /><RatingButton label="Hard" hint="Tomorrow" color="bg-amber-100" onClick={() => rate(1)} /><RatingButton label="Good" hint="Several days" color="bg-emerald-100" onClick={() => rate(2)} /></div>}
       </main>
     </div>
   );
@@ -269,4 +270,4 @@ function OptionGroup({ label, values, selected, onSelect }: { label: string; val
 function Stat({ value, label }: { value: number; label: string }) { return <div className="p-3"><strong className="block text-2xl">{value}</strong><span className="text-xs font-bold text-slate-500">{label}</span></div>; }
 function Result({ value, label, color }: { value: number; label: string; color: string }) { return <div className={`p-5 ${color} text-black border-2 border-black`}><strong className="text-3xl block">{value}</strong><span className="text-xs font-black">{label}</span></div>; }
 function Answer({ korean, emoji, sentence, overlay = false }: { korean: string; emoji: string; sentence: boolean; overlay?: boolean }) { return <div className={`${overlay ? 'absolute inset-0 z-0 pointer-events-none bg-white/95 text-slate-300 dark:bg-slate-950/95 dark:text-slate-700' : ''} grid place-items-center p-6 text-center`}><div><div className={`${sentence ? 'text-4xl sm:text-6xl' : 'text-7xl sm:text-9xl'} font-black break-words`}>{korean}</div><div className={`text-4xl mt-5 ${overlay ? 'opacity-45' : ''}`}>{emoji}</div></div></div>; }
-function RatingButton({ label, hint, color, onClick }: { label: string; hint: string; color: string; onClick: () => void }) { return <button onClick={onClick} className={`min-h-20 p-2 ${color} text-black border-[3px] border-black font-black`}><span className="block text-base sm:text-xl">{label}</span><small>{hint}</small></button>; }
+function RatingButton({ label, hint, color, onClick }: { label: string; hint: string; color: string; onClick: () => void }) { return <button onClick={onClick} className={`min-h-16 p-1.5 ${color} text-black border-[3px] border-black font-black`}><span className="block text-sm sm:text-lg">{label}</span><small className="text-[9px] sm:text-xs">{hint}</small></button>; }
