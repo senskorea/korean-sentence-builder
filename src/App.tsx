@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, type ReactNode } from 'react';
 import { analyzeSentence, SentenceAnalysis } from './lib/ai';
 import { Word, StepState, SavedSentence, AppConfig, EndingOption } from './types';
 import { getFullEnglishTranslation, CONJUGATIONS, SUBJECTS, OBJECTS, VERBS, conjugateVerbDynamically } from './data';
@@ -26,7 +26,8 @@ import {
   Upload,
   Database,
   FileText,
-  PenTool
+  PenTool,
+  X
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -451,6 +452,18 @@ export default function App() {
                 <LearnMode vocab={vocab} savedPhrases={savedPhrases} onExit={() => setAppMode('build')} />
               ) : (
                 <>
+                  <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white border-[3px] border-black p-3 shadow-[4px_4px_0_0_rgba(0,0,0,1)]">
+                    <div>
+                      <p className="text-[10px] font-black uppercase tracking-[.2em] text-indigo-600">Builder</p>
+                      <h1 className="text-xl font-black">Build a Korean sentence</h1>
+                    </div>
+                    <div className="grid grid-cols-2 sm:flex gap-2">
+                      <BuilderMenuButton label="Learn" active={false} icon={<PenTool className="w-4 h-4" />} onClick={() => setAppMode('learn')} />
+                      <BuilderMenuButton label="Library" active={showResourcesPanel} icon={<BookOpen className="w-4 h-4" />} onClick={() => { setShowResourcesPanel(!showResourcesPanel); setShowVocabPanel(false); setShowConfigPanel(false); }} />
+                      <BuilderMenuButton label="Vocab" active={showVocabPanel} icon={<Database className="w-4 h-4" />} onClick={() => { setShowVocabPanel(!showVocabPanel); setShowResourcesPanel(false); setShowConfigPanel(false); if (!vocabJsonInput) setVocabJsonInput(JSON.stringify(vocab, null, 2)); }} />
+                      <BuilderMenuButton label="Settings" active={showConfigPanel} icon={<Settings className="w-4 h-4" />} onClick={() => { setShowConfigPanel(!showConfigPanel); setShowResourcesPanel(false); setShowVocabPanel(false); }} />
+                    </div>
+                  </header>
                   {/* Zone 1 & 2: Working Sentence Ribbon (Blended with Roadmap) */}
                   <WorkingSentence
                 subject={selectedSubject}
@@ -515,7 +528,12 @@ export default function App() {
       </div>
 
       {appMode === 'build' && showResourcesPanel && (
-        <div className="max-w-6xl mx-auto mt-8 mb-4 grid gap-6">
+        <div className="fixed inset-0 z-50 bg-slate-900/45 backdrop-blur-sm p-3 sm:p-6 flex items-center justify-center" onClick={() => setShowResourcesPanel(false)}>
+        <div className="max-w-5xl w-full max-h-[88vh] bg-white border-[3px] border-black shadow-[8px_8px_0_0_rgba(0,0,0,1)] overflow-y-auto p-4 sm:p-6" onClick={(event) => event.stopPropagation()}>
+          <div className="sticky top-0 z-10 bg-white flex items-center justify-between border-b-2 border-black pb-3 mb-5">
+            <div><p className="text-[10px] font-black uppercase tracking-[.2em] text-indigo-600">Resources</p><h2 className="text-2xl font-black">Library & Topics</h2></div>
+            <button onClick={() => setShowResourcesPanel(false)} className="w-12 h-12 grid place-items-center border-2 border-black" aria-label="Close Library and Topics"><X /></button>
+          </div>
           <SavedPhrases
             phrases={savedPhrases}
             onCopy={handleCopyText}
@@ -529,92 +547,21 @@ export default function App() {
             showToast('Custom vocabulary loaded from AI!', 'success');
           }} />
         </div>
+        </div>
       )}
 
       {appMode === 'build' && <>
-      {/* Sleek retro footer control bar */}
-      <footer className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4 mt-8 mb-8 border-t-[3px] border-black pt-5">
-        <div className="text-[10px] font-mono font-bold text-slate-500 uppercase tracking-wider">
-          © SYSTEM.BUILDER // VER 2.1
-        </div>
-        
-        {/* Compact Global Toolbar */}
-        <div className="flex flex-wrap items-center gap-2">
-          {/* Learn Mode Toggler */}
-          <button
-            onClick={() => {
-              setAppMode('learn');
-              setShowResourcesPanel(false);
-              setShowVocabPanel(false);
-              setShowConfigPanel(false);
-            }}
-            className={`flex items-center gap-1.5 px-3 py-1.5 border-2 border-black rounded-none font-extrabold transition-all cursor-pointer text-[11px] ${
-              'bg-white dark:bg-slate-900 hover:bg-slate-50 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:-translate-y-0.5 hover:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] active:translate-y-[1px] active:shadow-none'
-            }`}
-          >
-            <PenTool className="w-3.5 h-3.5 text-indigo-500" />
-            <span>Enter Learn Mode</span>
-          </button>
-
-          <button
-            onClick={() => {
-              setShowResourcesPanel(!showResourcesPanel);
-              setShowVocabPanel(false);
-              setShowConfigPanel(false);
-            }}
-            className={`flex items-center gap-1.5 px-3 py-1.5 border-2 border-black font-extrabold text-[11px] shadow-[2px_2px_0_0_rgba(0,0,0,1)] ${showResourcesPanel ? 'bg-amber-300' : 'bg-white'}`}
-          >
-            <BookOpen className="w-3.5 h-3.5" />
-            <span>Library & Topics</span>
-          </button>
-
-          {/* Custom Vocabulary Toggler */}
-          <button
-            onClick={() => {
-              setShowVocabPanel(!showVocabPanel);
-              setShowConfigPanel(false); // close other panel
-              if (!vocabJsonInput) {
-                setVocabJsonInput(JSON.stringify(vocab, null, 2));
-              }
-            }}
-            className={`flex items-center gap-1.5 px-3 py-1.5 bg-white dark:bg-slate-900 border-2 border-black rounded-none hover:bg-slate-50 font-extrabold transition-all cursor-pointer text-[11px] ${
-              showVocabPanel
-                ? 'bg-brand-primary text-white shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:-translate-y-0.5 hover:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]'
-                : 'shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:-translate-y-0.5 hover:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] active:translate-y-[1px] active:shadow-none'
-            }`}
-          >
-            <Database className="w-3.5 h-3.5" />
-            <span>Manage Vocab</span>
-          </button>
-
-          {/* Format config toggle */}
-          <button
-            onClick={() => {
-              setShowConfigPanel(!showConfigPanel);
-              setShowVocabPanel(false); // close other panel
-            }}
-            className={`flex items-center gap-1.5 px-3 py-1.5 bg-white dark:bg-slate-900 border-2 border-black rounded-none hover:bg-slate-50 font-extrabold transition-all cursor-pointer text-[11px] ${
-              showConfigPanel
-                ? 'bg-brand-primary text-white shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:-translate-y-0.5 hover:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]'
-                : 'shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:-translate-y-0.5 hover:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] active:translate-y-[1px] active:shadow-none'
-            }`}
-          >
-            <Settings className="w-3.5 h-3.5 text-rose-500" />
-            <span>Format Settings</span>
-          </button>
-
-        </div>
-      </footer>
-
       {/* Settings Overlay Panel */}
       <AnimatePresence>
+        {showConfigPanel && <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-40 bg-slate-900/45 backdrop-blur-sm" onClick={() => setShowConfigPanel(false)} />}
         {showConfigPanel && (
           <motion.div
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
-            className="max-w-6xl mx-auto mb-6 p-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-lg text-xs"
+            className="fixed inset-x-3 top-3 bottom-3 z-50 max-w-4xl mx-auto p-5 bg-white border-[3px] border-black shadow-[6px_6px_0_0_rgba(0,0,0,1)] text-sm overflow-y-auto"
           >
+            <button onClick={() => setShowConfigPanel(false)} className="absolute top-3 right-3 w-11 h-11 grid place-items-center border-2 border-black bg-white" aria-label="Close settings"><X className="w-5 h-5" /></button>
             <h3 className="font-extrabold font-display text-slate-900 dark:text-white mb-3 text-sm flex items-center gap-1.5 uppercase tracking-wider">
               <Settings className="w-4 h-4 text-indigo-500" />
               FORMATTING & BEHAVIOR PREFERENCES
@@ -695,13 +642,15 @@ export default function App() {
 
       {/* Custom Vocabulary Manager Panel */}
       <AnimatePresence>
+        {showVocabPanel && <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-40 bg-slate-900/45 backdrop-blur-sm" onClick={() => setShowVocabPanel(false)} />}
         {showVocabPanel && (
           <motion.div
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
-            className="max-w-6xl mx-auto mt-10 mb-6 p-5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-xl text-xs"
+            className="fixed inset-x-3 top-3 bottom-3 z-50 max-w-6xl mx-auto p-5 bg-white border-[3px] border-black shadow-[6px_6px_0_0_rgba(0,0,0,1)] text-sm overflow-y-auto"
           >
+            <button onClick={() => setShowVocabPanel(false)} className="absolute top-3 right-3 w-11 h-11 grid place-items-center border-2 border-black bg-white z-20" aria-label="Close vocabulary"><X className="w-5 h-5" /></button>
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between border-b border-slate-200 dark:border-slate-800 pb-3 mb-4 gap-2">
               <h3 className="font-extrabold font-display text-slate-900 dark:text-white text-sm flex items-center gap-1.5 uppercase tracking-wider">
                 <Database className="w-4 h-4 text-indigo-500" />
@@ -905,5 +854,17 @@ export default function App() {
         )}
       </AnimatePresence>
     </div>
+  );
+}
+
+function BuilderMenuButton({ label, icon, active, onClick }: { label: string; icon: ReactNode; active: boolean; onClick: () => void }) {
+  return (
+    <button
+      onClick={onClick}
+      className={`min-h-11 px-3 flex items-center justify-center gap-2 border-2 border-black font-black text-xs transition-colors ${active ? 'bg-indigo-600 text-white' : 'bg-white hover:bg-slate-100'}`}
+    >
+      {icon}
+      <span>{label}</span>
+    </button>
   );
 }

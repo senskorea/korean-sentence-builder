@@ -25,7 +25,7 @@ body,
   --color-brand-bg-light: #F8F9FA;
   --color-brand-surface-light: #FFFFFF;
   --color-brand-bg-dark: #0F172A;
-  --color-brand-surface-dark: #1E293B;
+  --color-brand-surface-dark: #3F4B5E;
   --color-brand-accent: #FBBF24;
 }
 
@@ -70,4 +70,3 @@ body,
 .dark .dot-pattern {
   background-image: radial-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px);
 }
-
