@@ -165,7 +165,7 @@ export default function App() {
   const [vocabError, setVocabError] = useState<string | null>(null);
 
   // --- Configuration & Utilities State ---
-  const [appMode, setAppMode] = useState<'build' | 'learn'>('build');
+  const [appMode, setAppMode] = useState<'build' | 'learn'>('learn');
   const [config, setConfig] = useState<AppConfig>({
     copyFormat: 'bilingual',
     bypassMode: false,
