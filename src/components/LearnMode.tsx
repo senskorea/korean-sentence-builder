@@ -1,580 +1,267 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Word, SavedSentence } from '../types';
-import { RefreshCw, CheckCircle2, AlertCircle, XCircle, Award } from 'lucide-react';
-import { motion, AnimatePresence } from 'motion/react';
+import { useCallback, useEffect, useRef, useState, type PointerEvent } from 'react';
+import { Award, BookOpen, Eraser, PenTool, Sparkles, X } from 'lucide-react';
+import { motion } from 'motion/react';
 import { getStroke } from 'perfect-freehand';
+import { SavedSentence, Word } from '../types';
 
-interface LearnModeProps {
-  vocab: {
-    subjects: Word[];
-    objects: Word[];
-    verbs: Word[];
-  };
+interface Props {
+  vocab: { subjects: Word[]; objects: Word[]; verbs: Word[] };
   savedPhrases?: SavedSentence[];
 }
 
-interface ItemStats {
+interface Stats {
   id: string;
   repetition: number;
   interval: number;
   easeFactor: number;
   nextReviewDate: number;
-  
-  // Legacy support
   score?: number;
   lastReviewed?: number;
 }
 
-// Helper to generate SVG path data from the stroke points
-function getSvgPathFromStroke(stroke: number[][]) {
+type LearnType = 'words' | 'sentences';
+type PracticeMode = 'cards' | 'write' | 'mixed';
+type Rating = 0 | 1 | 2;
+
+function pathFromStroke(stroke: number[][]) {
   if (!stroke.length) return '';
-
-  const d = stroke.reduce(
-    (acc, [x0, y0], i, arr) => {
-      const [x1, y1] = arr[(i + 1) % arr.length];
-      acc.push(x0, y0, (x0 + x1) / 2, (y0 + y1) / 2);
-      return acc;
-    },
-    ['M', ...stroke[0], 'Q']
-  );
-
-  d.push('Z');
-  return d.join(' ');
+  const path = stroke.reduce<(string | number)[]>((result, [x0, y0], index, points) => {
+    const [x1, y1] = points[(index + 1) % points.length];
+    result.push(x0, y0, (x0 + x1) / 2, (y0 + y1) / 2);
+    return result;
+  }, ['M', ...stroke[0], 'Q']);
+  path.push('Z');
+  return path.join(' ');
 }
 
-export default function LearnMode({ vocab, savedPhrases = [] }: LearnModeProps) {
-  const [learnType, setLearnType] = useState<'words' | 'sentences'>('words');
-  
-  const [wordPool, setWordPool] = useState<Word[]>([]);
-  const [sentencePool, setSentencePool] = useState<SavedSentence[]>([]);
-  
-  const [currentWord, setCurrentWord] = useState<Word | null>(null);
-  const [currentSentence, setCurrentSentence] = useState<SavedSentence | null>(null);
-  
-  const [isRevealed, setIsRevealed] = useState(false);
-  const [hasDismissedCelebration, setHasDismissedCelebration] = useState(false);
-  
-  // Stats
-  const [wordStats, setWordStats] = useState<Record<string, ItemStats>>({});
-  const [sentenceStats, setSentenceStats] = useState<Record<string, ItemStats>>({});
+function migrate(raw: Record<string, Stats>) {
+  const result: Record<string, Stats> = {};
+  Object.entries(raw).forEach(([key, stat]) => {
+    result[key] = stat.score !== undefined && stat.repetition === undefined
+      ? { id: stat.id, repetition: stat.score >= 2 ? 3 : stat.score === 1 ? 1 : 0, interval: stat.score >= 2 ? 3 : 1, easeFactor: 2.5, nextReviewDate: stat.lastReviewed || Date.now() }
+      : stat;
+  });
+  return result;
+}
 
-  // Canvas ref
+export default function LearnMode({ vocab, savedPhrases = [] }: Props) {
+  const words = [...vocab.subjects, ...vocab.objects, ...vocab.verbs];
+  const sentences = savedPhrases;
+  const [screen, setScreen] = useState<'home' | 'session' | 'summary'>('home');
+  const [learnType, setLearnType] = useState<LearnType>('words');
+  const [practiceMode, setPracticeMode] = useState<PracticeMode>('cards');
+  const [sessionLength, setSessionLength] = useState(10);
+  const [items, setItems] = useState<(Word | SavedSentence)[]>([]);
+  const [index, setIndex] = useState(0);
+  const [ratings, setRatings] = useState<Rating[]>([]);
+  const [revealed, setRevealed] = useState(false);
+  const [wordStats, setWordStats] = useState<Record<string, Stats>>({});
+  const [sentenceStats, setSentenceStats] = useState<Record<string, Stats>>({});
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
-  const isDrawing = useRef(false);
+  const canvasBoxRef = useRef<HTMLDivElement>(null);
+  const drawing = useRef(false);
+  const lines = useRef<number[][][]>([]);
+  const currentLine = useRef<number[][] | null>(null);
 
-  // Drawing state
-  const linesRef = useRef<number[][][]>([]);
-  const currentLineRef = useRef<number[][] | null>(null);
-
-  // Initialize word pool and stats
   useEffect(() => {
-    const migrateStats = (rawStats: any) => {
-      const migrated: Record<string, ItemStats> = {};
-      for (const key in rawStats) {
-        const stat = rawStats[key];
-        if (stat.score !== undefined && stat.repetition === undefined) {
-          // It's old format
-          migrated[key] = {
-            id: stat.id,
-            repetition: stat.score >= 2 ? 3 : (stat.score === 1 ? 1 : 0),
-            interval: stat.score >= 2 ? 3 : (stat.score === 1 ? 1 : 0.5),
-            easeFactor: 2.5,
-            nextReviewDate: stat.lastReviewed || Date.now()
-          };
-        } else {
-          migrated[key] = stat;
-        }
-      }
-      return migrated;
-    };
-
-    const loadedWordStats = localStorage.getItem('korean_learn_stats');
-    if (loadedWordStats) {
-      try {
-        setWordStats(migrateStats(JSON.parse(loadedWordStats)));
-      } catch (e) {
-        console.error('Failed to parse word stats', e);
-      }
-    }
-    const loadedSentenceStats = localStorage.getItem('korean_learn_sentence_stats');
-    if (loadedSentenceStats) {
-      try {
-        setSentenceStats(migrateStats(JSON.parse(loadedSentenceStats)));
-      } catch (e) {
-        console.error('Failed to parse sentence stats', e);
-      }
-    }
-
-    const allWords = [...vocab.subjects, ...vocab.objects, ...vocab.verbs];
-    setWordPool(allWords);
-    setSentencePool(savedPhrases);
-    setHasDismissedCelebration(false);
-  }, [vocab, savedPhrases]);
-
-  const renderCanvas = useCallback(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    const dpr = window.devicePixelRatio || 1;
-    ctx.setTransform(1, 0, 0, 1, 0, 0);
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.scale(dpr, dpr);
-
-    ctx.fillStyle = '#22c55e';
-
-    const allLines = [...linesRef.current];
-    if (currentLineRef.current && currentLineRef.current.length > 0) {
-      allLines.push(currentLineRef.current);
-    }
-
-    for (const line of allLines) {
-      if (line.length === 0) continue;
-      
-      const stroke = getStroke(line, {
-        size: 14,
-        thinning: 0.6,
-        smoothing: 0.5,
-        streamline: 0.5,
-        simulatePressure: false // Allows actual iPad pencil pressure
-      });
-      
-      if (stroke.length > 0) {
-        const pathData = getSvgPathFromStroke(stroke);
-        const path = new Path2D(pathData);
-        ctx.fill(path);
-      }
+    try {
+      const savedWords = localStorage.getItem('korean_learn_stats');
+      const savedSentences = localStorage.getItem('korean_learn_sentence_stats');
+      if (savedWords) setWordStats(migrate(JSON.parse(savedWords)));
+      if (savedSentences) setSentenceStats(migrate(JSON.parse(savedSentences)));
+    } catch (error) {
+      console.error('Failed to load learning progress', error);
     }
   }, []);
 
-  const clearCanvas = () => {
-    linesRef.current = [];
-    currentLineRef.current = null;
+  const renderCanvas = useCallback(() => {
+    const canvas = canvasRef.current;
+    const context = canvas?.getContext('2d');
+    if (!canvas || !context) return;
+    const ratio = window.devicePixelRatio || 1;
+    context.setTransform(1, 0, 0, 1, 0, 0);
+    context.clearRect(0, 0, canvas.width, canvas.height);
+    context.scale(ratio, ratio);
+    context.fillStyle = '#4f46e5';
+    const visibleLines = currentLine.current?.length ? [...lines.current, currentLine.current] : lines.current;
+    visibleLines.forEach((line) => {
+      const stroke = getStroke(line, { size: 13, thinning: 0.6, smoothing: 0.5, streamline: 0.5 });
+      if (stroke.length) context.fill(new Path2D(pathFromStroke(stroke)));
+    });
+  }, []);
+
+  const clearCanvas = useCallback(() => {
+    lines.current = [];
+    currentLine.current = null;
     renderCanvas();
-  };
+  }, [renderCanvas]);
 
-  const pickNextWord = useCallback((stats?: Record<string, ItemStats>) => {
-    const currentStats = stats || wordStats;
-    if (wordPool.length === 0) return;
-    
-    const now = Date.now();
-    const unmastered = wordPool.filter(w => (currentStats[w.id]?.repetition || 0) < 5);
-    let candidates = unmastered.filter(w => !currentStats[w.id] || currentStats[w.id].nextReviewDate <= now);
-    
-    if (candidates.length === 0 && unmastered.length > 0) candidates = unmastered;
-    
-    let nextWord;
-    if (candidates.length > 0) {
-      nextWord = candidates[Math.floor(Math.random() * candidates.length)];
-    } else {
-      nextWord = wordPool[Math.floor(Math.random() * wordPool.length)];
-    }
-    
-    setCurrentWord(nextWord);
-    setIsRevealed(false);
-    clearCanvas();
-  }, [wordPool, wordStats]);
+  const writingCard = practiceMode === 'write' || (practiceMode === 'mixed' && index % 2 === 1);
 
-  const pickNextSentence = useCallback((stats?: Record<string, ItemStats>) => {
-    const currentStats = stats || sentenceStats;
-    if (sentencePool.length === 0) return;
-    
-    const now = Date.now();
-    const unmastered = sentencePool.filter(s => (currentStats[s.id]?.repetition || 0) < 5);
-    let candidates = unmastered.filter(s => !currentStats[s.id] || currentStats[s.id].nextReviewDate <= now);
-    
-    if (candidates.length === 0 && unmastered.length > 0) candidates = unmastered;
-    
-    let nextSentence;
-    if (candidates.length > 0) {
-      nextSentence = candidates[Math.floor(Math.random() * candidates.length)];
-    } else {
-      nextSentence = sentencePool[Math.floor(Math.random() * sentencePool.length)];
-    }
-    
-    setCurrentSentence(nextSentence);
-    setIsRevealed(false);
-    clearCanvas();
-  }, [sentencePool, sentenceStats]);
-
-  // Initialize first word/sentence
   useEffect(() => {
-    if (learnType === 'words' && wordPool.length > 0 && !currentWord) {
-      pickNextWord();
-    } else if (learnType === 'sentences' && sentencePool.length > 0 && !currentSentence) {
-      pickNextSentence();
-    }
-  }, [learnType, wordPool, sentencePool, currentWord, currentSentence, pickNextWord, pickNextSentence]);
-
-  // Resize canvas to fit container
-  useEffect(() => {
-    const resizeCanvas = () => {
+    if (screen !== 'session' || !writingCard) return;
+    const resize = () => {
       const canvas = canvasRef.current;
-      const container = containerRef.current;
-      if (canvas && container) {
-        const rect = container.getBoundingClientRect();
-        const dpr = window.devicePixelRatio || 1;
-        canvas.width = rect.width * dpr;
-        canvas.height = rect.height * dpr;
-        renderCanvas();
-      }
+      const box = canvasBoxRef.current;
+      if (!canvas || !box) return;
+      const rect = box.getBoundingClientRect();
+      const ratio = window.devicePixelRatio || 1;
+      canvas.width = rect.width * ratio;
+      canvas.height = rect.height * ratio;
+      renderCanvas();
     };
+    resize();
+    window.addEventListener('resize', resize);
+    return () => window.removeEventListener('resize', resize);
+  }, [screen, writingCard, index, renderCanvas]);
 
-    window.addEventListener('resize', resizeCanvas);
-    resizeCanvas(); // initial size
-    setTimeout(resizeCanvas, 100);
-
-    return () => window.removeEventListener('resize', resizeCanvas);
-  }, [currentWord, currentSentence, learnType, renderCanvas]);
-
-  const startDrawing = (e: React.PointerEvent<HTMLCanvasElement>) => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-
-    (e.target as HTMLElement).setPointerCapture(e.pointerId);
-
-    const rect = canvas.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-    let pressure = e.pressure !== undefined ? e.pressure : 0.5;
-    if (pressure === 0) pressure = 0.5;
-
-    currentLineRef.current = [[x, y, pressure]];
-    isDrawing.current = true;
+  const beginStroke = (event: PointerEvent<HTMLCanvasElement>) => {
+    const rect = event.currentTarget.getBoundingClientRect();
+    event.currentTarget.setPointerCapture(event.pointerId);
+    currentLine.current = [[event.clientX - rect.left, event.clientY - rect.top, event.pressure || 0.5]];
+    drawing.current = true;
+    renderCanvas();
+  };
+  const continueStroke = (event: PointerEvent<HTMLCanvasElement>) => {
+    if (!drawing.current || !currentLine.current) return;
+    const rect = event.currentTarget.getBoundingClientRect();
+    currentLine.current.push([event.clientX - rect.left, event.clientY - rect.top, event.pressure || 0.5]);
+    renderCanvas();
+  };
+  const endStroke = () => {
+    if (!drawing.current) return;
+    drawing.current = false;
+    if (currentLine.current?.length) lines.current.push([...currentLine.current]);
+    currentLine.current = null;
     renderCanvas();
   };
 
-  const draw = (e: React.PointerEvent<HTMLCanvasElement>) => {
-    if (!isDrawing.current || !currentLineRef.current) return;
-    const canvas = canvasRef.current;
-    if (!canvas) return;
+  const due = (pool: { id: string }[], stats: Record<string, Stats>) =>
+    pool.filter((item) => !stats[item.id] || stats[item.id].nextReviewDate <= Date.now()).length;
+  const mastered = (pool: { id: string }[], stats: Record<string, Stats>) =>
+    pool.filter((item) => (stats[item.id]?.repetition || 0) >= 5).length;
 
-    const rect = canvas.getBoundingClientRect();
-    const events = e.nativeEvent && typeof (e.nativeEvent as any).getCoalescedEvents === 'function'
-      ? (e.nativeEvent as any).getCoalescedEvents()
-      : [e.nativeEvent];
-      
-    for (const event of events) {
-      const x = event.clientX - rect.left;
-      const y = event.clientY - rect.top;
-      let pressure = event.pressure !== undefined ? event.pressure : 0.5;
-      if (pressure === 0) pressure = 0.5;
-      
-      currentLineRef.current.push([x, y, pressure]);
-    }
-    
-    renderCanvas();
-  };
-
-  const stopDrawing = () => {
-    if (!isDrawing.current) return;
-    isDrawing.current = false;
-    
-    if (currentLineRef.current && currentLineRef.current.length > 0) {
-      linesRef.current.push([...currentLineRef.current]);
-    }
-    currentLineRef.current = null;
-    renderCanvas();
-  };
-
-  const handleRank = (score: number) => {
-    const isWord = learnType === 'words';
-    const currentItem = isWord ? currentWord : currentSentence;
-    if (!currentItem) return;
-
-    const stats = isWord ? wordStats : sentenceStats;
-    const oldStat = stats[currentItem.id] || { id: currentItem.id, repetition: 0, interval: 1, easeFactor: 2.5, nextReviewDate: Date.now() };
-
-    // Map 0, 1, 2 scores to SM-2 quality (0-5)
-    const q = score === 0 ? 0 : score === 1 ? 3 : 5;
-    
-    let newRepetition = oldStat.repetition || 0;
-    let newInterval = oldStat.interval || 1;
-    let newEaseFactor = oldStat.easeFactor || 2.5;
-
-    if (q < 3) {
-      newRepetition = 0;
-      newInterval = 1;
-    } else {
-      if (newRepetition === 0) {
-        newInterval = 1;
-      } else if (newRepetition === 1) {
-        newInterval = 6;
-      } else {
-        newInterval = Math.round(newInterval * newEaseFactor);
-      }
-      newRepetition += 1;
-    }
-
-    newEaseFactor = newEaseFactor + (0.1 - (5 - q) * (0.08 + (5 - q) * 0.02));
-    if (newEaseFactor < 1.3) newEaseFactor = 1.3;
-
-    if (newRepetition > 5) newRepetition = 5; // Cap for mastery progress
-
-    const newStat: ItemStats = {
-      id: currentItem.id,
-      repetition: newRepetition,
-      interval: newInterval,
-      easeFactor: newEaseFactor,
-      nextReviewDate: Date.now() + newInterval * 24 * 60 * 60 * 1000
-    };
-
-    const newStats = { ...stats, [currentItem.id]: newStat };
-
-    if (isWord) {
-      setWordStats(newStats);
-      localStorage.setItem('korean_learn_stats', JSON.stringify(newStats));
-      pickNextWord(newStats);
-    } else {
-      setSentenceStats(newStats);
-      localStorage.setItem('korean_learn_sentence_stats', JSON.stringify(newStats));
-      pickNextSentence(newStats);
-    }
-  };
-
-  const switchLearnType = (type: 'words' | 'sentences') => {
+  const startSession = (type: LearnType) => {
+    const pool = type === 'words' ? words : sentences;
+    const stats = type === 'words' ? wordStats : sentenceStats;
+    const shuffled = [...pool].sort(() => Math.random() - 0.5);
+    const ordered = [
+      ...shuffled.filter((item) => !stats[item.id] || stats[item.id].nextReviewDate <= Date.now()),
+      ...shuffled.filter((item) => stats[item.id] && stats[item.id].nextReviewDate > Date.now()),
+    ];
+    if (!ordered.length) return;
     setLearnType(type);
-    setIsRevealed(false);
+    setItems(ordered.slice(0, Math.min(sessionLength, ordered.length)));
+    setIndex(0);
+    setRatings([]);
+    setRevealed(false);
     clearCanvas();
+    setScreen('session');
   };
 
-  const calculateProgress = () => {
-    const totalItems = wordPool.length + sentencePool.length;
-    if (totalItems === 0) return 0;
-    
-    let totalRepetitions = 0;
-    wordPool.forEach(w => {
-      totalRepetitions += Math.min(wordStats[w.id]?.repetition || 0, 5);
-    });
-    sentencePool.forEach(s => {
-      totalRepetitions += Math.min(sentenceStats[s.id]?.repetition || 0, 5);
-    });
-    
-    return totalRepetitions / (totalItems * 5);
+  const rate = (rating: Rating) => {
+    const item = items[index];
+    const stats = learnType === 'words' ? wordStats : sentenceStats;
+    const old = stats[item.id] || { id: item.id, repetition: 0, interval: 1, easeFactor: 2.5, nextReviewDate: Date.now() };
+    const quality = rating === 0 ? 0 : rating === 1 ? 3 : 5;
+    let repetition = old.repetition || 0;
+    let interval = old.interval || 1;
+    let easeFactor = old.easeFactor || 2.5;
+    if (quality < 3) {
+      repetition = 0;
+      interval = 0.25;
+    } else {
+      interval = repetition === 0 ? 1 : repetition === 1 ? 6 : Math.round(interval * easeFactor);
+      repetition = Math.min(5, repetition + 1);
+    }
+    easeFactor = Math.max(1.3, easeFactor + (0.1 - (5 - quality) * (0.08 + (5 - quality) * 0.02)));
+    const updated = { ...stats, [item.id]: { id: item.id, repetition, interval, easeFactor, nextReviewDate: Date.now() + interval * 86400000 } };
+    if (learnType === 'words') {
+      setWordStats(updated);
+      localStorage.setItem('korean_learn_stats', JSON.stringify(updated));
+    } else {
+      setSentenceStats(updated);
+      localStorage.setItem('korean_learn_sentence_stats', JSON.stringify(updated));
+    }
+    setRatings((previous) => [...previous, rating]);
+    if (index + 1 === items.length) setScreen('summary');
+    else {
+      setIndex((value) => value + 1);
+      setRevealed(false);
+      clearCanvas();
+    }
   };
 
-  const progress = calculateProgress();
-  const isModuleMastered = progress >= 1;
-
-  const masteredWordsCount = wordPool.filter(w => (wordStats[w.id]?.repetition || 0) >= 5).length;
-  const masteredSentencesCount = sentencePool.filter(s => (sentenceStats[s.id]?.repetition || 0) >= 5).length;
-
-  const currentItemLabel = learnType === 'words' 
-    ? (currentWord?.english || "Loading...") 
-    : (currentSentence?.english || "Loading...");
-
-  const currentItemAnswer = learnType === 'words'
-    ? currentWord?.korean
-    : currentSentence?.korean;
-
-  const currentItemEmoji = learnType === 'words'
-    ? currentWord?.emoji
-    : currentSentence?.emojis;
-
-  if (learnType === 'words' && !currentWord) {
-    return <div className="flex-1 flex items-center justify-center font-bold text-slate-500">Loading words...</div>;
-  }
-  
-  if (learnType === 'sentences' && sentencePool.length === 0) {
+  if (screen === 'home') {
+    const allItems = words.length + sentences.length;
+    const allMastered = mastered(words, wordStats) + mastered(sentences, sentenceStats);
     return (
-      <div className="flex-1 flex flex-col items-center justify-center p-8 text-center bg-brand-bg-light dark:bg-slate-900 rounded-[3rem] border-4 border-slate-900 dark:border-slate-800 relative min-h-[780px]">
-        <div className="flex bg-slate-200 dark:bg-slate-800 p-1 rounded-full w-48 mb-8">
-          <button onClick={() => switchLearnType('words')} className="flex-1 text-xs font-bold py-1.5 rounded-full text-slate-500 hover:text-slate-900 dark:hover:text-white">Words</button>
-          <button className="flex-1 text-xs font-bold py-1.5 rounded-full bg-white dark:bg-slate-900 shadow-sm text-slate-900 dark:text-white">Sentences</button>
+      <div className="w-full max-w-5xl mx-auto bg-white dark:bg-slate-950 border-[3px] border-black shadow-[5px_5px_0_0_rgba(0,0,0,1)] p-5 sm:p-8">
+        <p className="text-xs font-black uppercase tracking-[.2em] text-indigo-600 mb-2">Learn</p>
+        <h2 className="text-3xl sm:text-4xl font-black tracking-tight">What do you want to practise?</h2>
+        <p className="text-slate-500 font-semibold mt-2 mb-7">Choose one focused session. You can set the format below.</p>
+        <div className="grid md:grid-cols-2 gap-4 mb-7">
+          <button onClick={() => startSession('words')} className="min-h-44 text-left p-6 bg-indigo-600 text-white border-[3px] border-black shadow-[4px_4px_0_0_rgba(0,0,0,1)] hover:-translate-y-1 transition-transform">
+            <BookOpen className="w-9 h-9 mb-5" /><strong className="block text-2xl">Learn words</strong><span className="block mt-2 font-bold text-indigo-100">{words.length} words · {due(words, wordStats)} due</span>
+          </button>
+          <button disabled={!sentences.length} onClick={() => startSession('sentences')} className="min-h-44 text-left p-6 bg-amber-300 disabled:bg-slate-200 disabled:text-slate-400 border-[3px] border-black shadow-[4px_4px_0_0_rgba(0,0,0,1)] disabled:shadow-none hover:enabled:-translate-y-1 transition-transform">
+            <Sparkles className="w-9 h-9 mb-5" /><strong className="block text-2xl">Practice sentences</strong><span className="block mt-2 font-bold">{sentences.length ? `${sentences.length} saved · ${due(sentences, sentenceStats)} due` : 'Save a sentence in Build mode first'}</span>
+          </button>
         </div>
-        <h2 className="text-2xl font-black mb-4">No Saved Sentences</h2>
-        <p className="text-slate-500 font-bold max-w-md">
-          You don't have any saved sentences yet. Build some sentences in the Builder mode and click "Save Phrase" to unlock sentence flashcards!
-        </p>
-        <button 
-          onClick={() => switchLearnType('words')}
-          className="mt-8 px-6 py-3 bg-indigo-600 text-white font-black rounded-full shadow-[0_4px_0_0_rgba(49,46,129,1)] active:translate-y-[4px] active:shadow-none transition-all"
-        >
-          Back to Words
-        </button>
+        <div className="grid sm:grid-cols-2 gap-5 p-5 bg-slate-50 dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800">
+          <OptionGroup label="Practice style" values={[['cards', 'Flashcards'], ['write', 'Write'], ['mixed', 'Mixed']]} selected={practiceMode} onSelect={(value) => setPracticeMode(value as PracticeMode)} />
+          <OptionGroup label="Session length" values={[[5, '5'], [10, '10'], [15, '15']]} selected={sessionLength} onSelect={(value) => setSessionLength(Number(value))} />
+        </div>
+        <div className="grid grid-cols-3 gap-2 mt-5 text-center">
+          <Stat value={due(words, wordStats) + due(sentences, sentenceStats)} label="Due now" />
+          <Stat value={allItems - allMastered} label="Learning" />
+          <Stat value={allMastered} label="Mastered" />
+        </div>
       </div>
     );
   }
 
+  if (screen === 'summary') {
+    return (
+      <div className="w-full max-w-3xl mx-auto min-h-[620px] bg-white dark:bg-slate-950 border-[3px] border-black shadow-[5px_5px_0_0_rgba(0,0,0,1)] p-6 flex flex-col items-center justify-center text-center">
+        <Award className="w-20 h-20 text-amber-500 mb-5" /><p className="text-xs font-black uppercase tracking-[.2em] text-indigo-600">Session complete</p><h2 className="text-5xl font-black mt-2">Nice work.</h2>
+        <p className="text-slate-500 font-bold mt-3">You reviewed {ratings.length} {learnType}.</p>
+        <div className="grid grid-cols-3 gap-3 w-full max-w-xl my-9">
+          <Result value={ratings.filter((x) => x === 0).length} label="Again" color="bg-rose-100" /><Result value={ratings.filter((x) => x === 1).length} label="Hard" color="bg-amber-100" /><Result value={ratings.filter((x) => x === 2).length} label="Good" color="bg-emerald-100" />
+        </div>
+        <div className="grid sm:grid-cols-2 gap-3 w-full max-w-xl"><button onClick={() => startSession(learnType)} className="min-h-14 bg-indigo-600 text-white border-[3px] border-black font-black text-lg">Continue</button><button onClick={() => setScreen('home')} className="min-h-14 bg-white dark:bg-slate-900 border-[3px] border-black font-black text-lg">Finish</button></div>
+      </div>
+    );
+  }
+
+  const item = items[index];
+  const isWord = 'type' in item;
+  const korean = isWord ? (item as Word).korean : (item as SavedSentence).korean;
+  const english = isWord ? (item as Word).english : (item as SavedSentence).english;
+  const emoji = isWord ? (item as Word).emoji : (item as SavedSentence).emojis;
   return (
-    <div className="flex-1 flex flex-col h-full bg-brand-bg-light dark:bg-slate-900 rounded-[3rem] overflow-hidden shadow-2xl border-4 border-slate-900 dark:border-slate-800 relative min-h-[780px] select-none touch-none">
-      {/* Header */}
-      <div className="p-6 border-b-2 border-slate-900 dark:border-slate-800 flex flex-col gap-4 bg-white dark:bg-slate-950 z-10 relative">
-        <div className="flex flex-wrap gap-4 justify-between items-center">
-          <div className="flex flex-col gap-3">
-            <div className="flex items-center gap-3">
-              <span className="font-black text-2xl tracking-tighter text-indigo-600 dark:text-indigo-400">LEARN MODE</span>
-              <span className="px-3 py-1 bg-slate-900 text-white text-xs font-bold rounded-full hidden sm:inline-block">iPad Stylus Ready</span>
-              <span className="px-3 py-1 bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-300 text-xs font-bold rounded-full border border-emerald-200 dark:border-emerald-800">
-                {learnType === 'words' 
-                  ? `Mastered: ${masteredWordsCount} / ${wordPool.length}`
-                  : `Mastered: ${masteredSentencesCount} / ${sentencePool.length}`}
-              </span>
-            </div>
-            <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-full w-48 border-2 border-slate-900 dark:border-slate-700">
-              <button
-                onClick={() => switchLearnType('words')}
-                className={`flex-1 text-xs font-extrabold py-1.5 rounded-full transition-all ${learnType === 'words' ? 'bg-white dark:bg-slate-900 shadow-sm text-slate-900 dark:text-white border-2 border-slate-900' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
-              >
-                Words
-              </button>
-              <button
-                onClick={() => switchLearnType('sentences')}
-                className={`flex-1 text-xs font-extrabold py-1.5 rounded-full transition-all ${learnType === 'sentences' ? 'bg-white dark:bg-slate-900 shadow-sm text-slate-900 dark:text-white border-2 border-slate-900' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
-              >
-                Sentences
-              </button>
-            </div>
+    <div className="w-full max-w-4xl mx-auto min-h-[680px] bg-white dark:bg-slate-950 border-[3px] border-black shadow-[5px_5px_0_0_rgba(0,0,0,1)] flex flex-col overflow-hidden select-none">
+      <header className="flex items-center gap-4 p-4 border-b-2 border-black"><button onClick={() => setScreen('home')} className="w-12 h-12 grid place-items-center border-2 border-black" aria-label="Exit session"><X /></button><div className="flex-1 h-3 bg-slate-200 border-2 border-black"><div className="h-full bg-indigo-600" style={{ width: `${((index + 1) / items.length) * 100}%` }} /></div><strong>{index + 1} / {items.length}</strong></header>
+      <main className="flex-1 flex flex-col p-4 sm:p-7 gap-4">
+        <div className="text-center pt-3"><span className="inline-block px-3 py-1 bg-slate-100 dark:bg-slate-800 text-xs font-black uppercase tracking-wider">{writingCard ? 'Write the Korean' : 'Recall the Korean'}</span><h2 className={`${learnType === 'sentences' ? 'text-3xl sm:text-5xl' : 'text-5xl sm:text-7xl'} font-black mt-5 break-words`}>{english}</h2></div>
+        {writingCard ? (
+          <div ref={canvasBoxRef} className="relative flex-1 min-h-64 bg-slate-50 dark:bg-slate-900 border-[3px] border-black overflow-hidden">
+            <div className="absolute inset-0 grid place-items-center pointer-events-none text-slate-200 dark:text-slate-800"><PenTool className="w-24 h-24" /></div>
+            {revealed && <Answer korean={korean} emoji={emoji} sentence={learnType === 'sentences'} overlay />}
+            <canvas ref={canvasRef} onPointerDown={beginStroke} onPointerMove={continueStroke} onPointerUp={endStroke} onPointerCancel={endStroke} className="absolute inset-0 z-10 w-full h-full touch-none" />
+            {!revealed && <button onClick={clearCanvas} className="absolute z-20 top-3 right-3 h-12 px-3 bg-white dark:bg-slate-950 border-2 border-black flex items-center gap-2 font-black text-xs"><Eraser className="w-4 h-4" />Clear</button>}
           </div>
-          <div className="flex gap-2">
-            <button 
-              onClick={clearCanvas}
-              className="p-3 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-full transition-colors border-2 border-transparent hover:border-slate-900 cursor-pointer"
-              title="Clear Canvas"
-            >
-              <RefreshCw className="w-5 h-5 text-slate-900 dark:text-white" />
-            </button>
-          </div>
-        </div>
-
-        {/* Progress Bar */}
-        <div className="w-full bg-slate-100 dark:bg-slate-800 rounded-full h-3 overflow-hidden border-2 border-slate-200 dark:border-slate-700 relative">
-          <div 
-            className="h-full bg-emerald-500 transition-all duration-1000 ease-out"
-            style={{ width: `${Math.max(0, Math.min(100, progress * 100))}%` }}
-          />
-          <div className="absolute inset-0 flex items-center justify-center text-[9px] font-black mix-blend-difference text-white">
-            MODULE PROGRESS: {Math.round(progress * 100)}%
-          </div>
-        </div>
-      </div>
-
-      {/* Canvas Area */}
-      <div 
-        ref={containerRef} 
-        className="flex-1 relative bg-white dark:bg-slate-900 overflow-hidden cursor-crosshair touch-none"
-      >
-        <AnimatePresence>
-          {isModuleMastered && !hasDismissedCelebration && (
-            <motion.div 
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="absolute inset-0 flex flex-col items-center justify-center bg-white/95 dark:bg-slate-900/95 backdrop-blur-sm z-50 p-8 text-center"
-            >
-              <motion.div 
-                initial={{ scale: 0.5, y: 20 }}
-                animate={{ scale: 1, y: 0 }}
-                transition={{ type: "spring", bounce: 0.6 }}
-                className="flex flex-col items-center"
-              >
-                <div className="bg-emerald-100 dark:bg-emerald-900/50 p-6 rounded-full mb-6 shadow-xl border-4 border-emerald-500">
-                  <Award className="w-24 h-24 text-emerald-500" />
-                </div>
-                <h2 className="text-4xl md:text-6xl font-black text-slate-900 dark:text-white mb-4 uppercase tracking-tight">Module Mastered!</h2>
-                <p className="text-lg md:text-xl text-slate-500 font-bold mb-10 max-w-md">
-                  You've successfully reached the highest mastery level for every word and sentence in this module. Incredible job!
-                </p>
-                <button
-                  onClick={() => setHasDismissedCelebration(true)}
-                  className="px-8 py-4 bg-emerald-500 hover:bg-emerald-600 text-white rounded-full font-black text-xl shadow-[0_6px_0_0_rgba(4,120,87,1)] active:translate-y-[6px] active:shadow-none transition-all cursor-pointer border-4 border-emerald-700"
-                >
-                  Keep Reviewing
-                </button>
-              </motion.div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        <div className="absolute inset-0 flex items-center justify-center opacity-10 pointer-events-none">
-          <span className="text-[150px] font-black">✍️</span>
-        </div>
-
-        {/* Answer Overlay */}
-        <AnimatePresence>
-          {isRevealed && (
-            <motion.div 
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0 }}
-              className="absolute inset-0 flex items-center justify-center bg-white/90 dark:bg-slate-950/90 backdrop-blur-md z-20 pointer-events-none"
-            >
-              <div className="text-center p-8 max-w-full">
-                <div className={`${learnType === 'sentences' ? 'text-4xl md:text-6xl' : 'text-[160px] md:text-[200px]'} font-black text-slate-900 dark:text-white leading-tight drop-shadow-2xl mb-6 break-words`}>
-                  {currentItemAnswer}
-                </div>
-                <div className="text-4xl md:text-6xl text-slate-500 font-bold break-words">{currentItemEmoji}</div>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        <canvas
-          ref={canvasRef}
-          onPointerDown={startDrawing}
-          onPointerMove={draw}
-          onPointerUp={stopDrawing}
-          onPointerOut={stopDrawing}
-          onPointerCancel={stopDrawing}
-          className="absolute inset-0 w-full h-full touch-none z-30"
-          style={{ touchAction: 'none' }}
-        />
-      </div>
-
-      {/* Footer Controls */}
-      <div className="p-8 bg-white dark:bg-slate-950 border-t-2 border-slate-900 dark:border-slate-800 z-10 relative">
-        <div className="flex flex-col items-center gap-8">
-          {/* Prompt */}
-          <div className="text-center">
-            <h2 className={`${learnType === 'sentences' ? 'text-3xl md:text-5xl' : 'text-5xl md:text-7xl'} font-black text-slate-900 dark:text-white uppercase tracking-tight break-words max-w-3xl`}>
-              {currentItemLabel}
-            </h2>
-            {!isRevealed && <p className="text-lg text-slate-500 mt-2 font-bold">Draw the Korean {learnType === 'sentences' ? 'sentence' : 'word'} above</p>}
-          </div>
-
-          {/* Actions */}
-          <div className="w-full max-w-2xl">
-            {!isRevealed ? (
-              <button 
-                onClick={() => setIsRevealed(true)}
-                className="w-full py-6 bg-indigo-600 hover:bg-indigo-700 text-white rounded-[2rem] font-black text-3xl shadow-[0_8px_0_0_rgba(49,46,129,1)] active:translate-y-[8px] active:shadow-none transition-all border-4 border-slate-900 cursor-pointer"
-              >
-                CHECK ANSWER
-              </button>
-            ) : (
-              <motion.div 
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="grid grid-cols-3 gap-3 md:gap-6"
-              >
-                <button 
-                  onClick={() => handleRank(0)}
-                  className="flex flex-col items-center justify-center py-4 md:py-6 bg-rose-100 dark:bg-rose-950/50 hover:bg-rose-200 dark:hover:bg-rose-900 text-rose-800 dark:text-rose-400 rounded-[2rem] border-4 border-slate-900 dark:border-rose-800 shadow-[0_6px_0_0_rgba(15,23,42,1)] active:translate-y-[6px] active:shadow-none transition-all cursor-pointer"
-                >
-                  <XCircle className="w-8 h-8 md:w-12 md:h-12 mb-2 md:mb-3" />
-                  <span className="font-black text-sm md:text-xl text-center">Didn't Know</span>
-                </button>
-                <button 
-                  onClick={() => handleRank(1)}
-                  className="flex flex-col items-center justify-center py-4 md:py-6 bg-amber-100 dark:bg-amber-950/50 hover:bg-amber-200 dark:hover:bg-amber-900 text-amber-800 dark:text-amber-400 rounded-[2rem] border-4 border-slate-900 dark:border-amber-800 shadow-[0_6px_0_0_rgba(15,23,42,1)] active:translate-y-[6px] active:shadow-none transition-all cursor-pointer"
-                >
-                  <AlertCircle className="w-8 h-8 md:w-12 md:h-12 mb-2 md:mb-3" />
-                  <span className="font-black text-sm md:text-xl text-center">Somewhat</span>
-                </button>
-                <button 
-                  onClick={() => handleRank(2)}
-                  className="flex flex-col items-center justify-center py-4 md:py-6 bg-emerald-100 dark:bg-emerald-950/50 hover:bg-emerald-200 dark:hover:bg-emerald-900 text-emerald-800 dark:text-emerald-400 rounded-[2rem] border-4 border-slate-900 dark:border-emerald-800 shadow-[0_6px_0_0_rgba(15,23,42,1)] active:translate-y-[6px] active:shadow-none transition-all cursor-pointer"
-                >
-                  <CheckCircle2 className="w-8 h-8 md:w-12 md:h-12 mb-2 md:mb-3" />
-                  <span className="font-black text-sm md:text-xl text-center">Knew Well</span>
-                </button>
-              </motion.div>
-            )}
-          </div>
-        </div>
-      </div>
+        ) : <div className="flex-1 min-h-64 grid place-items-center bg-slate-50 dark:bg-slate-900 border-[3px] border-black p-6 text-center">{revealed ? <motion.div initial={{ opacity: 0, scale: .95 }} animate={{ opacity: 1, scale: 1 }}><Answer korean={korean} emoji={emoji} sentence={learnType === 'sentences'} /></motion.div> : <span className="text-slate-400 font-bold">Think of the answer, then reveal it.</span>}</div>}
+        {!revealed ? <button onClick={() => setRevealed(true)} className="w-full min-h-16 bg-indigo-600 text-white border-[3px] border-black font-black text-xl shadow-[4px_4px_0_0_rgba(0,0,0,1)]">Reveal answer</button> : <div className="grid grid-cols-3 gap-2 sm:gap-4"><RatingButton label="Again" hint="Later today" color="bg-rose-100" onClick={() => rate(0)} /><RatingButton label="Hard" hint="Tomorrow" color="bg-amber-100" onClick={() => rate(1)} /><RatingButton label="Good" hint="Several days" color="bg-emerald-100" onClick={() => rate(2)} /></div>}
+      </main>
     </div>
   );
 }
+
+function OptionGroup({ label, values, selected, onSelect }: { label: string; values: readonly (readonly [string | number, string])[]; selected: string | number; onSelect: (value: string | number) => void }) {
+  return <div><span className="block text-xs font-black uppercase tracking-wider mb-3">{label}</span><div className="grid grid-cols-3 gap-2">{values.map(([value, text]) => <button key={value} onClick={() => onSelect(value)} className={`min-h-12 px-2 border-2 border-black font-black text-xs ${selected === value ? 'bg-black text-white' : 'bg-white dark:bg-slate-950'}`}>{text}</button>)}</div></div>;
+}
+function Stat({ value, label }: { value: number; label: string }) { return <div className="p-3"><strong className="block text-2xl">{value}</strong><span className="text-xs font-bold text-slate-500">{label}</span></div>; }
+function Result({ value, label, color }: { value: number; label: string; color: string }) { return <div className={`p-5 ${color} text-black border-2 border-black`}><strong className="text-3xl block">{value}</strong><span className="text-xs font-black">{label}</span></div>; }
+function Answer({ korean, emoji, sentence, overlay = false }: { korean: string; emoji: string; sentence: boolean; overlay?: boolean }) { return <div className={`${overlay ? 'absolute inset-0 z-20 bg-white/95 dark:bg-slate-950/95' : ''} grid place-items-center p-6 text-center`}><div><div className={`${sentence ? 'text-4xl sm:text-6xl' : 'text-7xl sm:text-9xl'} font-black break-words`}>{korean}</div><div className="text-4xl mt-5">{emoji}</div></div></div>; }
+function RatingButton({ label, hint, color, onClick }: { label: string; hint: string; color: string; onClick: () => void }) { return <button onClick={onClick} className={`min-h-20 p-2 ${color} text-black border-[3px] border-black font-black`}><span className="block text-base sm:text-xl">{label}</span><small>{hint}</small></button>; }
