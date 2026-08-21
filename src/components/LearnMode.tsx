@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type PointerEvent } from 'react';
-import { Award, BookOpen, Eraser, PenTool, Sparkles, X } from 'lucide-react';
+import { Award, Eraser, PenTool, RotateCcw, Sparkles, X } from 'lucide-react';
 import { motion } from 'motion/react';
 import { getStroke } from 'perfect-freehand';
 import { SavedSentence, Word } from '../types';
@@ -49,7 +49,7 @@ export default function LearnMode({ vocab, savedPhrases = [] }: Props) {
   const sentences = savedPhrases;
   const [screen, setScreen] = useState<'home' | 'session' | 'summary'>('home');
   const [learnType, setLearnType] = useState<LearnType>('words');
-  const [practiceMode, setPracticeMode] = useState<PracticeMode>('cards');
+  const [practiceMode, setPracticeMode] = useState<PracticeMode>('write');
   const [sessionLength, setSessionLength] = useState(10);
   const [items, setItems] = useState<(Word | SavedSentence)[]>([]);
   const [index, setIndex] = useState(0);
@@ -85,7 +85,7 @@ export default function LearnMode({ vocab, savedPhrases = [] }: Props) {
     context.fillStyle = '#4f46e5';
     const visibleLines = currentLine.current?.length ? [...lines.current, currentLine.current] : lines.current;
     visibleLines.forEach((line) => {
-      const stroke = getStroke(line, { size: 13, thinning: 0.6, smoothing: 0.5, streamline: 0.5 });
+      const stroke = getStroke(line, { size: 13, thinning: 0.6, smoothing: 0.5, streamline: 0.5, simulatePressure: false });
       if (stroke.length) context.fill(new Path2D(pathFromStroke(stroke)));
     });
   }, []);
@@ -95,6 +95,11 @@ export default function LearnMode({ vocab, savedPhrases = [] }: Props) {
     currentLine.current = null;
     renderCanvas();
   }, [renderCanvas]);
+
+  const undoStroke = () => {
+    lines.current = lines.current.slice(0, -1);
+    renderCanvas();
+  };
 
   const writingCard = practiceMode === 'write' || (practiceMode === 'mixed' && index % 2 === 1);
 
@@ -199,17 +204,17 @@ export default function LearnMode({ vocab, savedPhrases = [] }: Props) {
       <div className="w-full max-w-5xl mx-auto bg-white dark:bg-slate-950 border-[3px] border-black shadow-[5px_5px_0_0_rgba(0,0,0,1)] p-5 sm:p-8">
         <p className="text-xs font-black uppercase tracking-[.2em] text-indigo-600 mb-2">Learn</p>
         <h2 className="text-3xl sm:text-4xl font-black tracking-tight">What do you want to practise?</h2>
-        <p className="text-slate-500 font-semibold mt-2 mb-7">Choose one focused session. You can set the format below.</p>
+        <p className="text-slate-500 font-semibold mt-2 mb-7">Write each answer with your stylus, then check it and rate your recall.</p>
         <div className="grid md:grid-cols-2 gap-4 mb-7">
           <button onClick={() => startSession('words')} className="min-h-44 text-left p-6 bg-indigo-600 text-white border-[3px] border-black shadow-[4px_4px_0_0_rgba(0,0,0,1)] hover:-translate-y-1 transition-transform">
-            <BookOpen className="w-9 h-9 mb-5" /><strong className="block text-2xl">Learn words</strong><span className="block mt-2 font-bold text-indigo-100">{words.length} words · {due(words, wordStats)} due</span>
+            <PenTool className="w-9 h-9 mb-5" /><strong className="block text-2xl">Write words</strong><span className="block mt-2 font-bold text-indigo-100">{words.length} words · {due(words, wordStats)} due</span>
           </button>
           <button disabled={!sentences.length} onClick={() => startSession('sentences')} className="min-h-44 text-left p-6 bg-amber-300 disabled:bg-slate-200 disabled:text-slate-400 border-[3px] border-black shadow-[4px_4px_0_0_rgba(0,0,0,1)] disabled:shadow-none hover:enabled:-translate-y-1 transition-transform">
-            <Sparkles className="w-9 h-9 mb-5" /><strong className="block text-2xl">Practice sentences</strong><span className="block mt-2 font-bold">{sentences.length ? `${sentences.length} saved · ${due(sentences, sentenceStats)} due` : 'Save a sentence in Build mode first'}</span>
+            <Sparkles className="w-9 h-9 mb-5" /><strong className="block text-2xl">Write sentences</strong><span className="block mt-2 font-bold">{sentences.length ? `${sentences.length} saved · ${due(sentences, sentenceStats)} due` : 'Save a sentence in Build mode first'}</span>
           </button>
         </div>
         <div className="grid sm:grid-cols-2 gap-5 p-5 bg-slate-50 dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800">
-          <OptionGroup label="Practice style" values={[['cards', 'Flashcards'], ['write', 'Write'], ['mixed', 'Mixed']]} selected={practiceMode} onSelect={(value) => setPracticeMode(value as PracticeMode)} />
+          <OptionGroup label="Practice style" values={[['write', 'Stylus'], ['mixed', 'Mixed'], ['cards', 'Flashcards']]} selected={practiceMode} onSelect={(value) => setPracticeMode(value as PracticeMode)} />
           <OptionGroup label="Session length" values={[[5, '5'], [10, '10'], [15, '15']]} selected={sessionLength} onSelect={(value) => setSessionLength(Number(value))} />
         </div>
         <div className="grid grid-cols-3 gap-2 mt-5 text-center">
@@ -245,11 +250,11 @@ export default function LearnMode({ vocab, savedPhrases = [] }: Props) {
       <main className="flex-1 flex flex-col p-4 sm:p-7 gap-4">
         <div className="text-center pt-3"><span className="inline-block px-3 py-1 bg-slate-100 dark:bg-slate-800 text-xs font-black uppercase tracking-wider">{writingCard ? 'Write the Korean' : 'Recall the Korean'}</span><h2 className={`${learnType === 'sentences' ? 'text-3xl sm:text-5xl' : 'text-5xl sm:text-7xl'} font-black mt-5 break-words`}>{english}</h2></div>
         {writingCard ? (
-          <div ref={canvasBoxRef} className="relative flex-1 min-h-64 bg-slate-50 dark:bg-slate-900 border-[3px] border-black overflow-hidden">
+          <div ref={canvasBoxRef} className="relative flex-1 min-h-80 bg-slate-50 dark:bg-slate-900 border-[3px] border-black overflow-hidden">
             <div className="absolute inset-0 grid place-items-center pointer-events-none text-slate-200 dark:text-slate-800"><PenTool className="w-24 h-24" /></div>
             {revealed && <Answer korean={korean} emoji={emoji} sentence={learnType === 'sentences'} overlay />}
-            <canvas ref={canvasRef} onPointerDown={beginStroke} onPointerMove={continueStroke} onPointerUp={endStroke} onPointerCancel={endStroke} className="absolute inset-0 z-10 w-full h-full touch-none" />
-            {!revealed && <button onClick={clearCanvas} className="absolute z-20 top-3 right-3 h-12 px-3 bg-white dark:bg-slate-950 border-2 border-black flex items-center gap-2 font-black text-xs"><Eraser className="w-4 h-4" />Clear</button>}
+            <canvas ref={canvasRef} onPointerDown={beginStroke} onPointerMove={continueStroke} onPointerUp={endStroke} onPointerCancel={endStroke} className="absolute inset-0 z-10 w-full h-full touch-none cursor-crosshair" />
+            {!revealed && <div className="absolute z-20 top-3 right-3 flex gap-2"><button onClick={undoStroke} className="h-12 px-3 bg-white dark:bg-slate-950 border-2 border-black flex items-center gap-2 font-black text-xs"><RotateCcw className="w-4 h-4" />Undo</button><button onClick={clearCanvas} className="h-12 px-3 bg-white dark:bg-slate-950 border-2 border-black flex items-center gap-2 font-black text-xs"><Eraser className="w-4 h-4" />Clear</button></div>}
           </div>
         ) : <div className="flex-1 min-h-64 grid place-items-center bg-slate-50 dark:bg-slate-900 border-[3px] border-black p-6 text-center">{revealed ? <motion.div initial={{ opacity: 0, scale: .95 }} animate={{ opacity: 1, scale: 1 }}><Answer korean={korean} emoji={emoji} sentence={learnType === 'sentences'} /></motion.div> : <span className="text-slate-400 font-bold">Think of the answer, then reveal it.</span>}</div>}
         {!revealed ? <button onClick={() => setRevealed(true)} className="w-full min-h-16 bg-indigo-600 text-white border-[3px] border-black font-black text-xl shadow-[4px_4px_0_0_rgba(0,0,0,1)]">Reveal answer</button> : <div className="grid grid-cols-3 gap-2 sm:gap-4"><RatingButton label="Again" hint="Later today" color="bg-rose-100" onClick={() => rate(0)} /><RatingButton label="Hard" hint="Tomorrow" color="bg-amber-100" onClick={() => rate(1)} /><RatingButton label="Good" hint="Several days" color="bg-emerald-100" onClick={() => rate(2)} /></div>}
