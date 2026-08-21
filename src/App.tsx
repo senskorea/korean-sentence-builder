@@ -10,7 +10,6 @@ import TopicGenerator from './components/TopicGenerator';
 import LearnMode from './components/LearnMode';
 import { PREGENERATED_TOPICS } from './pregenerated';
 import { 
-  Smartphone, 
   Sparkles, 
   HelpCircle, 
   Info, 
@@ -20,8 +19,6 @@ import {
   Volume2, 
   Settings, 
   Globe, 
-  Maximize2, 
-  Minimize2,
   Trash2,
   BookOpen,
   ChevronRight,
@@ -161,6 +158,7 @@ export default function App() {
   });
 
   const [showVocabPanel, setShowVocabPanel] = useState<boolean>(false);
+  const [showResourcesPanel, setShowResourcesPanel] = useState<boolean>(false);
   const [vocabJsonInput, setVocabJsonInput] = useState<string>('');
   const [vocabError, setVocabError] = useState<string | null>(null);
 
@@ -173,7 +171,6 @@ export default function App() {
   
   const [activeTab, setActiveTab] = useState<'subject' | 'object' | 'verb'>('subject');
   const [savedPhrases, setSavedPhrases] = useState<SavedSentence[]>([]);
-  const [deviceFrameMode, setDeviceFrameMode] = useState<boolean>(false);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'info' } | null>(null);
   const [showConfigPanel, setShowConfigPanel] = useState<boolean>(false);
 
@@ -439,32 +436,19 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-brand-bg-light dark:bg-brand-bg-dark dot-pattern font-sans text-slate-800 dark:text-slate-100 py-6 px-4 md:px-8 transition-colors duration-300">
+    <div className={`min-h-screen font-sans text-slate-800 transition-colors duration-300 ${appMode === 'learn' ? 'bg-white p-0' : 'bg-brand-bg-light dark:bg-brand-bg-dark dot-pattern dark:text-slate-100 py-6 px-4 md:px-8'}`}>
       
 
 
       {/* Layout Content wrapper */}
-      <div className="max-w-6xl mx-auto flex flex-col items-stretch justify-center gap-6">
+      <div className={`${appMode === 'learn' ? 'w-full min-h-screen' : 'max-w-6xl mx-auto'} flex flex-col items-stretch justify-center gap-6`}>
         
         {/* Main interactive application sandbox */}
-        <div className={`flex-1 ${deviceFrameMode ? 'max-w-md mx-auto w-full' : 'w-full'}`}>
-          {/* Smartphone Frame Wrapper */}
-          <div className={`${
-            deviceFrameMode 
-              ? 'border-8 border-slate-900 dark:border-slate-800 rounded-[3rem] p-4 bg-slate-50 dark:bg-slate-900 shadow-2xl relative overflow-hidden min-h-[780px] flex flex-col justify-between' 
-              : 'w-full flex flex-col gap-5'
-          }`}>
-            
-            {/* Speaker Bezels in device mockup */}
-            {deviceFrameMode && (
-              <div className="absolute top-0 left-1/2 -translate-x-1/2 w-40 h-6 bg-slate-900 dark:bg-slate-800 rounded-b-2xl z-20 flex items-center justify-center">
-                <div className="w-16 h-1 bg-slate-700 dark:bg-slate-600 rounded-full mb-1"></div>
-              </div>
-            )}
-
-            <div className={deviceFrameMode ? 'pt-6 flex-1 flex flex-col justify-between gap-4' : 'flex flex-col gap-4'}>
+        <div className="flex-1 w-full">
+          <div className="w-full flex flex-col gap-5">
+            <div className="flex flex-col gap-4">
               {appMode === 'learn' ? (
-                <LearnMode vocab={vocab} savedPhrases={savedPhrases} />
+                <LearnMode vocab={vocab} savedPhrases={savedPhrases} onExit={() => setAppMode('build')} />
               ) : (
                 <>
                   {/* Zone 1 & 2: Working Sentence Ribbon (Blended with Roadmap) */}
@@ -528,21 +512,16 @@ export default function App() {
           </div>
         </div>
 
-        {appMode === 'build' && (
-          <div className="w-full flex flex-col gap-6 shrink-0 justify-start">
-            <SavedPhrases
-              phrases={savedPhrases}
-              onCopy={handleCopyText}
-              onDelete={handleDeletePhrase}
-              onClearAll={handleClearAllHistory}
-            />
-          </div>
-        )}
-
       </div>
 
-      {appMode === 'build' && (
-        <div className="max-w-6xl mx-auto mt-12 mb-4">
+      {appMode === 'build' && showResourcesPanel && (
+        <div className="max-w-6xl mx-auto mt-8 mb-4 grid gap-6">
+          <SavedPhrases
+            phrases={savedPhrases}
+            onCopy={handleCopyText}
+            onDelete={handleDeletePhrase}
+            onClearAll={handleClearAllHistory}
+          />
           <TopicGenerator onVocabGenerated={(newVocab) => {
             setVocab(newVocab);
             setVocabJsonInput(JSON.stringify(newVocab, null, 2));
@@ -552,6 +531,7 @@ export default function App() {
         </div>
       )}
 
+      {appMode === 'build' && <>
       {/* Sleek retro footer control bar */}
       <footer className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4 mt-8 mb-8 border-t-[3px] border-black pt-5">
         <div className="text-[10px] font-mono font-bold text-slate-500 uppercase tracking-wider">
@@ -563,19 +543,31 @@ export default function App() {
           {/* Learn Mode Toggler */}
           <button
             onClick={() => {
-              setAppMode(appMode === 'build' ? 'learn' : 'build');
+              setAppMode('learn');
+              setShowResourcesPanel(false);
+              setShowVocabPanel(false);
+              setShowConfigPanel(false);
             }}
             className={`flex items-center gap-1.5 px-3 py-1.5 border-2 border-black rounded-none font-extrabold transition-all cursor-pointer text-[11px] ${
-              appMode === 'learn'
-                ? 'bg-indigo-600 text-white shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:-translate-y-0.5 hover:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]'
-                : 'bg-white dark:bg-slate-900 hover:bg-slate-50 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:-translate-y-0.5 hover:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] active:translate-y-[1px] active:shadow-none'
+              'bg-white dark:bg-slate-900 hover:bg-slate-50 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:-translate-y-0.5 hover:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] active:translate-y-[1px] active:shadow-none'
             }`}
           >
-            <PenTool className={`w-3.5 h-3.5 ${appMode === 'learn' ? 'text-white' : 'text-indigo-500'}`} />
-            <span>{appMode === 'build' ? 'Enter Learn Mode' : 'Back to Builder'}</span>
+            <PenTool className="w-3.5 h-3.5 text-indigo-500" />
+            <span>Enter Learn Mode</span>
           </button>
 
-          {appMode === 'build' && <>
+          <button
+            onClick={() => {
+              setShowResourcesPanel(!showResourcesPanel);
+              setShowVocabPanel(false);
+              setShowConfigPanel(false);
+            }}
+            className={`flex items-center gap-1.5 px-3 py-1.5 border-2 border-black font-extrabold text-[11px] shadow-[2px_2px_0_0_rgba(0,0,0,1)] ${showResourcesPanel ? 'bg-amber-300' : 'bg-white'}`}
+          >
+            <BookOpen className="w-3.5 h-3.5" />
+            <span>Library & Topics</span>
+          </button>
+
           {/* Custom Vocabulary Toggler */}
           <button
             onClick={() => {
@@ -611,16 +603,6 @@ export default function App() {
             <span>Format Settings</span>
           </button>
 
-          {/* Desktop/Bezel Mockup Toggler */}
-          <button
-            onClick={() => setDeviceFrameMode(!deviceFrameMode)}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-white dark:bg-slate-900 border-2 border-black rounded-none hover:bg-brand-surface-light font-extrabold shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:-translate-y-0.5 hover:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] active:translate-y-[1px] active:shadow-none transition-all cursor-pointer text-[11px]"
-            title="Toggle smartphone viewport framing"
-          >
-            <Smartphone className="w-3.5 h-3.5 text-sky-500" />
-            <span>{deviceFrameMode ? 'Full Viewport' : 'Mobile Bezel'}</span>
-          </button>
-          </>}
         </div>
       </footer>
 
@@ -902,6 +884,7 @@ export default function App() {
           </motion.div>
         )}
       </AnimatePresence>
+      </>}
 
       {/* Floating System Notification/Toast alert */}
       <AnimatePresence>
