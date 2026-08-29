@@ -91,7 +91,7 @@ export default function WorkingSentence({
   return (
     <div 
       id="working-sentence-ribbon" 
-      className="relative bg-brand-surface-dark border-[3px] border-black p-3 sm:px-4 sm:py-3 rounded-none shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] dark:shadow-[4px_4px_0px_0px_rgba(255,255,255,0.1)] transition-all overflow-hidden flex flex-col gap-2"
+      className="relative bg-white border-[3px] border-black p-3 sm:px-4 sm:py-3 rounded-none shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-all overflow-hidden flex flex-col gap-2"
     >
       
       {/* Top: Center Sentence Display */}
@@ -104,7 +104,7 @@ export default function WorkingSentence({
                     <div className="w-8 h-8 md:w-10 md:h-10 bg-brand-surface-light dark:bg-slate-800 rounded-full flex items-center justify-center text-lg md:text-xl border-[2px] border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] dark:shadow-none">
                       {subject.emoji}
                     </div>
-                    <span className="text-2xl md:text-3xl font-extrabold tracking-wide text-white font-display leading-none underline decoration-brand-primary decoration-3 underline-offset-4">
+                    <span className="text-2xl md:text-3xl font-extrabold tracking-wide text-slate-900 font-display leading-none underline decoration-indigo-600 decoration-3 underline-offset-4">
                       {subject.korean}{subjectParticle}
                     </span>
                   </div>
@@ -114,7 +114,7 @@ export default function WorkingSentence({
                     <div className="w-8 h-8 md:w-10 md:h-10 bg-brand-surface-light dark:bg-slate-800 rounded-full flex items-center justify-center text-lg md:text-xl border-[2px] border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] dark:shadow-none">
                       {object.emoji}
                     </div>
-                    <span className="text-2xl md:text-3xl font-extrabold tracking-wide text-white font-display leading-none underline decoration-brand-primary decoration-3 underline-offset-4">
+                    <span className="text-2xl md:text-3xl font-extrabold tracking-wide text-slate-900 font-display leading-none underline decoration-indigo-600 decoration-3 underline-offset-4">
                       {object.korean}{objectParticle}
                     </span>
                   </div>
@@ -124,7 +124,7 @@ export default function WorkingSentence({
                     <div className="w-8 h-8 md:w-10 md:h-10 bg-brand-surface-light dark:bg-slate-800 rounded-full flex items-center justify-center text-lg md:text-xl border-[2px] border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] dark:shadow-none">
                       {verb.emoji}
                     </div>
-                    <span className="text-2xl md:text-3xl font-extrabold tracking-wide text-white font-display leading-none underline decoration-brand-primary decoration-3 underline-offset-4 flex items-baseline">
+                    <span className="text-2xl md:text-3xl font-extrabold tracking-wide text-slate-900 font-display leading-none underline decoration-indigo-600 decoration-3 underline-offset-4 flex items-baseline">
                       {ending ? (CONJUGATIONS[verb.id]?.[ending.id]?.korean || verb.korean) : verb.korean}
                       <span className="font-bold text-brand-primary ml-0.5">.</span>
                     </span>
@@ -133,7 +133,7 @@ export default function WorkingSentence({
               </div>
  
               {englishTranslation && (
-                <p className="text-xs md:text-sm font-bold text-brand-primary font-mono tracking-wide uppercase leading-none mt-1">
+                <p className="text-xs md:text-sm font-bold text-indigo-600 font-mono tracking-wide uppercase leading-none mt-1">
                   {englishTranslation}
                 </p>
               )}

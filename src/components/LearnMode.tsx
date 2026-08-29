@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useRef, useState, type PointerEvent } from 'react';
-import { ArrowLeft, Award, Eraser, PenTool, RotateCcw, Sparkles, X } from 'lucide-react';
+import { ArrowLeft, Award, Eraser, Grid2X2, PenTool, RotateCcw, Sparkles, X } from 'lucide-react';
 import { motion } from 'motion/react';
 import { getStroke } from 'perfect-freehand';
 import { SavedSentence, Word } from '../types';
+import JamoPractice from './JamoPractice';
 
 interface Props {
   vocab: { subjects: Word[]; objects: Word[]; verbs: Word[] };
@@ -48,7 +49,7 @@ function migrate(raw: Record<string, Stats>) {
 export default function LearnMode({ vocab, savedPhrases = [], onExit }: Props) {
   const words = [...vocab.subjects, ...vocab.objects, ...vocab.verbs];
   const sentences = savedPhrases;
-  const [screen, setScreen] = useState<'home' | 'session' | 'summary'>('home');
+  const [screen, setScreen] = useState<'home' | 'session' | 'summary' | 'jamo'>('home');
   const [learnType, setLearnType] = useState<LearnType>('words');
   const [practiceMode, setPracticeMode] = useState<PracticeMode>('write');
   const [sessionLength, setSessionLength] = useState(10);
@@ -198,6 +199,8 @@ export default function LearnMode({ vocab, savedPhrases = [], onExit }: Props) {
     }
   };
 
+  if (screen === 'jamo') return <JamoPractice onExit={() => setScreen('home')} />;
+
   if (screen === 'home') {
     const allItems = words.length + sentences.length;
     const allMastered = mastered(words, wordStats) + mastered(sentences, sentenceStats);
@@ -212,6 +215,9 @@ export default function LearnMode({ vocab, savedPhrases = [], onExit }: Props) {
           </button>
           <button disabled={!sentences.length} onClick={() => startSession('sentences')} className="min-h-44 text-left p-6 bg-amber-300 disabled:bg-slate-200 disabled:text-slate-400 border-[3px] border-black shadow-[4px_4px_0_0_rgba(0,0,0,1)] disabled:shadow-none hover:enabled:-translate-y-1 transition-transform">
             <Sparkles className="w-9 h-9 mb-5" /><strong className="block text-2xl">Write sentences</strong><span className="block mt-2 font-bold">{sentences.length ? `${sentences.length} saved · ${due(sentences, sentenceStats)} due` : 'Save a sentence in Build mode first'}</span>
+          </button>
+          <button onClick={() => setScreen('jamo')} className="md:col-span-2 min-h-40 text-left p-6 bg-emerald-200 border-[3px] border-black shadow-[4px_4px_0_0_rgba(0,0,0,1)] hover:-translate-y-1 transition-transform">
+            <Grid2X2 className="w-9 h-9 mb-4" /><strong className="block text-2xl">Build Hangul blocks</strong><span className="block mt-2 font-bold text-emerald-900">24 practice blocks · all six layouts · stylus ready</span>
           </button>
         </div>
         <div className="grid sm:grid-cols-2 gap-5 p-5 bg-slate-50 dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800">
@@ -255,10 +261,14 @@ export default function LearnMode({ vocab, savedPhrases = [], onExit }: Props) {
             <div className="absolute inset-0 grid place-items-center pointer-events-none text-slate-200 dark:text-slate-800"><PenTool className="w-24 h-24" /></div>
             {revealed && <Answer korean={korean} emoji={emoji} sentence={learnType === 'sentences'} overlay />}
             <canvas ref={canvasRef} onPointerDown={beginStroke} onPointerMove={continueStroke} onPointerUp={endStroke} onPointerCancel={endStroke} className="absolute inset-0 z-10 w-full h-full touch-none cursor-crosshair" />
-            <div className="absolute z-20 top-3 right-3 flex gap-2"><button onClick={undoStroke} className="h-12 px-3 bg-white dark:bg-slate-950 border-2 border-black flex items-center gap-2 font-black text-xs"><RotateCcw className="w-4 h-4" />Undo</button><button onClick={clearCanvas} className="h-12 px-3 bg-white dark:bg-slate-950 border-2 border-black flex items-center gap-2 font-black text-xs"><Eraser className="w-4 h-4" />Clear</button></div>
+            <div className="absolute z-20 top-3 right-3 flex gap-2">
+              {!revealed && <button onClick={() => setRevealed(true)} className="h-12 min-w-36 px-5 bg-indigo-600 text-white border-2 border-black font-black text-sm shadow-[3px_3px_0_0_rgba(0,0,0,1)]">Reveal answer</button>}
+              <button onClick={undoStroke} className="h-12 px-3 bg-white dark:bg-slate-950 border-2 border-black flex items-center gap-2 font-black text-xs"><RotateCcw className="w-4 h-4" />Undo</button>
+              <button onClick={clearCanvas} className="h-12 px-3 bg-white dark:bg-slate-950 border-2 border-black flex items-center gap-2 font-black text-xs"><Eraser className="w-4 h-4" />Clear</button>
+            </div>
           </div>
         ) : <div className="flex-1 min-h-64 grid place-items-center bg-slate-50 dark:bg-slate-900 border-[3px] border-black p-6 text-center">{revealed ? <motion.div initial={{ opacity: 0, scale: .95 }} animate={{ opacity: 1, scale: 1 }}><Answer korean={korean} emoji={emoji} sentence={learnType === 'sentences'} /></motion.div> : <span className="text-slate-400 font-bold">Think of the answer, then reveal it.</span>}</div>}
-        {!revealed ? <button onClick={() => setRevealed(true)} className="w-full min-h-14 bg-indigo-600 text-white border-[3px] border-black font-black text-lg">Reveal answer</button> : <div className="grid grid-cols-3 gap-2"><RatingButton label="Again" hint="Later today" color="bg-rose-100" onClick={() => rate(0)} /><RatingButton label="Hard" hint="Tomorrow" color="bg-amber-100" onClick={() => rate(1)} /><RatingButton label="Good" hint="Several days" color="bg-emerald-100" onClick={() => rate(2)} /></div>}
+        {!revealed ? (!writingCard && <button onClick={() => setRevealed(true)} className="w-full min-h-14 bg-indigo-600 text-white border-[3px] border-black font-black text-lg">Reveal answer</button>) : <div className="grid grid-cols-3 gap-2"><RatingButton label="Again" hint="Later today" color="bg-rose-100" onClick={() => rate(0)} /><RatingButton label="Hard" hint="Tomorrow" color="bg-amber-100" onClick={() => rate(1)} /><RatingButton label="Good" hint="Several days" color="bg-emerald-100" onClick={() => rate(2)} /></div>}
       </main>
     </div>
   );
