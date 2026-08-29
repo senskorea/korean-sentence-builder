@@ -103,7 +103,7 @@ export default function AgglutinationDrawer({
       <div className={`relative w-full h-full transition-all duration-700 [transform-style:preserve-3d] ${isFlipped ? '[transform:rotateY(180deg)]' : ''}`}>
         
         {/* Front Face: Controls */}
-        <div className="[backface-visibility:hidden] flex flex-col h-full bg-brand-surface-dark border-[3px] border-black rounded-none p-2.5 py-3 sm:p-3.5 sm:py-4 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] dark:shadow-[4px_4px_0px_0px_rgba(255,255,255,0.1)]">
+        <div className="[backface-visibility:hidden] flex flex-col h-full bg-white border-[3px] border-black rounded-none p-2.5 py-3 sm:p-3.5 sm:py-4 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
           <div className="grid grid-cols-2 gap-4 md:gap-8 w-full max-w-2xl mx-auto flex-1">
         
         {/* Column 1: PARTICLES */}
@@ -111,7 +111,7 @@ export default function AgglutinationDrawer({
           <div className="flex items-center justify-center gap-1.5 text-[9px] sm:text-[10px] font-black tracking-widest font-mono text-slate-400 uppercase select-none mb-1 relative">
             <span className="w-1.5 h-1.5 bg-brand-primary block" />
             PARTICLES
-            <button onClick={() => flipToLesson('particles')} className="absolute right-0 hover:text-white transition-colors" title="Learn about Particles">
+            <button onClick={() => flipToLesson('particles')} className="absolute right-0 hover:text-indigo-600 transition-colors" title="Learn about Particles">
               <Info className="w-3.5 h-3.5" />
             </button>
           </div>
@@ -129,7 +129,7 @@ export default function AgglutinationDrawer({
                 (subjectParticle === '은' || subjectParticle === '는')
                   ? 'bg-brand-primary border-black text-white font-extrabold translate-y-[2px]'
                   : (!selectedSubject && !bypassMode)
-                  ? 'bg-brand-surface-dark border-dashed border-slate-800 text-slate-700 cursor-not-allowed opacity-20'
+                  ? 'bg-slate-100 border-dashed border-slate-300 text-slate-400 cursor-not-allowed opacity-50'
                   : 'bg-brand-surface-light text-black border-black font-extrabold hover:translate-y-[1px] shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]'
               }`}
               style={{ minHeight: '44px' }}
@@ -154,7 +154,7 @@ export default function AgglutinationDrawer({
                 (subjectParticle === '이' || subjectParticle === '가')
                   ? 'bg-brand-primary border-black text-white font-extrabold translate-y-[2px]'
                   : (!selectedSubject && !bypassMode)
-                  ? 'bg-brand-surface-dark border-dashed border-slate-800 text-slate-700 cursor-not-allowed opacity-20'
+                  ? 'bg-slate-100 border-dashed border-slate-300 text-slate-400 cursor-not-allowed opacity-50'
                   : 'bg-brand-surface-light text-black border-black font-extrabold hover:translate-y-[1px] shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]'
               }`}
               style={{ minHeight: '44px' }}
@@ -179,7 +179,7 @@ export default function AgglutinationDrawer({
                 (objectParticle === '을' || objectParticle === '를')
                   ? 'bg-brand-primary border-black text-white font-extrabold translate-y-[2px]'
                   : (!selectedObject && !bypassMode)
-                  ? 'bg-brand-surface-dark border-dashed border-slate-800 text-slate-700 cursor-not-allowed opacity-20'
+                  ? 'bg-slate-100 border-dashed border-slate-300 text-slate-400 cursor-not-allowed opacity-50'
                   : 'bg-brand-surface-light text-black border-black font-extrabold hover:translate-y-[1px] shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]'
               }`}
               style={{ minHeight: '44px' }}
@@ -199,7 +199,7 @@ export default function AgglutinationDrawer({
           <div className="flex items-center justify-center gap-1.5 text-[9px] sm:text-[10px] font-black tracking-widest font-mono text-slate-400 uppercase select-none mb-1 relative">
             <span className="w-1.5 h-1.5 bg-brand-primary block" />
             TENSE & MOOD
-            <button onClick={() => flipToLesson('tense')} className="absolute right-0 hover:text-white transition-colors" title="Learn about Tense & Mood">
+            <button onClick={() => flipToLesson('tense')} className="absolute right-0 hover:text-indigo-600 transition-colors" title="Learn about Tense & Mood">
               <Info className="w-3.5 h-3.5" />
             </button>
           </div>
@@ -217,7 +217,7 @@ export default function AgglutinationDrawer({
                 selectedEnding?.id === 'end_present'
                   ? 'bg-brand-primary border-black text-white font-extrabold translate-y-[2px]'
                   : (!selectedVerb && !bypassMode)
-                  ? 'bg-brand-surface-dark border-dashed border-slate-800 text-slate-700 cursor-not-allowed opacity-20'
+                  ? 'bg-slate-100 border-dashed border-slate-300 text-slate-400 cursor-not-allowed opacity-50'
                   : 'bg-brand-surface-light text-black border-black font-extrabold hover:translate-y-[1px] shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]'
               }`}
               style={{ minHeight: '44px' }}
@@ -245,7 +245,7 @@ export default function AgglutinationDrawer({
                 selectedEnding?.id === 'end_past'
                   ? 'bg-brand-primary border-black text-white font-extrabold translate-y-[2px]'
                   : (!selectedVerb && !bypassMode)
-                  ? 'bg-brand-surface-dark border-dashed border-slate-800 text-slate-700 cursor-not-allowed opacity-20'
+                  ? 'bg-slate-100 border-dashed border-slate-300 text-slate-400 cursor-not-allowed opacity-50'
                   : 'bg-brand-surface-light text-black border-black font-extrabold hover:translate-y-[1px] shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]'
               }`}
               style={{ minHeight: '44px' }}
@@ -273,7 +273,7 @@ export default function AgglutinationDrawer({
                 selectedEnding?.id === 'end_future'
                   ? 'bg-brand-primary border-black text-white font-extrabold translate-y-[2px]'
                   : (!selectedVerb && !bypassMode)
-                  ? 'bg-brand-surface-dark border-dashed border-slate-800 text-slate-700 cursor-not-allowed opacity-20'
+                  ? 'bg-slate-100 border-dashed border-slate-300 text-slate-400 cursor-not-allowed opacity-50'
                   : 'bg-brand-surface-light text-black border-black font-extrabold hover:translate-y-[1px] shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]'
               }`}
               style={{ minHeight: '44px' }}
@@ -300,7 +300,7 @@ export default function AgglutinationDrawer({
                 selectedEnding?.id === 'end_want'
                   ? 'bg-brand-primary border-black text-white font-extrabold translate-y-[2px]'
                   : (!selectedVerb && !bypassMode)
-                  ? 'bg-brand-surface-dark border-dashed border-slate-800 text-slate-700 cursor-not-allowed opacity-20'
+                  ? 'bg-slate-100 border-dashed border-slate-300 text-slate-400 cursor-not-allowed opacity-50'
                   : 'bg-brand-surface-light text-black border-black font-extrabold hover:translate-y-[1px] shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]'
               }`}
               style={{ minHeight: '44px' }}
@@ -317,9 +317,9 @@ export default function AgglutinationDrawer({
         </div>
 
         {/* Back Face: Mini Lessons Carousel */}
-        <div className="absolute top-0 left-0 w-full h-full [backface-visibility:hidden] [transform:rotateY(180deg)] bg-brand-surface-dark border-[3px] border-black p-4 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] dark:shadow-[4px_4px_0px_0px_rgba(255,255,255,0.1)] flex flex-col overflow-hidden text-slate-200">
+        <div className="absolute top-0 left-0 w-full h-full [backface-visibility:hidden] [transform:rotateY(180deg)] bg-white border-[3px] border-black p-4 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] flex flex-col overflow-hidden text-slate-800">
           {/* Header */}
-          <div className="flex justify-between items-center shrink-0 mb-4 border-b-2 border-[#333] pb-2">
+          <div className="flex justify-between items-center shrink-0 mb-4 border-b-2 border-black pb-2">
             <div className="flex items-center gap-2">
               <span className="w-2 h-2 bg-brand-primary block" />
               <h3 className="font-mono font-black tracking-widest uppercase text-sm">{lessonType === 'particles' ? 'PARTICLES' : 'TENSE & MOOD'}</h3>
@@ -332,22 +332,22 @@ export default function AgglutinationDrawer({
           {/* Carousel Body */}
           <div className="flex-1 flex flex-col justify-center overflow-y-auto custom-scrollbar px-2">
             <div className="mb-2">
-              <h4 className="font-display font-black text-xl md:text-2xl text-white mb-2">{currentLesson[currentSlide].title}</h4>
-              <p className="text-sm md:text-base leading-relaxed text-slate-400">{currentLesson[currentSlide].content}</p>
+              <h4 className="font-display font-black text-xl md:text-2xl text-slate-900 mb-2">{currentLesson[currentSlide].title}</h4>
+              <p className="text-sm md:text-base leading-relaxed text-slate-600">{currentLesson[currentSlide].content}</p>
             </div>
             
-            <div className="mt-4 bg-brand-surface-dark border border-slate-700 p-3 rounded-md">
+            <div className="mt-4 bg-amber-50 border-2 border-black p-3">
               <span className="text-[10px] font-mono font-bold text-brand-primary uppercase tracking-widest block mb-1">Example</span>
-              <span className="font-display font-bold text-slate-200 text-sm md:text-base">{currentLesson[currentSlide].example}</span>
+              <span className="font-display font-bold text-slate-900 text-sm md:text-base">{currentLesson[currentSlide].example}</span>
             </div>
           </div>
 
           {/* Controls */}
-          <div className="flex justify-between items-center pt-3 mt-auto shrink-0 border-t border-[#333]">
+          <div className="flex justify-between items-center pt-3 mt-auto shrink-0 border-t-2 border-black">
             <button 
               onClick={() => setCurrentSlide(s => Math.max(0, s - 1))}
               disabled={currentSlide === 0}
-              className={`p-2 border-[2px] border-slate-700 flex items-center justify-center transition-colors ${currentSlide === 0 ? 'opacity-30 cursor-not-allowed' : 'hover:bg-slate-800 hover:border-slate-500 text-white'}`}
+              className={`p-2 border-[2px] border-black flex items-center justify-center transition-colors ${currentSlide === 0 ? 'opacity-30 cursor-not-allowed' : 'hover:bg-indigo-600 hover:text-white text-slate-900'}`}
             >
               <ChevronLeft className="w-5 h-5" />
             </button>
@@ -357,7 +357,7 @@ export default function AgglutinationDrawer({
                 <button 
                   key={idx} 
                   onClick={() => setCurrentSlide(idx)}
-                  className={`h-2 rounded-full transition-all ${idx === currentSlide ? 'w-6 bg-brand-primary' : 'w-2 bg-slate-700'}`}
+                  className={`h-2 rounded-full transition-all ${idx === currentSlide ? 'w-6 bg-indigo-600' : 'w-2 bg-slate-300'}`}
                   aria-label={`Go to slide ${idx + 1}`}
                 />
               ))}
@@ -366,7 +366,7 @@ export default function AgglutinationDrawer({
             <button 
               onClick={() => setCurrentSlide(s => Math.min(currentLesson.length - 1, s + 1))}
               disabled={currentSlide === currentLesson.length - 1}
-              className={`p-2 border-[2px] border-slate-700 flex items-center justify-center transition-colors ${currentSlide === currentLesson.length - 1 ? 'opacity-30 cursor-not-allowed' : 'hover:bg-slate-800 hover:border-slate-500 text-white'}`}
+              className={`p-2 border-[2px] border-black flex items-center justify-center transition-colors ${currentSlide === currentLesson.length - 1 ? 'opacity-30 cursor-not-allowed' : 'hover:bg-indigo-600 hover:text-white text-slate-900'}`}
             >
               <ChevronRight className="w-5 h-5" />
             </button>

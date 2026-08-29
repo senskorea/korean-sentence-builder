@@ -159,6 +159,7 @@ export default function App() {
   });
 
   const [showVocabPanel, setShowVocabPanel] = useState<boolean>(false);
+  const [showAdvancedVocab, setShowAdvancedVocab] = useState<boolean>(false);
   const [showResourcesPanel, setShowResourcesPanel] = useState<boolean>(false);
   const [vocabJsonInput, setVocabJsonInput] = useState<string>('');
   const [vocabError, setVocabError] = useState<string | null>(null);
@@ -174,6 +175,25 @@ export default function App() {
   const [savedPhrases, setSavedPhrases] = useState<SavedSentence[]>([]);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'info' } | null>(null);
   const [showConfigPanel, setShowConfigPanel] = useState<boolean>(false);
+
+  const classOptions = [
+    { id: 'romance', title: 'Romance', emoji: '💖', description: 'Dating, feelings and relationships', vocab: PREGENERATED_TOPICS['Dating (Romance)'], tone: 'bg-rose-100' },
+    { id: 'huena', title: 'Huena', emoji: '👧', description: 'Personal expressions and conversation', vocab: PREGENERATED_TOPICS['Huena'], tone: 'bg-violet-100' },
+    { id: 'dating', title: 'Dating basics', emoji: '💘', description: 'Meeting, gifts and everyday dates', vocab: DATING_VOCAB_TEMPLATE, tone: 'bg-amber-100' },
+    { id: 'travel', title: 'Travel & shopping', emoji: '✈️', description: 'Tickets, hotels, coffee and getting around', vocab: TRAVEL_VOCAB_TEMPLATE, tone: 'bg-sky-100' },
+  ];
+  const [activeClass, setActiveClass] = useState(() => localStorage.getItem('korean_active_class') || 'default');
+
+  const activateClass = (option: typeof classOptions[number]) => {
+    setVocab(option.vocab as typeof vocab);
+    setVocabJsonInput(JSON.stringify(option.vocab, null, 2));
+    localStorage.setItem('korean_sentences_custom_vocab', JSON.stringify(option.vocab));
+    localStorage.setItem('korean_active_class', option.id);
+    setActiveClass(option.id);
+    setVocabError(null);
+    handleReset();
+    showToast(`${option.title} class is ready!`, 'success');
+  };
 
   // --- AI Analysis State ---
   const [isAnalyzing, setIsAnalyzing] = useState<boolean>(false);
@@ -652,25 +672,57 @@ export default function App() {
           >
             <button onClick={() => setShowVocabPanel(false)} className="absolute top-3 right-3 w-11 h-11 grid place-items-center border-2 border-black bg-white z-20" aria-label="Close vocabulary"><X className="w-5 h-5" /></button>
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between border-b border-slate-200 dark:border-slate-800 pb-3 mb-4 gap-2">
-              <h3 className="font-extrabold font-display text-slate-900 dark:text-white text-sm flex items-center gap-1.5 uppercase tracking-wider">
+              <h3 className="font-extrabold font-display text-slate-900 text-sm flex items-center gap-1.5 uppercase tracking-wider">
                 <Database className="w-4 h-4 text-indigo-500" />
-                VOCABULARY MANAGER & JSON IMPORT
+                CLASS LIBRARY
               </h3>
               <div className="flex items-center gap-1.5">
                 <span className="text-[10px] text-slate-400 dark:text-slate-500 font-bold uppercase">Active Set:</span>
                 <span className="bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 font-extrabold px-2 py-0.5 rounded-md border border-indigo-200/50 dark:border-indigo-900/40">
-                  {localStorage.getItem('korean_sentences_custom_vocab') ? '🔮 Custom Loaded' : '💘 Dating Theme (Default)'}
+                  {classOptions.find((option) => option.id === activeClass)?.title || (activeClass === 'custom' ? 'Custom class' : 'Default class')}
                 </span>
               </div>
             </div>
 
-            <p className="text-[11px] text-slate-500 dark:text-slate-400 mb-4 leading-relaxed font-semibold">
-              Customize the vocabulary available in the selection grid by pasting a custom JSON configuration below. Perfect for teachers, advanced learners, or focusing on specific topics like Travel, Business, or Hobbies.
+            <p className="text-sm text-slate-500 mb-5 leading-relaxed font-semibold">
+              Choose what you want to study. Your selected class becomes available immediately in both Builder and Learn mode.
             </p>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+            <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+              {classOptions.map((option) => {
+                const wordCount = option.vocab.subjects.length + option.vocab.objects.length + option.vocab.verbs.length;
+                const selected = activeClass === option.id;
+                return (
+                  <article key={option.id} className={`flex flex-col min-h-64 border-[3px] border-black p-4 ${option.tone} ${selected ? 'shadow-none translate-x-1 translate-y-1' : 'shadow-[5px_5px_0_0_rgba(0,0,0,1)]'}`}>
+                    <div className="flex items-start justify-between gap-3">
+                      <span className="text-4xl" aria-hidden="true">{option.emoji}</span>
+                      {selected && <span className="bg-black text-white px-2 py-1 text-[9px] font-black uppercase tracking-widest">Active</span>}
+                    </div>
+                    <h4 className="text-xl font-black mt-5 text-slate-950">{option.title}</h4>
+                    <p className="text-xs font-bold text-slate-600 mt-1.5 leading-relaxed">{option.description}</p>
+                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mt-3">{wordCount} vocabulary items</p>
+                    <button
+                      onClick={() => activateClass(option)}
+                      disabled={selected}
+                      className={`mt-auto min-h-12 border-[3px] border-black font-black text-sm ${selected ? 'bg-white/70 text-slate-500 cursor-default' : 'bg-indigo-600 text-white hover:bg-indigo-700 active:translate-y-0.5'}`}
+                    >
+                      {selected ? 'Currently studying' : 'Start this class'}
+                    </button>
+                  </article>
+                );
+              })}
+            </div>
+
+            <div className="flex flex-wrap items-center justify-between gap-3 border-t-2 border-slate-200 pt-5 mb-4">
+              <div><h4 className="font-black text-base">Create or edit a class</h4><p className="text-xs font-semibold text-slate-500">Advanced tools for importing your own vocabulary.</p></div>
+              <button onClick={() => setShowAdvancedVocab(!showAdvancedVocab)} className="min-h-12 px-5 bg-white border-[3px] border-black font-black shadow-[3px_3px_0_0_rgba(0,0,0,1)]">
+                {showAdvancedVocab ? 'Hide advanced tools' : 'Open advanced tools'}
+              </button>
+            </div>
+
+            {showAdvancedVocab && <div className="grid grid-cols-1 gap-5 bg-slate-50 border-2 border-slate-200 p-4">
               {/* Left Column: Quick Templates */}
-              <div className="md:col-span-1 bg-slate-50 dark:bg-slate-950 p-4 border border-slate-200/50 dark:border-slate-850 rounded-xl flex flex-col justify-between gap-3">
+              <div className="hidden">
                 <div>
                   <h4 className="font-extrabold text-slate-800 dark:text-slate-200 mb-2 uppercase tracking-wide text-[10px] flex items-center gap-1">
                     <FileText className="w-3.5 h-3.5 text-indigo-500" /> Load Templates
@@ -732,6 +784,8 @@ export default function App() {
                       if (window.confirm('Revert all custom vocabulary and restore default Dating Theme defaults?')) {
                         setVocab({ subjects: SUBJECTS, objects: OBJECTS, verbs: VERBS });
                         localStorage.removeItem('korean_sentences_custom_vocab');
+                        localStorage.setItem('korean_active_class', 'default');
+                        setActiveClass('default');
                         setVocabJsonInput('');
                         setVocabError(null);
                         handleReset();
@@ -747,7 +801,7 @@ export default function App() {
               </div>
 
               {/* Right Columns: Editor area */}
-              <div className="md:col-span-2 flex flex-col gap-3">
+              <div className="flex flex-col gap-3">
                 <div className="flex items-center justify-between">
                   <span className="font-bold block text-slate-700 dark:text-slate-300">JSON Configuration Editor</span>
                   <span className="text-[10px] text-slate-400 dark:text-slate-500">Edit values or paste custom blocks</span>
@@ -814,6 +868,8 @@ export default function App() {
                         // Save state and localStorage
                         setVocab(parsed);
                         localStorage.setItem('korean_sentences_custom_vocab', JSON.stringify(parsed));
+                        localStorage.setItem('korean_active_class', 'custom');
+                        setActiveClass('custom');
                         setVocabError(null);
                         handleReset(); // Reset sentence state
                         showToast('Custom vocabulary loaded!', 'success');
@@ -829,7 +885,7 @@ export default function App() {
                   </button>
                 </div>
               </div>
-            </div>
+            </div>}
           </motion.div>
         )}
       </AnimatePresence>

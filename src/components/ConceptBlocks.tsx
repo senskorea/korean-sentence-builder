@@ -99,7 +99,7 @@ export default function ConceptBlocks({
         transition={{ type: 'spring', stiffness: 260, damping: 20 }}
       >
         {/* Front Face */}
-        <div className="w-full [backface-visibility:hidden] bg-slate-200 dark:bg-brand-surface-dark border-[3px] border-black rounded-none p-3.5 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] dark:shadow-[4px_4px_0px_0px_rgba(255,255,255,0.15)] flex flex-col gap-3.5">
+        <div className="w-full [backface-visibility:hidden] bg-white border-[3px] border-black rounded-none p-3.5 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] flex flex-col gap-3.5">
           {/* Navigation tabs for categories */}
       <div className="grid grid-cols-3 gap-1.5">
         {(['subject', 'object', 'verb'] as const).map((tab) => {
