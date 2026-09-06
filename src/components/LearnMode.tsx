@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, type PointerEvent } from 'react';
+import { useCallback, useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
 import { ArrowLeft, Award, BookOpen, Brain, Check, Eraser, EyeOff, Grid2X2, PenTool, RotateCcw, Search, Sparkles, X } from 'lucide-react';
 import { motion } from 'motion/react';
 import { getStroke } from 'perfect-freehand';
@@ -71,6 +71,8 @@ export default function LearnMode({ vocab, savedPhrases = [], onExit }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const canvasBoxRef = useRef<HTMLDivElement>(null);
   const drawing = useRef(false);
+  const activePointerId = useRef<number | null>(null);
+  const renderFrame = useRef<number | null>(null);
   const lines = useRef<number[][][]>([]);
   const currentLine = useRef<number[][] | null>(null);
 
@@ -87,7 +89,7 @@ export default function LearnMode({ vocab, savedPhrases = [], onExit }: Props) {
 
   const renderCanvas = useCallback(() => {
     const canvas = canvasRef.current;
-    const context = canvas?.getContext('2d');
+    const context = canvas?.getContext('2d', { desynchronized: true });
     if (!canvas || !context) return;
     const ratio = window.devicePixelRatio || 1;
     context.setTransform(1, 0, 0, 1, 0, 0);
@@ -96,10 +98,18 @@ export default function LearnMode({ vocab, savedPhrases = [], onExit }: Props) {
     context.fillStyle = '#4f46e5';
     const visibleLines = currentLine.current?.length ? [...lines.current, currentLine.current] : lines.current;
     visibleLines.forEach((line) => {
-      const stroke = getStroke(line, { size: 13, thinning: 0.6, smoothing: 0.5, streamline: 0.5, simulatePressure: false });
+      const stroke = getStroke(line, { size: 12, thinning: 0.4, smoothing: 0.65, streamline: 0.25, simulatePressure: false });
       if (stroke.length) context.fill(new Path2D(pathFromStroke(stroke)));
     });
   }, []);
+
+  const requestCanvasRender = useCallback(() => {
+    if (renderFrame.current !== null) return;
+    renderFrame.current = window.requestAnimationFrame(() => {
+      renderFrame.current = null;
+      renderCanvas();
+    });
+  }, [renderCanvas]);
 
   const clearCanvas = useCallback(() => {
     lines.current = [];
@@ -131,24 +141,41 @@ export default function LearnMode({ vocab, savedPhrases = [], onExit }: Props) {
     return () => window.removeEventListener('resize', resize);
   }, [screen, writingCard, index, renderCanvas]);
 
-  const beginStroke = (event: PointerEvent<HTMLCanvasElement>) => {
+  const pointFromEvent = (event: globalThis.PointerEvent, canvas: HTMLCanvasElement) => {
+    const rect = canvas.getBoundingClientRect();
+    const pressure = event.pointerType === 'pen' && event.pressure > 0 ? event.pressure : 0.5;
+    return [event.clientX - rect.left, event.clientY - rect.top, pressure];
+  };
+
+  const beginStroke = (event: ReactPointerEvent<HTMLCanvasElement>) => {
+    if (!event.isPrimary || event.button !== 0 || activePointerId.current !== null) return;
+    // Large touch contacts are usually a resting palm on iPad, not an intended finger stroke.
+    if (event.pointerType === 'touch' && (event.width > 22 || event.height > 22)) return;
+    event.preventDefault();
     const rect = event.currentTarget.getBoundingClientRect();
     event.currentTarget.setPointerCapture(event.pointerId);
-    currentLine.current = [[event.clientX - rect.left, event.clientY - rect.top, event.pressure || 0.5]];
+    activePointerId.current = event.pointerId;
+    currentLine.current = [[event.clientX - rect.left, event.clientY - rect.top, event.pointerType === 'pen' && event.pressure > 0 ? event.pressure : 0.5]];
     drawing.current = true;
-    renderCanvas();
+    requestCanvasRender();
   };
-  const continueStroke = (event: PointerEvent<HTMLCanvasElement>) => {
-    if (!drawing.current || !currentLine.current) return;
-    const rect = event.currentTarget.getBoundingClientRect();
-    currentLine.current.push([event.clientX - rect.left, event.clientY - rect.top, event.pressure || 0.5]);
-    renderCanvas();
+  const continueStroke = (event: ReactPointerEvent<HTMLCanvasElement>) => {
+    if (!drawing.current || !currentLine.current || activePointerId.current !== event.pointerId) return;
+    event.preventDefault();
+    const samples = event.nativeEvent.getCoalescedEvents?.() || [event.nativeEvent];
+    samples.forEach((sample) => currentLine.current?.push(pointFromEvent(sample, event.currentTarget)));
+    requestCanvasRender();
   };
-  const endStroke = () => {
-    if (!drawing.current) return;
+  const endStroke = (event: ReactPointerEvent<HTMLCanvasElement>) => {
+    if (!drawing.current || activePointerId.current !== event.pointerId) return;
+    event.preventDefault();
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
     drawing.current = false;
+    activePointerId.current = null;
     if (currentLine.current?.length) lines.current.push([...currentLine.current]);
     currentLine.current = null;
+    if (renderFrame.current !== null) window.cancelAnimationFrame(renderFrame.current);
+    renderFrame.current = null;
     renderCanvas();
   };
 
