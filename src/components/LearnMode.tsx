@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useRef, useState, type PointerEvent } from 'react';
-import { ArrowLeft, Award, Eraser, Grid2X2, PenTool, RotateCcw, Sparkles, X } from 'lucide-react';
+import { ArrowLeft, Award, BookOpen, Brain, Check, Eraser, EyeOff, Grid2X2, PenTool, RotateCcw, Search, Sparkles, X } from 'lucide-react';
 import { motion } from 'motion/react';
 import { getStroke } from 'perfect-freehand';
 import { SavedSentence, Word } from '../types';
 import JamoPractice from './JamoPractice';
+import { MISTAKE_PATTERNS, PERSONAL_VOCABULARY, WEEKLY_PRACTICE, type PersonalVocabItem } from '../data/personalLearning';
 
 interface Props {
   vocab: { subjects: Word[]; objects: Word[]; verbs: Word[] };
@@ -21,9 +22,10 @@ interface Stats {
   lastReviewed?: number;
 }
 
-type LearnType = 'words' | 'sentences';
+type LearnType = 'words' | 'sentences' | 'personal';
 type PracticeMode = 'cards' | 'write' | 'mixed';
 type Rating = 0 | 1 | 2;
+type StudyItem = Word | SavedSentence | PersonalVocabItem;
 
 function pathFromStroke(stroke: number[][]) {
   if (!stroke.length) return '';
@@ -49,16 +51,23 @@ function migrate(raw: Record<string, Stats>) {
 export default function LearnMode({ vocab, savedPhrases = [], onExit }: Props) {
   const words = [...vocab.subjects, ...vocab.objects, ...vocab.verbs];
   const sentences = savedPhrases;
-  const [screen, setScreen] = useState<'home' | 'session' | 'summary' | 'jamo'>('home');
+  const [screen, setScreen] = useState<'home' | 'session' | 'summary' | 'jamo' | 'vocabulary' | 'mistakes' | 'lesson'>('home');
   const [learnType, setLearnType] = useState<LearnType>('words');
   const [practiceMode, setPracticeMode] = useState<PracticeMode>('write');
   const [sessionLength, setSessionLength] = useState(10);
-  const [items, setItems] = useState<(Word | SavedSentence)[]>([]);
+  const [items, setItems] = useState<StudyItem[]>([]);
   const [index, setIndex] = useState(0);
   const [ratings, setRatings] = useState<Rating[]>([]);
   const [revealed, setRevealed] = useState(false);
   const [wordStats, setWordStats] = useState<Record<string, Stats>>({});
   const [sentenceStats, setSentenceStats] = useState<Record<string, Stats>>({});
+  const [search, setSearch] = useState('');
+  const [showSensitive, setShowSensitive] = useState(false);
+  const [selectedPattern, setSelectedPattern] = useState(0);
+  const [revealedExercises, setRevealedExercises] = useState<Record<string, boolean>>({});
+  const [weeklyProgress, setWeeklyProgress] = useState<boolean[]>(() => {
+    try { return JSON.parse(localStorage.getItem('korean_weekly_practice') || '[]'); } catch { return []; }
+  });
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const canvasBoxRef = useRef<HTMLDivElement>(null);
   const drawing = useRef(false);
@@ -149,8 +158,8 @@ export default function LearnMode({ vocab, savedPhrases = [], onExit }: Props) {
     pool.filter((item) => (stats[item.id]?.repetition || 0) >= 5).length;
 
   const startSession = (type: LearnType) => {
-    const pool = type === 'words' ? words : sentences;
-    const stats = type === 'words' ? wordStats : sentenceStats;
+    const pool: StudyItem[] = type === 'words' ? words : type === 'sentences' ? sentences : PERSONAL_VOCABULARY.filter((item) => showSensitive || !item.sensitive);
+    const stats = type === 'sentences' ? sentenceStats : wordStats;
     const shuffled = [...pool].sort(() => Math.random() - 0.5);
     const ordered = [
       ...shuffled.filter((item) => !stats[item.id] || stats[item.id].nextReviewDate <= Date.now()),
@@ -168,7 +177,7 @@ export default function LearnMode({ vocab, savedPhrases = [], onExit }: Props) {
 
   const rate = (rating: Rating) => {
     const item = items[index];
-    const stats = learnType === 'words' ? wordStats : sentenceStats;
+    const stats = learnType === 'sentences' ? sentenceStats : wordStats;
     const old = stats[item.id] || { id: item.id, repetition: 0, interval: 1, easeFactor: 2.5, nextReviewDate: Date.now() };
     const quality = rating === 0 ? 0 : rating === 1 ? 3 : 5;
     let repetition = old.repetition || 0;
@@ -183,7 +192,7 @@ export default function LearnMode({ vocab, savedPhrases = [], onExit }: Props) {
     }
     easeFactor = Math.max(1.3, easeFactor + (0.1 - (5 - quality) * (0.08 + (5 - quality) * 0.02)));
     const updated = { ...stats, [item.id]: { id: item.id, repetition, interval, easeFactor, nextReviewDate: Date.now() + interval * 86400000 } };
-    if (learnType === 'words') {
+    if (learnType !== 'sentences') {
       setWordStats(updated);
       localStorage.setItem('korean_learn_stats', JSON.stringify(updated));
     } else {
@@ -201,9 +210,60 @@ export default function LearnMode({ vocab, savedPhrases = [], onExit }: Props) {
 
   if (screen === 'jamo') return <JamoPractice onExit={() => setScreen('home')} />;
 
+  if (screen === 'vocabulary') {
+    const query = search.trim().toLowerCase();
+    const visibleVocabulary = PERSONAL_VOCABULARY.filter((item) =>
+      (showSensitive || !item.sensitive) && (!query || item.korean.includes(query) || item.english.toLowerCase().includes(query) || item.kind.includes(query))
+    );
+    return (
+      <div className="w-full max-w-5xl mx-auto bg-white dark:bg-slate-950 border-[3px] border-black shadow-[5px_5px_0_0_rgba(0,0,0,1)] p-5 sm:p-8">
+        <div className="flex items-center justify-between gap-4"><div><p className="text-xs font-black uppercase tracking-[.2em] text-indigo-600">My vocabulary</p><h2 className="text-3xl sm:text-4xl font-black">100 words and phrases</h2></div><button onClick={() => setScreen('home')} className="min-h-11 px-4 flex items-center gap-2 border-2 border-black font-black text-xs"><ArrowLeft className="w-4 h-4" />Learn</button></div>
+        <div className="grid sm:grid-cols-[1fr_auto_auto] gap-3 my-6">
+          <label className="min-h-12 px-4 flex items-center gap-3 border-2 border-black"><Search className="w-5 h-5" /><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search Korean, English, or type" className="w-full bg-transparent outline-none font-bold" /></label>
+          <button onClick={() => setShowSensitive((value) => !value)} className={`min-h-12 px-4 border-2 border-black font-black text-sm flex items-center justify-center gap-2 ${showSensitive ? 'bg-rose-100' : 'bg-slate-100'}`}><EyeOff className="w-4 h-4" />Sensitive {showSensitive ? 'shown' : 'hidden'}</button>
+          <button onClick={() => startSession('personal')} className="min-h-12 px-5 bg-indigo-600 text-white border-2 border-black font-black">Practise deck</button>
+        </div>
+        <p className="mb-3 text-sm font-bold text-slate-500">Showing {visibleVocabulary.length} entries. Labels distinguish complete sentences from phrases and fragments.</p>
+        <div className="grid sm:grid-cols-2 gap-3 max-h-[62vh] overflow-y-auto pr-1">
+          {visibleVocabulary.map((item) => <div key={item.id} className="p-4 border-2 border-black bg-slate-50 dark:bg-slate-900"><div className="flex items-start justify-between gap-3"><strong className="text-xl">{item.korean}</strong><span className="px-2 py-1 bg-indigo-100 text-indigo-900 text-[10px] uppercase font-black">{item.kind}</span></div><p className="mt-2 font-semibold text-slate-600 dark:text-slate-300">{item.english}</p>{item.sensitive && <p className="mt-2 text-xs font-black text-rose-600">Strong profanity</p>}</div>)}
+          {!visibleVocabulary.length && <p className="sm:col-span-2 p-8 text-center font-bold text-slate-500 border-2 border-dashed border-slate-300">No matching entries.</p>}
+        </div>
+      </div>
+    );
+  }
+
+  if (screen === 'mistakes') {
+    const completed = weeklyProgress.filter(Boolean).length;
+    return (
+      <div className="w-full max-w-5xl mx-auto bg-white dark:bg-slate-950 border-[3px] border-black shadow-[5px_5px_0_0_rgba(0,0,0,1)] p-5 sm:p-8">
+        <div className="flex items-center justify-between gap-4"><div><p className="text-xs font-black uppercase tracking-[.2em] text-violet-600">Mistake Coach</p><h2 className="text-3xl sm:text-4xl font-black">Turn patterns into progress</h2></div><button onClick={() => setScreen('home')} className="min-h-11 px-4 flex items-center gap-2 border-2 border-black font-black text-xs"><ArrowLeft className="w-4 h-4" />Learn</button></div>
+        <p className="mt-3 mb-6 font-semibold text-slate-500">Work on the recurring cause instead of memorizing each correction separately.</p>
+        <div className="grid md:grid-cols-2 gap-3">
+          {MISTAKE_PATTERNS.map((pattern, index) => <button key={pattern.id} onClick={() => { setSelectedPattern(index); setScreen('lesson'); }} className="text-left p-5 border-[3px] border-black bg-violet-50 hover:-translate-y-0.5 transition-transform"><span className="text-xs font-black text-violet-600">PATTERN {index + 1}</span><strong className="block text-xl mt-1">{pattern.title}</strong><span className="block mt-2 text-sm font-semibold text-slate-600">{pattern.summary}</span></button>)}
+        </div>
+        <div className="mt-7 p-5 border-[3px] border-black bg-amber-50 text-black"><div className="flex justify-between gap-4"><div><p className="text-xs font-black uppercase tracking-wider">Weekly plan</p><h3 className="text-2xl font-black">{completed}/7 complete</h3></div><button onClick={() => { setWeeklyProgress([]); localStorage.removeItem('korean_weekly_practice'); }} className="text-xs font-black underline">Reset week</button></div><div className="grid md:grid-cols-2 gap-2 mt-4">{WEEKLY_PRACTICE.map((task, index) => <button key={task} onClick={() => { const next = WEEKLY_PRACTICE.map((_, itemIndex) => itemIndex === index ? !weeklyProgress[itemIndex] : Boolean(weeklyProgress[itemIndex])); setWeeklyProgress(next); localStorage.setItem('korean_weekly_practice', JSON.stringify(next)); }} className={`text-left p-3 border-2 border-black font-bold text-sm flex gap-3 ${weeklyProgress[index] ? 'bg-emerald-200' : 'bg-white'}`}><span className="w-6 h-6 shrink-0 border-2 border-black grid place-items-center">{weeklyProgress[index] && <Check className="w-4 h-4" />}</span><span><small className="block font-black">DAY {index + 1}</small>{task}</span></button>)}</div></div>
+      </div>
+    );
+  }
+
+  if (screen === 'lesson') {
+    const pattern = MISTAKE_PATTERNS[selectedPattern];
+    return (
+      <div className="w-full max-w-3xl mx-auto bg-white dark:bg-slate-950 border-[3px] border-black shadow-[5px_5px_0_0_rgba(0,0,0,1)] p-5 sm:p-8">
+        <button onClick={() => setScreen('mistakes')} className="min-h-11 px-4 flex items-center gap-2 border-2 border-black font-black text-xs mb-6"><ArrowLeft className="w-4 h-4" />All patterns</button>
+        <p className="text-xs font-black uppercase tracking-[.2em] text-violet-600">Pattern {selectedPattern + 1} of {MISTAKE_PATTERNS.length}</p><h2 className="text-4xl font-black mt-1">{pattern.title}</h2><p className="mt-4 text-lg font-semibold text-slate-600 dark:text-slate-300">{pattern.summary}</p>
+        <div className="my-6 p-5 bg-violet-50 text-black border-2 border-black"><h3 className="font-black uppercase text-xs tracking-wider mb-3">Notice</h3>{pattern.examples.map((example) => <p key={example} className="font-bold mt-2">• {example}</p>)}</div>
+        <div className="p-5 bg-emerald-100 text-black border-2 border-black"><h3 className="font-black uppercase text-xs tracking-wider">Practice method</h3><p className="font-bold mt-2">{pattern.practice}</p></div>
+        <h3 className="text-2xl font-black mt-8 mb-3">Quick check</h3><div className="space-y-3">{pattern.exercises.map((exercise, index) => { const key = `${pattern.id}-${index}`; return <div key={key} className="p-4 border-2 border-black"><strong>{exercise.prompt}</strong><p className="text-sm text-slate-500 font-semibold mt-1">{exercise.hint}</p>{revealedExercises[key] ? <p className="mt-3 p-3 bg-emerald-100 text-black font-black">{exercise.answer}</p> : <button onClick={() => setRevealedExercises((value) => ({ ...value, [key]: true }))} className="mt-3 min-h-10 px-4 bg-black text-white font-black text-sm">Reveal answer</button>}</div>; })}</div>
+        <div className="grid grid-cols-2 gap-3 mt-7"><button disabled={selectedPattern === 0} onClick={() => setSelectedPattern((value) => value - 1)} className="min-h-12 border-2 border-black font-black disabled:opacity-30">Previous</button><button disabled={selectedPattern === MISTAKE_PATTERNS.length - 1} onClick={() => setSelectedPattern((value) => value + 1)} className="min-h-12 bg-violet-600 text-white border-2 border-black font-black disabled:opacity-30">Next pattern</button></div>
+      </div>
+    );
+  }
+
   if (screen === 'home') {
-    const allItems = words.length + sentences.length;
-    const allMastered = mastered(words, wordStats) + mastered(sentences, sentenceStats);
+    const visiblePersonal = PERSONAL_VOCABULARY.filter((item) => showSensitive || !item.sensitive);
+    const allItems = words.length + sentences.length + visiblePersonal.length;
+    const allMastered = mastered(words, wordStats) + mastered(sentences, sentenceStats) + mastered(visiblePersonal, wordStats);
     return (
       <div className="w-full max-w-5xl mx-auto bg-white dark:bg-slate-950 border-[3px] border-black shadow-[5px_5px_0_0_rgba(0,0,0,1)] p-5 sm:p-8">
         <div className="flex items-center justify-between gap-4 mb-2"><p className="text-xs font-black uppercase tracking-[.2em] text-indigo-600">Learn</p><button onClick={onExit} className="min-h-11 px-4 flex items-center gap-2 border-2 border-black bg-white font-black text-xs"><ArrowLeft className="w-4 h-4" />Builder</button></div>
@@ -216,6 +276,12 @@ export default function LearnMode({ vocab, savedPhrases = [], onExit }: Props) {
           <button disabled={!sentences.length} onClick={() => startSession('sentences')} className="min-h-44 text-left p-6 bg-amber-300 disabled:bg-slate-200 disabled:text-slate-400 border-[3px] border-black shadow-[4px_4px_0_0_rgba(0,0,0,1)] disabled:shadow-none hover:enabled:-translate-y-1 transition-transform">
             <Sparkles className="w-9 h-9 mb-5" /><strong className="block text-2xl">Write sentences</strong><span className="block mt-2 font-bold">{sentences.length ? `${sentences.length} saved · ${due(sentences, sentenceStats)} due` : 'Save a sentence in Build mode first'}</span>
           </button>
+          <button onClick={() => setScreen('vocabulary')} className="min-h-44 text-left p-6 bg-sky-200 text-black border-[3px] border-black shadow-[4px_4px_0_0_rgba(0,0,0,1)] hover:-translate-y-1 transition-transform">
+            <BookOpen className="w-9 h-9 mb-5" /><strong className="block text-2xl">My vocabulary</strong><span className="block mt-2 font-bold text-sky-950">100 personal entries · browse or practise</span>
+          </button>
+          <button onClick={() => setScreen('mistakes')} className="min-h-44 text-left p-6 bg-violet-200 text-black border-[3px] border-black shadow-[4px_4px_0_0_rgba(0,0,0,1)] hover:-translate-y-1 transition-transform">
+            <Brain className="w-9 h-9 mb-5" /><strong className="block text-2xl">Mistake Coach</strong><span className="block mt-2 font-bold text-violet-950">8 patterns · exercises · weekly plan</span>
+          </button>
           <button onClick={() => setScreen('jamo')} className="md:col-span-2 min-h-40 text-left p-6 bg-emerald-200 border-[3px] border-black shadow-[4px_4px_0_0_rgba(0,0,0,1)] hover:-translate-y-1 transition-transform">
             <Grid2X2 className="w-9 h-9 mb-4" /><strong className="block text-2xl">Build Hangul blocks</strong><span className="block mt-2 font-bold text-emerald-900">24 practice blocks · all six layouts · stylus ready</span>
           </button>
@@ -225,7 +291,7 @@ export default function LearnMode({ vocab, savedPhrases = [], onExit }: Props) {
           <OptionGroup label="Session length" values={[[5, '5'], [10, '10'], [15, '15']]} selected={sessionLength} onSelect={(value) => setSessionLength(Number(value))} />
         </div>
         <div className="grid grid-cols-3 gap-2 mt-5 text-center">
-          <Stat value={due(words, wordStats) + due(sentences, sentenceStats)} label="Due now" />
+          <Stat value={due(words, wordStats) + due(sentences, sentenceStats) + due(visiblePersonal, wordStats)} label="Due now" />
           <Stat value={allItems - allMastered} label="Learning" />
           <Stat value={allMastered} label="Mastered" />
         </div>
@@ -248,9 +314,10 @@ export default function LearnMode({ vocab, savedPhrases = [], onExit }: Props) {
 
   const item = items[index];
   const isWord = 'type' in item;
-  const korean = isWord ? (item as Word).korean : (item as SavedSentence).korean;
-  const english = isWord ? (item as Word).english : (item as SavedSentence).english;
-  const emoji = isWord ? (item as Word).emoji : (item as SavedSentence).emojis;
+  const isPersonal = 'kind' in item;
+  const korean = item.korean;
+  const english = item.english;
+  const emoji = isWord ? (item as Word).emoji : isPersonal ? '✍️' : (item as SavedSentence).emojis;
   return (
     <div className="w-full min-h-[100dvh] h-[100dvh] bg-white flex flex-col overflow-hidden select-none">
       <header className="flex items-center gap-3 px-2 py-2 border-b border-slate-200"><button onClick={() => setScreen('home')} className="w-10 h-10 shrink-0 grid place-items-center border-2 border-black" aria-label="Exit session"><X className="w-4 h-4" /></button><div className="flex-1 h-2 bg-slate-200 overflow-hidden"><div className="h-full bg-indigo-600" style={{ width: `${((index + 1) / items.length) * 100}%` }} /></div><strong className="text-xs tabular-nums">{index + 1}/{items.length}</strong></header>
