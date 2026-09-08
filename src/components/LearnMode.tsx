@@ -91,10 +91,13 @@ export default function LearnMode({ vocab, savedPhrases = [], onExit }: Props) {
     const canvas = canvasRef.current;
     const context = canvas?.getContext('2d', { desynchronized: true });
     if (!canvas || !context) return;
-    const ratio = window.devicePixelRatio || 1;
+    const rect = canvas.getBoundingClientRect();
+    if (!rect.width || !rect.height) return;
     context.setTransform(1, 0, 0, 1, 0, 0);
     context.clearRect(0, 0, canvas.width, canvas.height);
-    context.scale(ratio, ratio);
+    // Derive the transform from the actual bitmap and visible canvas. This stays
+    // accurate when iPad Safari changes its dynamic viewport or browser chrome.
+    context.scale(canvas.width / rect.width, canvas.height / rect.height);
     context.fillStyle = '#4f46e5';
     const visibleLines = currentLine.current?.length ? [...lines.current, currentLine.current] : lines.current;
     visibleLines.forEach((line) => {
@@ -102,6 +105,22 @@ export default function LearnMode({ vocab, savedPhrases = [], onExit }: Props) {
       if (stroke.length) context.fill(new Path2D(pathFromStroke(stroke)));
     });
   }, []);
+
+  const syncCanvasSize = useCallback(() => {
+    const canvas = canvasRef.current;
+    const box = canvasBoxRef.current;
+    if (!canvas || !box || drawing.current) return;
+    const rect = box.getBoundingClientRect();
+    if (!rect.width || !rect.height) return;
+    const ratio = Math.min(window.devicePixelRatio || 1, 3);
+    const width = Math.round(rect.width * ratio);
+    const height = Math.round(rect.height * ratio);
+    if (canvas.width !== width || canvas.height !== height) {
+      canvas.width = width;
+      canvas.height = height;
+    }
+    renderCanvas();
+  }, [renderCanvas]);
 
   const requestCanvasRender = useCallback(() => {
     if (renderFrame.current !== null) return;
@@ -126,20 +145,22 @@ export default function LearnMode({ vocab, savedPhrases = [], onExit }: Props) {
 
   useEffect(() => {
     if (screen !== 'session' || !writingCard) return;
-    const resize = () => {
-      const canvas = canvasRef.current;
-      const box = canvasBoxRef.current;
-      if (!canvas || !box) return;
-      const rect = box.getBoundingClientRect();
-      const ratio = window.devicePixelRatio || 1;
-      canvas.width = rect.width * ratio;
-      canvas.height = rect.height * ratio;
-      renderCanvas();
+    const box = canvasBoxRef.current;
+    const observer = new ResizeObserver(syncCanvasSize);
+    if (box) observer.observe(box);
+    const viewport = window.visualViewport;
+    const frame = window.requestAnimationFrame(syncCanvasSize);
+    window.addEventListener('resize', syncCanvasSize);
+    viewport?.addEventListener('resize', syncCanvasSize);
+    viewport?.addEventListener('scroll', syncCanvasSize);
+    return () => {
+      window.cancelAnimationFrame(frame);
+      observer.disconnect();
+      window.removeEventListener('resize', syncCanvasSize);
+      viewport?.removeEventListener('resize', syncCanvasSize);
+      viewport?.removeEventListener('scroll', syncCanvasSize);
     };
-    resize();
-    window.addEventListener('resize', resize);
-    return () => window.removeEventListener('resize', resize);
-  }, [screen, writingCard, index, renderCanvas]);
+  }, [screen, writingCard, index, syncCanvasSize]);
 
   const pointFromEvent = (event: globalThis.PointerEvent, canvas: HTMLCanvasElement) => {
     const rect = canvas.getBoundingClientRect();
@@ -152,6 +173,7 @@ export default function LearnMode({ vocab, savedPhrases = [], onExit }: Props) {
     // Large touch contacts are usually a resting palm on iPad, not an intended finger stroke.
     if (event.pointerType === 'touch' && (event.width > 22 || event.height > 22)) return;
     event.preventDefault();
+    syncCanvasSize();
     const rect = event.currentTarget.getBoundingClientRect();
     event.currentTarget.setPointerCapture(event.pointerId);
     activePointerId.current = event.pointerId;
@@ -176,7 +198,7 @@ export default function LearnMode({ vocab, savedPhrases = [], onExit }: Props) {
     currentLine.current = null;
     if (renderFrame.current !== null) window.cancelAnimationFrame(renderFrame.current);
     renderFrame.current = null;
-    renderCanvas();
+    syncCanvasSize();
   };
 
   const due = (pool: { id: string }[], stats: Record<string, Stats>) =>
@@ -240,19 +262,19 @@ export default function LearnMode({ vocab, savedPhrases = [], onExit }: Props) {
   if (screen === 'vocabulary') {
     const query = search.trim().toLowerCase();
     const visibleVocabulary = PERSONAL_VOCABULARY.filter((item) =>
-      (showSensitive || !item.sensitive) && (!query || item.korean.includes(query) || item.english.toLowerCase().includes(query) || item.kind.includes(query))
+      (showSensitive || !item.sensitive) && (!query || item.korean.includes(query) || item.english.toLowerCase().includes(query) || item.tags.some((tag) => tag.includes(query.replace(/^#/, ''))))
     );
     return (
       <div className="w-full max-w-5xl mx-auto bg-white dark:bg-slate-950 border-[3px] border-black shadow-[5px_5px_0_0_rgba(0,0,0,1)] p-5 sm:p-8">
-        <div className="flex items-center justify-between gap-4"><div><p className="text-xs font-black uppercase tracking-[.2em] text-indigo-600">My vocabulary</p><h2 className="text-3xl sm:text-4xl font-black">100 words and phrases</h2></div><button onClick={() => setScreen('home')} className="min-h-11 px-4 flex items-center gap-2 border-2 border-black font-black text-xs"><ArrowLeft className="w-4 h-4" />Learn</button></div>
+        <div className="flex items-center justify-between gap-4"><div><p className="text-xs font-black uppercase tracking-[.2em] text-indigo-600">My vocabulary</p><h2 className="text-3xl sm:text-4xl font-black">{PERSONAL_VOCABULARY.length} words and expressions</h2></div><button onClick={() => setScreen('home')} className="min-h-11 px-4 flex items-center gap-2 border-2 border-black font-black text-xs"><ArrowLeft className="w-4 h-4" />Learn</button></div>
         <div className="grid sm:grid-cols-[1fr_auto_auto] gap-3 my-6">
-          <label className="min-h-12 px-4 flex items-center gap-3 border-2 border-black"><Search className="w-5 h-5" /><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search Korean, English, or type" className="w-full bg-transparent outline-none font-bold" /></label>
+          <label className="min-h-12 px-4 flex items-center gap-3 border-2 border-black"><Search className="w-5 h-5" /><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search Korean, English, or #tag" className="w-full bg-transparent outline-none font-bold" /></label>
           <button onClick={() => setShowSensitive((value) => !value)} className={`min-h-12 px-4 border-2 border-black font-black text-sm flex items-center justify-center gap-2 ${showSensitive ? 'bg-rose-100' : 'bg-slate-100'}`}><EyeOff className="w-4 h-4" />Sensitive {showSensitive ? 'shown' : 'hidden'}</button>
           <button onClick={() => startSession('personal')} className="min-h-12 px-5 bg-indigo-600 text-white border-2 border-black font-black">Practise deck</button>
         </div>
-        <p className="mb-3 text-sm font-bold text-slate-500">Showing {visibleVocabulary.length} entries. Labels distinguish complete sentences from phrases and fragments.</p>
+        <p className="mb-3 text-sm font-bold text-slate-500">Showing {visibleVocabulary.length} dictionary forms and conversational expressions.</p>
         <div className="grid sm:grid-cols-2 gap-3 max-h-[62vh] overflow-y-auto pr-1">
-          {visibleVocabulary.map((item) => <div key={item.id} className="p-4 border-2 border-black bg-slate-50 dark:bg-slate-900"><div className="flex items-start justify-between gap-3"><strong className="text-xl">{item.korean}</strong><span className="px-2 py-1 bg-indigo-100 text-indigo-900 text-[10px] uppercase font-black">{item.kind}</span></div><p className="mt-2 font-semibold text-slate-600 dark:text-slate-300">{item.english}</p>{item.sensitive && <p className="mt-2 text-xs font-black text-rose-600">Strong profanity</p>}</div>)}
+          {visibleVocabulary.map((item) => <div key={item.id} className="p-4 border-2 border-black bg-slate-50 dark:bg-slate-900"><div className="flex items-start justify-between gap-3"><strong className="text-xl">{item.korean}</strong><TagList tags={item.tags} /></div><p className="mt-2 font-semibold text-slate-600 dark:text-slate-300">{item.english}</p>{item.sensitive && <p className="mt-2 text-xs font-black text-rose-600">Strong profanity</p>}</div>)}
           {!visibleVocabulary.length && <p className="sm:col-span-2 p-8 text-center font-bold text-slate-500 border-2 border-dashed border-slate-300">No matching entries.</p>}
         </div>
       </div>
@@ -304,7 +326,7 @@ export default function LearnMode({ vocab, savedPhrases = [], onExit }: Props) {
             <Sparkles className="w-9 h-9 mb-5" /><strong className="block text-2xl">Write sentences</strong><span className="block mt-2 font-bold">{sentences.length ? `${sentences.length} saved · ${due(sentences, sentenceStats)} due` : 'Save a sentence in Build mode first'}</span>
           </button>
           <button onClick={() => setScreen('vocabulary')} className="min-h-44 text-left p-6 bg-sky-200 text-black border-[3px] border-black shadow-[4px_4px_0_0_rgba(0,0,0,1)] hover:-translate-y-1 transition-transform">
-            <BookOpen className="w-9 h-9 mb-5" /><strong className="block text-2xl">My vocabulary</strong><span className="block mt-2 font-bold text-sky-950">100 personal entries · browse or practise</span>
+            <BookOpen className="w-9 h-9 mb-5" /><strong className="block text-2xl">My vocabulary</strong><span className="block mt-2 font-bold text-sky-950">{PERSONAL_VOCABULARY.length} tagged entries · browse or practise</span>
           </button>
           <button onClick={() => setScreen('mistakes')} className="min-h-44 text-left p-6 bg-violet-200 text-black border-[3px] border-black shadow-[4px_4px_0_0_rgba(0,0,0,1)] hover:-translate-y-1 transition-transform">
             <Brain className="w-9 h-9 mb-5" /><strong className="block text-2xl">Mistake Coach</strong><span className="block mt-2 font-bold text-violet-950">8 patterns · exercises · weekly plan</span>
@@ -341,7 +363,7 @@ export default function LearnMode({ vocab, savedPhrases = [], onExit }: Props) {
 
   const item = items[index];
   const isWord = 'type' in item;
-  const isPersonal = 'kind' in item;
+  const isPersonal = 'tags' in item;
   const korean = item.korean;
   const english = item.english;
   const emoji = isWord ? (item as Word).emoji : isPersonal ? '✍️' : (item as SavedSentence).emojis;
@@ -349,7 +371,7 @@ export default function LearnMode({ vocab, savedPhrases = [], onExit }: Props) {
     <div className="w-full min-h-[100dvh] h-[100dvh] bg-white flex flex-col overflow-hidden select-none">
       <header className="flex items-center gap-3 px-2 py-2 border-b border-slate-200"><button onClick={() => setScreen('home')} className="w-10 h-10 shrink-0 grid place-items-center border-2 border-black" aria-label="Exit session"><X className="w-4 h-4" /></button><div className="flex-1 h-2 bg-slate-200 overflow-hidden"><div className="h-full bg-indigo-600" style={{ width: `${((index + 1) / items.length) * 100}%` }} /></div><strong className="text-xs tabular-nums">{index + 1}/{items.length}</strong></header>
       <main className="flex-1 min-h-0 flex flex-col p-2 sm:p-3 gap-2">
-        <div className="flex items-center justify-between gap-3 px-1"><span className="text-[10px] sm:text-xs font-black uppercase tracking-wider text-indigo-600">{writingCard ? (revealed ? 'Trace the answer' : 'Write in Korean') : 'Recall the Korean'}</span><h2 className={`${learnType === 'sentences' ? 'text-lg sm:text-2xl' : 'text-2xl sm:text-3xl'} font-black text-right truncate`}>{english}</h2></div>
+        <div className="flex items-center justify-between gap-3 px-1"><span className="text-[10px] sm:text-xs font-black uppercase tracking-wider text-indigo-600">{writingCard ? (revealed ? 'Trace the answer' : 'Write in Korean') : 'Recall the Korean'}</span><div className="min-w-0 text-right"><h2 className={`${learnType === 'sentences' ? 'text-lg sm:text-2xl' : 'text-2xl sm:text-3xl'} font-black truncate`}>{english}</h2>{isPersonal && <TagList tags={(item as PersonalVocabItem).tags} align="right" />}</div></div>
         {writingCard ? (
           <div ref={canvasBoxRef} className="relative flex-1 min-h-0 bg-white border-[3px] border-black overflow-hidden">
             <div className="absolute inset-0 grid place-items-center pointer-events-none text-slate-200 dark:text-slate-800"><PenTool className="w-24 h-24" /></div>
@@ -375,3 +397,4 @@ function Stat({ value, label }: { value: number; label: string }) { return <div 
 function Result({ value, label, color }: { value: number; label: string; color: string }) { return <div className={`p-5 ${color} text-black border-2 border-black`}><strong className="text-3xl block">{value}</strong><span className="text-xs font-black">{label}</span></div>; }
 function Answer({ korean, emoji, sentence, overlay = false }: { korean: string; emoji: string; sentence: boolean; overlay?: boolean }) { return <div className={`${overlay ? 'absolute inset-0 z-0 pointer-events-none bg-white/95 text-slate-300 dark:bg-slate-950/95 dark:text-slate-700' : ''} grid place-items-center p-6 text-center`}><div><div className={`${sentence ? 'text-4xl sm:text-6xl' : 'text-7xl sm:text-9xl'} font-black break-words`}>{korean}</div><div className={`text-4xl mt-5 ${overlay ? 'opacity-45' : ''}`}>{emoji}</div></div></div>; }
 function RatingButton({ label, hint, color, onClick }: { label: string; hint: string; color: string; onClick: () => void }) { return <button onClick={onClick} className={`min-h-16 p-1.5 ${color} text-black border-[3px] border-black font-black`}><span className="block text-sm sm:text-lg">{label}</span><small className="text-[9px] sm:text-xs">{hint}</small></button>; }
+function TagList({ tags, align = 'left' }: { tags: string[]; align?: 'left' | 'right' }) { return <div className={`flex flex-wrap gap-x-1.5 gap-y-0.5 ${align === 'right' ? 'justify-end' : ''}`}>{tags.map((tag) => <span key={tag} className="text-[9px] leading-3 font-bold tracking-wide text-slate-400 dark:text-slate-500">#{tag}</span>)}</div>; }
