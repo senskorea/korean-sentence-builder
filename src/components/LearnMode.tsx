@@ -168,6 +168,36 @@ export default function LearnMode({ vocab, savedPhrases = [], onExit }: Props) {
     return [event.clientX - rect.left, event.clientY - rect.top, pressure];
   };
 
+  const appendPointerSamples = (event: ReactPointerEvent<HTMLCanvasElement>, includeEndpoint = true) => {
+    if (!currentLine.current) return;
+    const coalesced = event.nativeEvent.getCoalescedEvents?.() || [];
+    const samples = includeEndpoint ? [...coalesced, event.nativeEvent] : coalesced;
+    samples.forEach((sample) => {
+      const previous = currentLine.current?.[currentLine.current.length - 1];
+      const next = pointFromEvent(sample, event.currentTarget);
+      if (!previous) {
+        currentLine.current?.push(next);
+        return;
+      }
+      if (sample.pointerType === 'pen' && sample.pressure === 0) next[2] = previous[2];
+      const dx = next[0] - previous[0];
+      const dy = next[1] - previous[1];
+      const distance = Math.hypot(dx, dy);
+      if (distance < 0.2) return;
+      // Safari can provide sparse samples during a quick flick. Add evenly spaced
+      // points so the stroke engine retains its shape and does not lose corners.
+      const steps = Math.max(1, Math.ceil(distance / 4));
+      for (let step = 1; step <= steps; step += 1) {
+        const amount = step / steps;
+        currentLine.current?.push([
+          previous[0] + dx * amount,
+          previous[1] + dy * amount,
+          previous[2] + (next[2] - previous[2]) * amount,
+        ]);
+      }
+    });
+  };
+
   const beginStroke = (event: ReactPointerEvent<HTMLCanvasElement>) => {
     if (!event.isPrimary || event.button !== 0 || activePointerId.current !== null) return;
     // Large touch contacts are usually a resting palm on iPad, not an intended finger stroke.
@@ -184,13 +214,15 @@ export default function LearnMode({ vocab, savedPhrases = [], onExit }: Props) {
   const continueStroke = (event: ReactPointerEvent<HTMLCanvasElement>) => {
     if (!drawing.current || !currentLine.current || activePointerId.current !== event.pointerId) return;
     event.preventDefault();
-    const samples = event.nativeEvent.getCoalescedEvents?.() || [event.nativeEvent];
-    samples.forEach((sample) => currentLine.current?.push(pointFromEvent(sample, event.currentTarget)));
+    appendPointerSamples(event);
     requestCanvasRender();
   };
   const endStroke = (event: ReactPointerEvent<HTMLCanvasElement>) => {
     if (!drawing.current || activePointerId.current !== event.pointerId) return;
     event.preventDefault();
+    // Capture the lift position explicitly: very fast marks can have no final
+    // pointermove between contact and pointerup.
+    appendPointerSamples(event, event.type !== 'pointercancel');
     if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
     drawing.current = false;
     activePointerId.current = null;
