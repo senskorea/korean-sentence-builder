@@ -22,6 +22,12 @@ interface Stats {
   lastReviewed?: number;
 }
 
+interface PersonalMasteryState {
+  activeIds: string[];
+  goodStreaks: Record<string, number>;
+  learnedIds: string[];
+}
+
 type LearnType = 'words' | 'sentences' | 'personal';
 type PracticeMode = 'cards' | 'write' | 'mixed';
 type Rating = 0 | 1 | 2;
@@ -73,6 +79,15 @@ export default function LearnMode({ vocab, savedPhrases = [], onExit }: Props) {
   });
   const [noteOpen, setNoteOpen] = useState(false);
   const [noteDraft, setNoteDraft] = useState('');
+  const [personalMastery, setPersonalMastery] = useState<PersonalMasteryState>(() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem('korean_personal_mastery') || '{}');
+      return { activeIds: saved.activeIds || [], goodStreaks: saved.goodStreaks || {}, learnedIds: saved.learnedIds || [] };
+    } catch {
+      return { activeIds: [], goodStreaks: {}, learnedIds: [] };
+    }
+  });
+  const [sessionBatchSize, setSessionBatchSize] = useState(0);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const canvasBoxRef = useRef<HTMLDivElement>(null);
   const drawing = useRef(false);
@@ -243,9 +258,44 @@ export default function LearnMode({ vocab, savedPhrases = [], onExit }: Props) {
   const mastered = (pool: { id: string }[], stats: Record<string, Stats>) =>
     pool.filter((item) => (stats[item.id]?.repetition || 0) >= 5).length;
 
+  const savePersonalMastery = (next: PersonalMasteryState) => {
+    setPersonalMastery(next);
+    localStorage.setItem('korean_personal_mastery', JSON.stringify(next));
+  };
+
   const startSession = (type: LearnType) => {
     const pool: StudyItem[] = type === 'words' ? words : type === 'sentences' ? sentences : PERSONAL_VOCABULARY.filter((item) => showSensitive || !item.sensitive);
     const stats = type === 'sentences' ? sentenceStats : wordStats;
+    if (type === 'personal') {
+      const personalPool = pool as PersonalVocabItem[];
+      const availableIds = new Set(personalPool.map((item) => item.id));
+      const learnedIds = personalMastery.learnedIds.filter((id) => availableIds.has(id));
+      let activeIds = personalMastery.activeIds.filter((id) => availableIds.has(id) && !learnedIds.includes(id));
+      if (!activeIds.length) {
+        activeIds = personalPool.filter((item) => !learnedIds.includes(item.id)).slice(0, sessionLength).map((item) => item.id);
+      }
+      const nextMastery = { ...personalMastery, activeIds, learnedIds };
+      savePersonalMastery(nextMastery);
+      const dueReviews = personalPool
+        .filter((item) => learnedIds.includes(item.id) && (!stats[item.id] || stats[item.id].nextReviewDate <= Date.now()))
+        .sort((a, b) => (stats[a.id]?.nextReviewDate || 0) - (stats[b.id]?.nextReviewDate || 0));
+      const activeCards = activeIds
+        .filter((id) => (nextMastery.goodStreaks[id] || 0) < 2)
+        .map((id) => personalPool.find((item) => item.id === id))
+        .filter((item): item is PersonalVocabItem => Boolean(item));
+      const masteryQueue = [...dueReviews, ...activeCards];
+      if (!masteryQueue.length) return;
+      setLearnType(type);
+      setItems(masteryQueue);
+      setSessionBatchSize(activeIds.length);
+      setIndex(0);
+      setRatings([]);
+      setRevealed(false);
+      setNoteOpen(false);
+      clearCanvas();
+      setScreen('session');
+      return;
+    }
     const shuffled = [...pool].sort(() => Math.random() - 0.5);
     const ordered = [
       ...shuffled.filter((item) => !stats[item.id] || stats[item.id].nextReviewDate <= Date.now()),
@@ -254,6 +304,7 @@ export default function LearnMode({ vocab, savedPhrases = [], onExit }: Props) {
     if (!ordered.length) return;
     setLearnType(type);
     setItems(ordered.slice(0, Math.min(sessionLength, ordered.length)));
+    setSessionBatchSize(0);
     setIndex(0);
     setRatings([]);
     setRevealed(false);
@@ -278,7 +329,37 @@ export default function LearnMode({ vocab, savedPhrases = [], onExit }: Props) {
       repetition = Math.min(5, repetition + 1);
     }
     easeFactor = Math.max(1.3, easeFactor + (0.1 - (5 - quality) * (0.08 + (5 - quality) * 0.02)));
-    const updated = { ...stats, [item.id]: { id: item.id, repetition, interval, easeFactor, nextReviewDate: Date.now() + interval * 86400000 } };
+    let updated = { ...stats, [item.id]: { id: item.id, repetition, interval, easeFactor, nextReviewDate: Date.now() + interval * 86400000 } };
+    let nextItems = [...items];
+    if (learnType === 'personal') {
+      const isActiveCard = personalMastery.activeIds.includes(item.id) && !personalMastery.learnedIds.includes(item.id);
+      let nextMastery: PersonalMasteryState = { ...personalMastery, goodStreaks: { ...personalMastery.goodStreaks }, learnedIds: [...personalMastery.learnedIds] };
+      let retryAfter: number | null = null;
+      if (isActiveCard) {
+        if (rating === 2) {
+          const streak = (nextMastery.goodStreaks[item.id] || 0) + 1;
+          nextMastery.goodStreaks[item.id] = streak;
+          if (streak >= 2) {
+            nextMastery.learnedIds = [...new Set([...nextMastery.learnedIds, item.id])];
+            updated = { ...stats, [item.id]: { id: item.id, repetition: 1, interval: 1, easeFactor: 2.5, nextReviewDate: Date.now() + 86400000 } };
+          } else retryAfter = 5;
+        } else {
+          if (rating === 0) nextMastery.goodStreaks[item.id] = 0;
+          retryAfter = rating === 0 ? 2 : 4;
+          updated = stats;
+        }
+        const batchComplete = nextMastery.activeIds.every((id) => nextMastery.learnedIds.includes(id));
+        if (batchComplete) nextMastery = { ...nextMastery, activeIds: [] };
+      } else if (rating !== 2) {
+        retryAfter = rating === 0 ? 2 : 4;
+      }
+      if (retryAfter !== null) {
+        const insertAt = Math.min(index + 1 + retryAfter, nextItems.length);
+        nextItems.splice(insertAt, 0, item);
+      }
+      savePersonalMastery(nextMastery);
+      setItems(nextItems);
+    }
     if (learnType !== 'sentences') {
       setWordStats(updated);
       localStorage.setItem('korean_learn_stats', JSON.stringify(updated));
@@ -288,7 +369,7 @@ export default function LearnMode({ vocab, savedPhrases = [], onExit }: Props) {
     }
     setRatings((previous) => [...previous, rating]);
     setNoteOpen(false);
-    if (index + 1 === items.length) setScreen('summary');
+    if (index + 1 === nextItems.length) setScreen('summary');
     else {
       setIndex((value) => value + 1);
       setRevealed(false);
@@ -350,8 +431,12 @@ export default function LearnMode({ vocab, savedPhrases = [], onExit }: Props) {
 
   if (screen === 'home') {
     const visiblePersonal = PERSONAL_VOCABULARY.filter((item) => showSensitive || !item.sensitive);
+    const visiblePersonalIds = new Set(visiblePersonal.map((item) => item.id));
+    const personalLearned = personalMastery.learnedIds.filter((id) => visiblePersonalIds.has(id)).length;
+    const personalActive = personalMastery.activeIds.filter((id) => visiblePersonalIds.has(id) && !personalMastery.learnedIds.includes(id)).length;
+    const personalDue = visiblePersonal.filter((item) => personalMastery.learnedIds.includes(item.id) && (!wordStats[item.id] || wordStats[item.id].nextReviewDate <= Date.now())).length + personalActive;
     const allItems = words.length + sentences.length + visiblePersonal.length;
-    const allMastered = mastered(words, wordStats) + mastered(sentences, sentenceStats) + mastered(visiblePersonal, wordStats);
+    const allMastered = mastered(words, wordStats) + mastered(sentences, sentenceStats) + personalLearned;
     return (
       <div className="w-full max-w-5xl mx-auto bg-white dark:bg-slate-950 border-[3px] border-black shadow-[5px_5px_0_0_rgba(0,0,0,1)] p-5 sm:p-8">
         <div className="flex items-center justify-between gap-4 mb-2"><p className="text-xs font-black uppercase tracking-[.2em] text-indigo-600">Learn</p><button onClick={onExit} className="min-h-11 px-4 flex items-center gap-2 border-2 border-black bg-white font-black text-xs"><ArrowLeft className="w-4 h-4" />Builder</button></div>
@@ -365,7 +450,7 @@ export default function LearnMode({ vocab, savedPhrases = [], onExit }: Props) {
             <Sparkles className="w-9 h-9 mb-5" /><strong className="block text-2xl">Write sentences</strong><span className="block mt-2 font-bold">{sentences.length ? `${sentences.length} saved · ${due(sentences, sentenceStats)} due` : 'Save a sentence in Build mode first'}</span>
           </button>
           <button onClick={() => setScreen('vocabulary')} className="min-h-44 text-left p-6 bg-sky-200 text-black border-[3px] border-black shadow-[4px_4px_0_0_rgba(0,0,0,1)] hover:-translate-y-1 transition-transform">
-            <BookOpen className="w-9 h-9 mb-5" /><strong className="block text-2xl">My vocabulary</strong><span className="block mt-2 font-bold text-sky-950">{PERSONAL_VOCABULARY.length} tagged entries · browse or practise</span>
+            <BookOpen className="w-9 h-9 mb-5" /><strong className="block text-2xl">My vocabulary</strong><span className="block mt-2 font-bold text-sky-950">{personalActive ? `${personalActive} cards remain in your active batch` : `${personalLearned}/${visiblePersonal.length} learned · next batch ready`}</span>
           </button>
           <button onClick={() => setScreen('mistakes')} className="min-h-44 text-left p-6 bg-violet-200 text-black border-[3px] border-black shadow-[4px_4px_0_0_rgba(0,0,0,1)] hover:-translate-y-1 transition-transform">
             <Brain className="w-9 h-9 mb-5" /><strong className="block text-2xl">Mistake Coach</strong><span className="block mt-2 font-bold text-violet-950">8 patterns · exercises · weekly plan</span>
@@ -379,7 +464,7 @@ export default function LearnMode({ vocab, savedPhrases = [], onExit }: Props) {
           <OptionGroup label="Session length" values={[[5, '5'], [10, '10'], [15, '15']]} selected={sessionLength} onSelect={(value) => setSessionLength(Number(value))} />
         </div>
         <div className="grid grid-cols-3 gap-2 mt-5 text-center">
-          <Stat value={due(words, wordStats) + due(sentences, sentenceStats) + due(visiblePersonal, wordStats)} label="Due now" />
+          <Stat value={due(words, wordStats) + due(sentences, sentenceStats) + personalDue} label="Due now" />
           <Stat value={allItems - allMastered} label="Learning" />
           <Stat value={allMastered} label="Mastered" />
         </div>
@@ -388,14 +473,16 @@ export default function LearnMode({ vocab, savedPhrases = [], onExit }: Props) {
   }
 
   if (screen === 'summary') {
+    const visiblePersonalCount = PERSONAL_VOCABULARY.filter((item) => showSensitive || !item.sensitive).length;
+    const personalDeckComplete = personalMastery.learnedIds.filter((id) => PERSONAL_VOCABULARY.some((item) => item.id === id && (showSensitive || !item.sensitive))).length >= visiblePersonalCount;
     return (
       <div className="w-full max-w-3xl mx-auto min-h-[620px] bg-white dark:bg-slate-950 border-[3px] border-black shadow-[5px_5px_0_0_rgba(0,0,0,1)] p-6 flex flex-col items-center justify-center text-center">
         <Award className="w-20 h-20 text-amber-500 mb-5" /><p className="text-xs font-black uppercase tracking-[.2em] text-indigo-600">Session complete</p><h2 className="text-5xl font-black mt-2">Nice work.</h2>
-        <p className="text-slate-500 font-bold mt-3">You reviewed {ratings.length} {learnType}.</p>
+        <p className="text-slate-500 font-bold mt-3">{learnType === 'personal' && sessionBatchSize ? `You mastered this batch of ${sessionBatchSize} cards.` : `You reviewed ${ratings.length} ${learnType}.`}</p>
         <div className="grid grid-cols-3 gap-3 w-full max-w-xl my-9">
           <Result value={ratings.filter((x) => x === 0).length} label="Again" color="bg-rose-100" /><Result value={ratings.filter((x) => x === 1).length} label="Hard" color="bg-amber-100" /><Result value={ratings.filter((x) => x === 2).length} label="Good" color="bg-emerald-100" />
         </div>
-        <div className="grid sm:grid-cols-2 gap-3 w-full max-w-xl"><button onClick={() => startSession(learnType)} className="min-h-14 bg-indigo-600 text-white border-[3px] border-black font-black text-lg">Continue</button><button onClick={() => setScreen('home')} className="min-h-14 bg-white dark:bg-slate-900 border-[3px] border-black font-black text-lg">Finish</button></div>
+        <div className="grid sm:grid-cols-2 gap-3 w-full max-w-xl"><button onClick={() => learnType === 'personal' && personalDeckComplete ? setScreen('home') : startSession(learnType)} className="min-h-14 bg-indigo-600 text-white border-[3px] border-black font-black text-lg">{learnType === 'personal' ? (personalDeckComplete ? 'Back to Learn' : 'Start next batch') : 'Continue'}</button><button onClick={() => setScreen('home')} className="min-h-14 bg-white dark:bg-slate-900 border-[3px] border-black font-black text-lg">Finish</button></div>
       </div>
     );
   }
