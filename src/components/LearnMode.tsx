@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
-import { ArrowLeft, Award, BookOpen, Brain, Check, Eraser, EyeOff, Grid2X2, PenTool, RotateCcw, Search, Sparkles, X } from 'lucide-react';
+import { ArrowLeft, Award, BookOpen, Brain, Check, Eraser, EyeOff, Grid2X2, PenTool, RotateCcw, Search, Sparkles, StickyNote, X } from 'lucide-react';
 import { motion } from 'motion/react';
 import { getStroke } from 'perfect-freehand';
 import { SavedSentence, Word } from '../types';
@@ -68,6 +68,11 @@ export default function LearnMode({ vocab, savedPhrases = [], onExit }: Props) {
   const [weeklyProgress, setWeeklyProgress] = useState<boolean[]>(() => {
     try { return JSON.parse(localStorage.getItem('korean_weekly_practice') || '[]'); } catch { return []; }
   });
+  const [notes, setNotes] = useState<Record<string, string>>(() => {
+    try { return JSON.parse(localStorage.getItem('korean_flashcard_notes') || '{}'); } catch { return {}; }
+  });
+  const [noteOpen, setNoteOpen] = useState(false);
+  const [noteDraft, setNoteDraft] = useState('');
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const canvasBoxRef = useRef<HTMLDivElement>(null);
   const drawing = useRef(false);
@@ -252,6 +257,7 @@ export default function LearnMode({ vocab, savedPhrases = [], onExit }: Props) {
     setIndex(0);
     setRatings([]);
     setRevealed(false);
+    setNoteOpen(false);
     clearCanvas();
     setScreen('session');
   };
@@ -281,6 +287,7 @@ export default function LearnMode({ vocab, savedPhrases = [], onExit }: Props) {
       localStorage.setItem('korean_learn_sentence_stats', JSON.stringify(updated));
     }
     setRatings((previous) => [...previous, rating]);
+    setNoteOpen(false);
     if (index + 1 === items.length) setScreen('summary');
     else {
       setIndex((value) => value + 1);
@@ -409,11 +416,13 @@ export default function LearnMode({ vocab, savedPhrases = [], onExit }: Props) {
             <div className="absolute inset-0 grid place-items-center pointer-events-none text-slate-200 dark:text-slate-800"><PenTool className="w-24 h-24" /></div>
             {revealed && <Answer korean={korean} emoji={emoji} sentence={learnType === 'sentences'} overlay />}
             <canvas ref={canvasRef} onPointerDown={beginStroke} onPointerMove={continueStroke} onPointerUp={endStroke} onPointerCancel={endStroke} className="absolute inset-0 z-10 w-full h-full touch-none cursor-crosshair" />
-            <div className="absolute z-20 top-3 right-3 flex gap-2">
+            <div className="absolute z-20 top-3 right-3 flex flex-wrap justify-end gap-2 pl-3">
               {!revealed && <button onClick={() => setRevealed(true)} className="h-12 min-w-36 px-5 bg-indigo-600 text-white border-2 border-black font-black text-sm shadow-[3px_3px_0_0_rgba(0,0,0,1)]">Reveal answer</button>}
               <button onClick={undoStroke} className="h-12 px-3 bg-white dark:bg-slate-950 border-2 border-black flex items-center gap-2 font-black text-xs"><RotateCcw className="w-4 h-4" />Undo</button>
               <button onClick={clearCanvas} className="h-12 px-3 bg-white dark:bg-slate-950 border-2 border-black flex items-center gap-2 font-black text-xs"><Eraser className="w-4 h-4" />Clear</button>
+              <button onClick={() => { setNoteDraft(notes[item.id] || ''); setNoteOpen(true); }} className={`h-12 px-3 border-2 border-black flex items-center gap-2 font-black text-xs ${notes[item.id] ? 'bg-amber-200 text-black' : 'bg-white dark:bg-slate-950'}`}><StickyNote className="w-4 h-4" />Note</button>
             </div>
+            {noteOpen && <div className="absolute inset-0 z-30 bg-slate-900/45 p-3 grid place-items-center" onPointerDown={(event) => event.stopPropagation()}><div className="w-full max-w-lg bg-white text-black border-[3px] border-black p-4 shadow-[5px_5px_0_0_rgba(0,0,0,1)]"><div className="flex items-center justify-between gap-3"><div><p className="text-[10px] font-black uppercase tracking-wider text-amber-700">Flashcard note</p><h3 className="text-xl font-black">{korean}</h3></div><button onClick={() => setNoteOpen(false)} className="w-10 h-10 grid place-items-center border-2 border-black" aria-label="Close note"><X className="w-4 h-4" /></button></div><textarea autoFocus value={noteDraft} onChange={(event) => setNoteDraft(event.target.value)} placeholder="What should you remember about this card?" className="w-full min-h-32 mt-4 p-3 border-2 border-black resize-y outline-none focus:ring-2 focus:ring-amber-400 font-semibold" /><div className="grid grid-cols-2 gap-2 mt-3"><button onClick={() => setNoteOpen(false)} className="h-12 border-2 border-black font-black">Cancel</button><button onClick={() => { const next = { ...notes }; const value = noteDraft.trim(); if (value) next[item.id] = value; else delete next[item.id]; setNotes(next); localStorage.setItem('korean_flashcard_notes', JSON.stringify(next)); setNoteOpen(false); }} className="h-12 bg-amber-300 border-2 border-black font-black">Save note</button></div></div></div>}
           </div>
         ) : <div className="flex-1 min-h-64 grid place-items-center bg-slate-50 dark:bg-slate-900 border-[3px] border-black p-6 text-center">{revealed ? <motion.div initial={{ opacity: 0, scale: .95 }} animate={{ opacity: 1, scale: 1 }}><Answer korean={korean} emoji={emoji} sentence={learnType === 'sentences'} /></motion.div> : <span className="text-slate-400 font-bold">Think of the answer, then reveal it.</span>}</div>}
         {!revealed ? (!writingCard && <button onClick={() => setRevealed(true)} className="w-full min-h-14 bg-indigo-600 text-white border-[3px] border-black font-black text-lg">Reveal answer</button>) : <div className="grid grid-cols-3 gap-2"><RatingButton label="Again" hint="Later today" color="bg-rose-100" onClick={() => rate(0)} /><RatingButton label="Hard" hint="Tomorrow" color="bg-amber-100" onClick={() => rate(1)} /><RatingButton label="Good" hint="Several days" color="bg-emerald-100" onClick={() => rate(2)} /></div>}
