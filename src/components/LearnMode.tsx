@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
-import { ArrowLeft, Award, BookOpen, Brain, Check, Eraser, EyeOff, Grid2X2, PenTool, RotateCcw, Search, Sparkles, StickyNote, X } from 'lucide-react';
+import { ArrowLeft, Award, BookOpen, Brain, Check, Clock3, Eraser, EyeOff, Grid2X2, PenTool, RotateCcw, Search, Sparkles, StickyNote, X } from 'lucide-react';
 import { motion } from 'motion/react';
 import { getStroke } from 'perfect-freehand';
 import { SavedSentence, Word } from '../types';
@@ -54,6 +54,15 @@ function migrate(raw: Record<string, Stats>) {
   return result;
 }
 
+function formatDuration(totalSeconds: number) {
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+  return hours
+    ? `${hours}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
+    : `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+}
+
 export default function LearnMode({ vocab, savedPhrases = [], onExit }: Props) {
   const words = [...vocab.subjects, ...vocab.objects, ...vocab.verbs];
   const sentences = savedPhrases;
@@ -88,6 +97,7 @@ export default function LearnMode({ vocab, savedPhrases = [], onExit }: Props) {
     }
   });
   const [sessionBatchSize, setSessionBatchSize] = useState(0);
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const canvasBoxRef = useRef<HTMLDivElement>(null);
   const drawing = useRef(false);
@@ -106,6 +116,14 @@ export default function LearnMode({ vocab, savedPhrases = [], onExit }: Props) {
       console.error('Failed to load learning progress', error);
     }
   }, []);
+
+  useEffect(() => {
+    if (screen !== 'session') return;
+    const timer = window.setInterval(() => {
+      if (document.visibilityState === 'visible') setElapsedSeconds((value) => value + 1);
+    }, 1000);
+    return () => window.clearInterval(timer);
+  }, [screen]);
 
   const renderCanvas = useCallback(() => {
     const canvas = canvasRef.current;
@@ -288,6 +306,7 @@ export default function LearnMode({ vocab, savedPhrases = [], onExit }: Props) {
       setLearnType(type);
       setItems(masteryQueue);
       setSessionBatchSize(activeIds.length);
+      setElapsedSeconds(0);
       setIndex(0);
       setRatings([]);
       setRevealed(false);
@@ -305,6 +324,7 @@ export default function LearnMode({ vocab, savedPhrases = [], onExit }: Props) {
     setLearnType(type);
     setItems(ordered.slice(0, Math.min(sessionLength, ordered.length)));
     setSessionBatchSize(0);
+    setElapsedSeconds(0);
     setIndex(0);
     setRatings([]);
     setRevealed(false);
@@ -478,7 +498,7 @@ export default function LearnMode({ vocab, savedPhrases = [], onExit }: Props) {
     return (
       <div className="w-full max-w-3xl mx-auto min-h-[620px] bg-white dark:bg-slate-950 border-[3px] border-black shadow-[5px_5px_0_0_rgba(0,0,0,1)] p-6 flex flex-col items-center justify-center text-center">
         <Award className="w-20 h-20 text-amber-500 mb-5" /><p className="text-xs font-black uppercase tracking-[.2em] text-indigo-600">Session complete</p><h2 className="text-5xl font-black mt-2">Nice work.</h2>
-        <p className="text-slate-500 font-bold mt-3">{learnType === 'personal' && sessionBatchSize ? `You mastered this batch of ${sessionBatchSize} cards.` : `You reviewed ${ratings.length} ${learnType}.`}</p>
+        <p className="text-slate-500 font-bold mt-3">{learnType === 'personal' && sessionBatchSize ? `You mastered this batch of ${sessionBatchSize} cards.` : `You reviewed ${ratings.length} ${learnType}.`} Session time: {formatDuration(elapsedSeconds)}.</p>
         <div className="grid grid-cols-3 gap-3 w-full max-w-xl my-9">
           <Result value={ratings.filter((x) => x === 0).length} label="Again" color="bg-rose-100" /><Result value={ratings.filter((x) => x === 1).length} label="Hard" color="bg-amber-100" /><Result value={ratings.filter((x) => x === 2).length} label="Good" color="bg-emerald-100" />
         </div>
@@ -495,7 +515,7 @@ export default function LearnMode({ vocab, savedPhrases = [], onExit }: Props) {
   const emoji = isWord ? (item as Word).emoji : isPersonal ? '✍️' : (item as SavedSentence).emojis;
   return (
     <div className="w-full min-h-[100dvh] h-[100dvh] bg-white flex flex-col overflow-hidden select-none">
-      <header className="flex items-center gap-3 px-2 py-2 border-b border-slate-200"><button onClick={() => setScreen('home')} className="w-10 h-10 shrink-0 grid place-items-center border-2 border-black" aria-label="Exit session"><X className="w-4 h-4" /></button><div className="flex-1 h-2 bg-slate-200 overflow-hidden"><div className="h-full bg-indigo-600" style={{ width: `${((index + 1) / items.length) * 100}%` }} /></div><strong className="text-xs tabular-nums">{index + 1}/{items.length}</strong></header>
+      <header className="flex items-center gap-3 px-2 py-2 border-b border-slate-200"><button onClick={() => setScreen('home')} className="w-10 h-10 shrink-0 grid place-items-center border-2 border-black" aria-label="Exit session"><X className="w-4 h-4" /></button><div className="flex-1 h-2 bg-slate-200 overflow-hidden"><div className="h-full bg-indigo-600" style={{ width: `${((index + 1) / items.length) * 100}%` }} /></div><div className="flex items-center gap-2 shrink-0 text-xs font-black tabular-nums"><strong>{index + 1}/{items.length}</strong><span className="h-5 border-l border-slate-300" /><span className="flex items-center gap-1 text-slate-500" aria-label={`Session time ${formatDuration(elapsedSeconds)}`}><Clock3 className="w-3.5 h-3.5" />{formatDuration(elapsedSeconds)}</span></div></header>
       <main className="flex-1 min-h-0 flex flex-col p-2 sm:p-3 gap-2">
         <div className="flex items-center justify-between gap-3 px-1"><span className="text-[10px] sm:text-xs font-black uppercase tracking-wider text-indigo-600">{writingCard ? (revealed ? 'Trace the answer' : 'Write in Korean') : 'Recall the Korean'}</span><div className="min-w-0 text-right"><h2 className={`${learnType === 'sentences' ? 'text-lg sm:text-2xl' : 'text-2xl sm:text-3xl'} font-black truncate`}>{english}</h2>{isPersonal && <TagList tags={(item as PersonalVocabItem).tags} align="right" />}</div></div>
         {writingCard ? (
