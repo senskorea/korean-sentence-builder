@@ -219,6 +219,17 @@ const entries: [string, string, string[]][] = [
   ["자루", "counter for pencils, pens, writing utensils", ["counter", "classwork", "sogang1a"]],
   ["연필 한 자루", "one pencil", ["expression", "classwork", "sogang1a"]],
   ["볼펜 두 자루", "two ballpoint pens", ["expression", "classwork", "sogang1a"]],
+  // Places and Buildings (장소)
+  ["장소", "place; location", ["noun", "place", "classwork", "sogang1a"]],
+  ["교실", "classroom", ["noun", "place", "classwork", "sogang1a"]],
+  ["영화관", "movie theater; cinema", ["noun", "place", "classwork", "sogang1a"]],
+  ["대사관", "embassy", ["noun", "place", "classwork", "sogang1a"]],
+  ["도서관", "library", ["noun", "place", "classwork", "sogang1a"]],
+  ["문구점", "stationery store", ["noun", "place", "classwork", "sogang1a"]],
+  ["병원", "hospital; clinic", ["noun", "place", "classwork", "sogang1a"]],
+  ["서점", "bookstore", ["noun", "place", "classwork", "sogang1a"]],
+  ["수영장", "swimming pool", ["noun", "place", "classwork", "sogang1a"]],
+
 
 
 
@@ -248,6 +259,12 @@ export interface MistakePattern {
 }
 
 export const MISTAKE_PATTERNS: MistakePattern[] = [
+  { id: 'place_morphemes', title: 'Place and building suffixes (관, 점, 실, 장, 원)', summary: 'Korean place names build logically with roots: 관 (hall/building), 점 (store), 실 (room), 장 (open venue), and 원 (institute).', examples: ['영화관 = cinema · 도서관 = library · 대사관 = embassy', '문구점 = stationery shop · 서점 = bookstore', '교실 = classroom · 화장실 = restroom', '수영장 = swimming pool · 운동장 = sports field', '병원 = hospital · 학원 = academy'], practice: 'Look at the final syllable of a building or shop to identify its function.', exercises: [
+    { prompt: 'Which word means “library” (book hall)?', answer: '도서관', hint: 'Look for 도서 (books) + 관 (hall).' },
+    { prompt: 'Which word means “bookstore” (book shop)?', answer: '서점', hint: 'Look for 서 (book) + 점 (shop).' },
+    { prompt: 'What suffix is shared by 영화관, 대사관, and 도서관?', answer: '관', hint: 'It refers to a large public building or pavilion.' },
+  ]},
+
   { id: 'age_numbers', title: 'Native Korean numbers for counting and age', summary: 'Numbers 1 to 4 and 20 modify their forms before counters and the age counter 살 (한, 두, 세, 네, 스무).', examples: ['하나 -> 한 살 (1 year old)', '둘 -> 두 살 (2 years old)', '셋 -> 세 살 (3 years old)', '넷 -> 네 살 (4 years old)', '스물 -> 스무 살 (20 years old)', '몇 살이에요? = How old are you?'], practice: 'Drop the final sound for 1 through 4 before counters such as 개, 명, 병, 권, 자루, and 살.', exercises: [
     { prompt: 'Write “two pencils” in Korean using the writing utensil counter.', answer: '연필 두 자루', hint: 'Use counter 자루 with 둘 -> 두.' },
     { prompt: 'Write “3 years old” in Korean.', answer: '세 살', hint: '셋 contracts to 세 before 살.' },
@@ -290,6 +307,7 @@ export const MISTAKE_PATTERNS: MistakePattern[] = [
 ];
 
 export const WEEKLY_PRACTICE = [
+  'Review place building suffixes: 관 (hall), 점 (shop), 실 (room), 장 (venue), and 원 (institute).',
   'Practise Native Korean numbers 1 to 10 and age counting forms (한 살 through 열 살, 스무 살).',
   'Practise 어제/언제, 알았어/알아서, and the 그래 family.',
   'Repeat the contrast sets and write one example for each.',
