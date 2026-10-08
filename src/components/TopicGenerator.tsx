@@ -113,6 +113,7 @@ export default function TopicGenerator({ onVocabGenerated }: TopicGeneratorProps
 
           <div className="flex flex-wrap gap-2 justify-center max-w-lg mt-6">
             {[
+              { label: 'Korea Classwork 📚', topic: 'Korea Classwork' },
               { label: 'Greetings 👋', topic: 'Greetings' },
               { label: 'Ordering Food 🍕', topic: 'Ordering Food' },
               { label: 'Shopping 🛍️', topic: 'Shopping' },

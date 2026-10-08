@@ -1,7 +1,118 @@
 import { GeneratedVocab } from './lib/ai';
 import { Word } from './types';
 
+export const KOREA_CLASSWORK_TEMPLATE: GeneratedVocab = {
+  subjects: [
+    { id: "sub_cw_i", korean: "저", english: "I", emoji: "👤", type: "subject", hasBatchim: false },
+    { id: "sub_cw_student", korean: "학생", english: "Student", emoji: "🎒", type: "subject", hasBatchim: true },
+    { id: "sub_cw_teacher", korean: "선생님", english: "Teacher", emoji: "🧑‍🏫", type: "subject", hasBatchim: true },
+    { id: "sub_cw_friend", korean: "친구", english: "Friend", emoji: "🧑‍🤝‍🧑", type: "subject", hasBatchim: false },
+    { id: "sub_cw_worker", korean: "회사원", english: "Office worker", emoji: "💼", type: "subject", hasBatchim: true },
+    { id: "sub_cw_doctor", korean: "의사", english: "Doctor", emoji: "🩺", type: "subject", hasBatchim: false },
+    { id: "sub_cw_chef", korean: "요리사", english: "Chef", emoji: "👨‍🍳", type: "subject", hasBatchim: false },
+    { id: "sub_cw_mister", korean: "아저씨", english: "Shopkeeper", emoji: "👨", type: "subject", hasBatchim: false }
+  ],
+  objects: [
+    { id: "obj_cw_coffee", korean: "커피", english: "Coffee", emoji: "☕", type: "object", hasBatchim: false, compatibleVerbs: ["verb_cw_drink", "verb_cw_buy", "verb_cw_give", "verb_cw_have", "verb_cw_nothave"] },
+    { id: "obj_cw_water", korean: "물", english: "Water", emoji: "💧", type: "object", hasBatchim: true, compatibleVerbs: ["verb_cw_drink", "verb_cw_give", "verb_cw_have", "verb_cw_nothave"] },
+    { id: "obj_cw_tea", korean: "녹차", english: "Green tea", emoji: "🍵", type: "object", hasBatchim: false, compatibleVerbs: ["verb_cw_drink", "verb_cw_buy", "verb_cw_give", "verb_cw_have", "verb_cw_nothave"] },
+    { id: "obj_cw_cola", korean: "콜라", english: "Cola", emoji: "🥤", type: "object", hasBatchim: false, compatibleVerbs: ["verb_cw_drink", "verb_cw_buy", "verb_cw_give", "verb_cw_have", "verb_cw_nothave"] },
+    { id: "obj_cw_cider", korean: "사이다", english: "Cider soda", emoji: "🥤", type: "object", hasBatchim: false, compatibleVerbs: ["verb_cw_drink", "verb_cw_buy", "verb_cw_give", "verb_cw_have", "verb_cw_nothave"] },
+    { id: "obj_cw_juice", korean: "오렌지주스", english: "Orange juice", emoji: "🍊", type: "object", hasBatchim: false, compatibleVerbs: ["verb_cw_drink", "verb_cw_buy", "verb_cw_give", "verb_cw_have", "verb_cw_nothave"] },
+    { id: "obj_cw_lemontea", korean: "레몬차", english: "Lemon tea", emoji: "🍋", type: "object", hasBatchim: false, compatibleVerbs: ["verb_cw_drink", "verb_cw_buy", "verb_cw_give", "verb_cw_have", "verb_cw_nothave"] },
+    { id: "obj_cw_book", korean: "책", english: "Book", emoji: "📖", type: "object", hasBatchim: true, compatibleVerbs: ["verb_cw_read", "verb_cw_buy", "verb_cw_give", "verb_cw_have", "verb_cw_nothave", "verb_cw_find"] },
+    { id: "obj_cw_notebook", korean: "공책", english: "Notebook", emoji: "📓", type: "object", hasBatchim: true, compatibleVerbs: ["verb_cw_write", "verb_cw_buy", "verb_cw_give", "verb_cw_have", "verb_cw_nothave"] },
+    { id: "obj_cw_dict", korean: "사전", english: "Dictionary", emoji: "📕", type: "object", hasBatchim: true, compatibleVerbs: ["verb_cw_read", "verb_cw_buy", "verb_cw_have", "verb_cw_find", "verb_cw_nothave"] },
+    { id: "obj_cw_pen", korean: "볼펜", english: "Ballpoint pen", emoji: "🖊️", type: "object", hasBatchim: true, compatibleVerbs: ["verb_cw_buy", "verb_cw_give", "verb_cw_have", "verb_cw_nothave", "verb_cw_find", "verb_cw_write"] },
+    { id: "obj_cw_pencil", korean: "연필", english: "Pencil", emoji: "✏️", type: "object", hasBatchim: true, compatibleVerbs: ["verb_cw_buy", "verb_cw_give", "verb_cw_have", "verb_cw_nothave", "verb_cw_find", "verb_cw_write"] },
+    { id: "obj_cw_eraser", korean: "지우개", english: "Eraser", emoji: "🧼", type: "object", hasBatchim: false, compatibleVerbs: ["verb_cw_buy", "verb_cw_give", "verb_cw_have", "verb_cw_nothave"] },
+    { id: "obj_cw_bag", korean: "가방", english: "Bag", emoji: "🎒", type: "object", hasBatchim: true, compatibleVerbs: ["verb_cw_buy", "verb_cw_have", "verb_cw_find", "verb_cw_nothave"] },
+    { id: "obj_cw_hat", korean: "모자", english: "Hat", emoji: "🧢", type: "object", hasBatchim: false, compatibleVerbs: ["verb_cw_buy", "verb_cw_have", "verb_cw_find", "verb_cw_nothave"] },
+    { id: "obj_cw_watch", korean: "시계", english: "Watch", emoji: "⌚", type: "object", hasBatchim: false, compatibleVerbs: ["verb_cw_buy", "verb_cw_have", "verb_cw_see", "verb_cw_nothave"] },
+    { id: "obj_cw_glasses", korean: "안경", english: "Glasses", emoji: "👓", type: "object", hasBatchim: true, compatibleVerbs: ["verb_cw_buy", "verb_cw_have", "verb_cw_find", "verb_cw_nothave"] },
+    { id: "obj_cw_umbrella", korean: "우산", english: "Umbrella", emoji: "☂️", type: "object", hasBatchim: true, compatibleVerbs: ["verb_cw_buy", "verb_cw_have", "verb_cw_give", "verb_cw_nothave"] },
+    { id: "obj_cw_computer", korean: "컴퓨터", english: "Computer", emoji: "💻", type: "object", hasBatchim: false, compatibleVerbs: ["verb_cw_buy", "verb_cw_have", "verb_cw_study", "verb_cw_nothave"] },
+    { id: "obj_cw_phone", korean: "핸드폰", english: "Cellphone", emoji: "📱", type: "object", hasBatchim: true, compatibleVerbs: ["verb_cw_buy", "verb_cw_have", "verb_cw_find", "verb_cw_nothave"] },
+    { id: "obj_cw_korean", korean: "한국어", english: "Korean language", emoji: "🇰🇷", type: "object", hasBatchim: false, compatibleVerbs: ["verb_cw_study", "verb_cw_read", "verb_cw_write"] }
+  ],
+  verbs: [
+    { id: "verb_cw_buy", korean: "사다", english: "To buy", emoji: "🛒", type: "verb", hasBatchim: false, stem: "사" },
+    { id: "verb_cw_drink", korean: "마시다", english: "To drink", emoji: "🥤", type: "verb", hasBatchim: false, stem: "마시" },
+    { id: "verb_cw_read", korean: "읽다", english: "To read", emoji: "📖", type: "verb", hasBatchim: true, stem: "읽" },
+    { id: "verb_cw_give", korean: "주다", english: "To give", emoji: "🤲", type: "verb", hasBatchim: false, stem: "주" },
+    { id: "verb_cw_have", korean: "있다", english: "To have", emoji: "✨", type: "verb", hasBatchim: true, stem: "있" },
+    { id: "verb_cw_nothave", korean: "없다", english: "To not have", emoji: "❌", type: "verb", hasBatchim: true, stem: "없" },
+    { id: "verb_cw_study", korean: "공부하다", english: "To study", emoji: "📚", type: "verb", hasBatchim: false, stem: "공부하" },
+    { id: "verb_cw_write", korean: "쓰다", english: "To write", emoji: "✍️", type: "verb", hasBatchim: false, stem: "쓰" },
+    { id: "verb_cw_find", korean: "찾다", english: "To find", emoji: "🔍", type: "verb", hasBatchim: true, stem: "찾" },
+    { id: "verb_cw_see", korean: "보다", english: "To look at", emoji: "👀", type: "verb", hasBatchim: false, stem: "보" }
+  ],
+  conjugations: {
+    verb_cw_buy: {
+      end_present: { korean: "사요", english: "buys" },
+      end_want: { korean: "사고 싶어요", english: "wants to buy" },
+      end_past: { korean: "샀어요", english: "bought" },
+      end_future: { korean: "살 거예요", english: "will buy" }
+    },
+    verb_cw_drink: {
+      end_present: { korean: "마셔요", english: "drinks" },
+      end_want: { korean: "마시고 싶어요", english: "wants to drink" },
+      end_past: { korean: "마셨어요", english: "drank" },
+      end_future: { korean: "마실 거예요", english: "will drink" }
+    },
+    verb_cw_read: {
+      end_present: { korean: "읽어요", english: "reads" },
+      end_want: { korean: "읽고 싶어요", english: "wants to read" },
+      end_past: { korean: "읽었어요", english: "read" },
+      end_future: { korean: "읽을 거예요", english: "will read" }
+    },
+    verb_cw_give: {
+      end_present: { korean: "줘요", english: "gives" },
+      end_want: { korean: "주고 싶어요", english: "wants to give" },
+      end_past: { korean: "줬어요", english: "gave" },
+      end_future: { korean: "줄 거예요", english: "will give" }
+    },
+    verb_cw_have: {
+      end_present: { korean: "있어요", english: "has" },
+      end_want: { korean: "있고 싶어요", english: "wants to have" },
+      end_past: { korean: "있었어요", english: "had" },
+      end_future: { korean: "있을 거예요", english: "will have" }
+    },
+    verb_cw_nothave: {
+      end_present: { korean: "없어요", english: "does not have" },
+      end_want: { korean: "없고 싶어요", english: "wants not to have" },
+      end_past: { korean: "없었어요", english: "did not have" },
+      end_future: { korean: "없을 거예요", english: "will not have" }
+    },
+    verb_cw_study: {
+      end_present: { korean: "공부해요", english: "studies" },
+      end_want: { korean: "공부하고 싶어요", english: "wants to study" },
+      end_past: { korean: "공부했어요", english: "studied" },
+      end_future: { korean: "공부할 거예요", english: "will study" }
+    },
+    verb_cw_write: {
+      end_present: { korean: "써요", english: "writes" },
+      end_want: { korean: "쓰고 싶어요", english: "wants to write" },
+      end_past: { korean: "썼어요", english: "wrote" },
+      end_future: { korean: "쓸 거예요", english: "will write" }
+    },
+    verb_cw_find: {
+      end_present: { korean: "찾아요", english: "finds" },
+      end_want: { korean: "찾고 싶어요", english: "wants to find" },
+      end_past: { korean: "찾았어요", english: "found" },
+      end_future: { korean: "찾을 거예요", english: "will find" }
+    },
+    verb_cw_see: {
+      end_present: { korean: "봐요", english: "looks at" },
+      end_want: { korean: "보고 싶어요", english: "wants to look at" },
+      end_past: { korean: "봤어요", english: "looked at" },
+      end_future: { korean: "볼 거예요", english: "will look at" }
+    }
+  }
+};
+
 export const PREGENERATED_TOPICS: Record<string, GeneratedVocab> = {
+  "Korea Classwork": KOREA_CLASSWORK_TEMPLATE,
   "Dating (Romance)": {
     subjects: [
       { id: "sub_rom2_bf", korean: "남자친구", english: "Boyfriend", emoji: "🧑", type: "subject", hasBatchim: false },
