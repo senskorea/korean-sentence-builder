@@ -216,6 +216,10 @@ const entries: [string, string, string[]][] = [
   ["여덟 살", "eight years old", ["number", "classwork", "sogang1a"]],
   ["아홉 살", "nine years old", ["number", "classwork", "sogang1a"]],
   ["열 살", "ten years old", ["number", "classwork", "sogang1a"]],
+  ["자루", "counter for pencils, pens, writing utensils", ["counter", "classwork", "sogang1a"]],
+  ["연필 한 자루", "one pencil", ["expression", "classwork", "sogang1a"]],
+  ["볼펜 두 자루", "two ballpoint pens", ["expression", "classwork", "sogang1a"]],
+
 
 
 ];
@@ -244,7 +248,8 @@ export interface MistakePattern {
 }
 
 export const MISTAKE_PATTERNS: MistakePattern[] = [
-  { id: 'age_numbers', title: 'Native Korean numbers for counting and age', summary: 'Numbers 1 to 4 and 20 modify their forms before counters and the age counter 살 (한, 두, 세, 네, 스무).', examples: ['하나 -> 한 살 (1 year old)', '둘 -> 두 살 (2 years old)', '셋 -> 세 살 (3 years old)', '넷 -> 네 살 (4 years old)', '스물 -> 스무 살 (20 years old)', '몇 살이에요? = How old are you?'], practice: 'Drop the final sound for 1 through 4 before counters such as 개, 명, 병, 권, and 살.', exercises: [
+  { id: 'age_numbers', title: 'Native Korean numbers for counting and age', summary: 'Numbers 1 to 4 and 20 modify their forms before counters and the age counter 살 (한, 두, 세, 네, 스무).', examples: ['하나 -> 한 살 (1 year old)', '둘 -> 두 살 (2 years old)', '셋 -> 세 살 (3 years old)', '넷 -> 네 살 (4 years old)', '스물 -> 스무 살 (20 years old)', '몇 살이에요? = How old are you?'], practice: 'Drop the final sound for 1 through 4 before counters such as 개, 명, 병, 권, 자루, and 살.', exercises: [
+    { prompt: 'Write “two pencils” in Korean using the writing utensil counter.', answer: '연필 두 자루', hint: 'Use counter 자루 with 둘 -> 두.' },
     { prompt: 'Write “3 years old” in Korean.', answer: '세 살', hint: '셋 contracts to 세 before 살.' },
     { prompt: 'How do you ask “How old are you?” politely?', answer: '몇 살이에요?', hint: 'Combine 몇, 살, and 이에요.' },
     { prompt: 'Write “20 years old” in Korean.', answer: '스무 살', hint: '스물 drops the final sound to become 스무.' },
