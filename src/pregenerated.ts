@@ -33,7 +33,15 @@ export const KOREA_CLASSWORK_TEMPLATE: GeneratedVocab = {
     { id: "obj_cw_umbrella", korean: "우산", english: "Umbrella", emoji: "☂️", type: "object", hasBatchim: true, compatibleVerbs: ["verb_cw_buy", "verb_cw_have", "verb_cw_give", "verb_cw_nothave"] },
     { id: "obj_cw_computer", korean: "컴퓨터", english: "Computer", emoji: "💻", type: "object", hasBatchim: false, compatibleVerbs: ["verb_cw_buy", "verb_cw_have", "verb_cw_study", "verb_cw_nothave"] },
     { id: "obj_cw_phone", korean: "핸드폰", english: "Cellphone", emoji: "📱", type: "object", hasBatchim: true, compatibleVerbs: ["verb_cw_buy", "verb_cw_have", "verb_cw_find", "verb_cw_nothave"] },
-    { id: "obj_cw_korean", korean: "한국어", english: "Korean language", emoji: "🇰🇷", type: "object", hasBatchim: false, compatibleVerbs: ["verb_cw_study", "verb_cw_read", "verb_cw_write"] }
+    { id: "obj_cw_korean", korean: "한국어", english: "Korean language", emoji: "🇰🇷", type: "object", hasBatchim: false, compatibleVerbs: ["verb_cw_study", "verb_cw_read", "verb_cw_write"] },
+    { id: "obj_cw_library", korean: "도서관", english: "Library", emoji: "📚", type: "object", hasBatchim: true, compatibleVerbs: ["verb_cw_go", "verb_cw_find", "verb_cw_have"] },
+    { id: "obj_cw_cinema", korean: "영화관", english: "Cinema", emoji: "🎬", type: "object", hasBatchim: true, compatibleVerbs: ["verb_cw_go", "verb_cw_find", "verb_cw_have"] },
+    { id: "obj_cw_bookstore", korean: "서점", english: "Bookstore", emoji: "🏪", type: "object", hasBatchim: true, compatibleVerbs: ["verb_cw_go", "verb_cw_find", "verb_cw_have"] },
+    { id: "obj_cw_stationery", korean: "문구점", english: "Stationery store", emoji: "✏️", type: "object", hasBatchim: true, compatibleVerbs: ["verb_cw_go", "verb_cw_find", "verb_cw_have"] },
+    { id: "obj_cw_hospital", korean: "병원", english: "Hospital", emoji: "🏥", type: "object", hasBatchim: true, compatibleVerbs: ["verb_cw_go", "verb_cw_find", "verb_cw_have"] },
+    { id: "obj_cw_classroom", korean: "교실", english: "Classroom", emoji: "🏫", type: "object", hasBatchim: true, compatibleVerbs: ["verb_cw_go", "verb_cw_find", "verb_cw_have"] },
+    { id: "obj_cw_pool", korean: "수영장", english: "Swimming pool", emoji: "🏊", type: "object", hasBatchim: true, compatibleVerbs: ["verb_cw_go", "verb_cw_find", "verb_cw_have"] },
+    { id: "obj_cw_embassy", korean: "대사관", english: "Embassy", emoji: "🏛️", type: "object", hasBatchim: true, compatibleVerbs: ["verb_cw_go", "verb_cw_find", "verb_cw_have"] },
   ],
   verbs: [
     { id: "verb_cw_buy", korean: "사다", english: "To buy", emoji: "🛒", type: "verb", hasBatchim: false, stem: "사" },
@@ -45,7 +53,8 @@ export const KOREA_CLASSWORK_TEMPLATE: GeneratedVocab = {
     { id: "verb_cw_study", korean: "공부하다", english: "To study", emoji: "📚", type: "verb", hasBatchim: false, stem: "공부하" },
     { id: "verb_cw_write", korean: "쓰다", english: "To write", emoji: "✍️", type: "verb", hasBatchim: false, stem: "쓰" },
     { id: "verb_cw_find", korean: "찾다", english: "To find", emoji: "🔍", type: "verb", hasBatchim: true, stem: "찾" },
-    { id: "verb_cw_see", korean: "보다", english: "To look at", emoji: "👀", type: "verb", hasBatchim: false, stem: "보" }
+    { id: "verb_cw_see", korean: "보다", english: "To look at", emoji: "👀", type: "verb", hasBatchim: false, stem: "보" },
+    { id: "verb_cw_go", korean: "가다", english: "To go", emoji: "🚶", type: "verb", hasBatchim: false, stem: "가" },
   ],
   conjugations: {
     verb_cw_buy: {
@@ -101,6 +110,12 @@ export const KOREA_CLASSWORK_TEMPLATE: GeneratedVocab = {
       end_want: { korean: "찾고 싶어요", english: "wants to find" },
       end_past: { korean: "찾았어요", english: "found" },
       end_future: { korean: "찾을 거예요", english: "will find" }
+    },
+    verb_cw_go: {
+      end_present: { korean: "가요", english: "goes" },
+      end_want: { korean: "가고 싶어요", english: "wants to go" },
+      end_past: { korean: "갔어요", english: "went" },
+      end_future: { korean: "갈 거예요", english: "will go" }
     },
     verb_cw_see: {
       end_present: { korean: "봐요", english: "looks at" },
