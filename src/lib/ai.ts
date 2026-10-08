@@ -23,6 +23,7 @@ export interface GeneratedVocab {
   subjects: Word[];
   objects: Word[];
   verbs: Word[];
+  conjugations?: Record<string, Record<string, { korean: string; english: string }>>;
 }
 
 export async function generateVocabForTopic(topic: string): Promise<GeneratedVocab> {

@@ -8,7 +8,7 @@ import AgglutinationDrawer from './components/AgglutinationDrawer';
 import SavedPhrases from './components/SavedPhrases';
 import TopicGenerator from './components/TopicGenerator';
 import LearnMode from './components/LearnMode';
-import { PREGENERATED_TOPICS } from './pregenerated';
+import { PREGENERATED_TOPICS, KOREA_CLASSWORK_TEMPLATE } from './pregenerated';
 import { 
   Sparkles, 
   HelpCircle, 
@@ -177,6 +177,7 @@ export default function App() {
   const [showConfigPanel, setShowConfigPanel] = useState<boolean>(false);
 
   const classOptions = [
+    { id: 'korea_classwork', title: 'Korea Classwork', emoji: '📚', description: 'Sogang 1A classroom, drinks, stationery, items and numbers', vocab: KOREA_CLASSWORK_TEMPLATE, tone: 'bg-emerald-100' },
     { id: 'romance', title: 'Romance', emoji: '💖', description: 'Dating, feelings and relationships', vocab: PREGENERATED_TOPICS['Dating (Romance)'], tone: 'bg-rose-100' },
     { id: 'huena', title: 'Huena', emoji: '👧', description: 'Personal expressions and conversation', vocab: PREGENERATED_TOPICS['Huena'], tone: 'bg-violet-100' },
     { id: 'dating', title: 'Dating basics', emoji: '💘', description: 'Meeting, gifts and everyday dates', vocab: DATING_VOCAB_TEMPLATE, tone: 'bg-amber-100' },
@@ -753,6 +754,17 @@ export default function App() {
                       <div className="text-[9px] text-slate-400 dark:text-slate-500 mt-0.5">Confucian Girl, Jeong, Cheers!, Ciao...</div>
                     </button>
 
+
+                    <button
+                      onClick={() => {
+                        setVocabJsonInput(JSON.stringify(KOREA_CLASSWORK_TEMPLATE, null, 2));
+                        setVocabError(null);
+                      }}
+                      className="w-full text-left p-2 border border-slate-200 dark:border-slate-800 hover:border-indigo-500 dark:hover:border-indigo-400 bg-white dark:bg-slate-900 rounded-lg transition-all"
+                    >
+                      <div className="font-bold text-[11px] text-indigo-600 dark:text-indigo-400">📚 Korea Classwork (Sogang 1A)</div>
+                      <div className="text-[9px] text-slate-400 dark:text-slate-500 mt-0.5">Drinks, books, stationery, classroom items, people...</div>
+                    </button>
 
                     <button
                       onClick={() => {
