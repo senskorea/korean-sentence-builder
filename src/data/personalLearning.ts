@@ -201,6 +201,22 @@ const entries: [string, string, string[]][] = [
   ["부엌", "Kitchen", ["classwork", "sogang1a", "foundation"]],
   ["밖", "Outside", ["classwork", "sogang1a", "foundation"]],
   ["숟가락", "Spoon", ["classwork", "sogang1a", "foundation"]],
+  // Native Korean Numbers (Age and Counting)
+  ["살", "years old (age counter)", ["counter", "classwork", "sogang1a"]],
+  ["스물", "twenty (base form)", ["number", "classwork", "sogang1a"]],
+  ["스무 살", "twenty years old", ["expression", "classwork", "sogang1a"]],
+  ["몇 살이에요?", "How old are you?", ["expression", "polite", "classwork", "sogang1a"]],
+  ["한 살", "one year old", ["number", "classwork", "sogang1a"]],
+  ["두 살", "two years old", ["number", "classwork", "sogang1a"]],
+  ["세 살", "three years old", ["number", "classwork", "sogang1a"]],
+  ["네 살", "four years old", ["number", "classwork", "sogang1a"]],
+  ["다섯 살", "five years old", ["number", "classwork", "sogang1a"]],
+  ["여섯 살", "six years old", ["number", "classwork", "sogang1a"]],
+  ["일곱 살", "seven years old", ["number", "classwork", "sogang1a"]],
+  ["여덟 살", "eight years old", ["number", "classwork", "sogang1a"]],
+  ["아홉 살", "nine years old", ["number", "classwork", "sogang1a"]],
+  ["열 살", "ten years old", ["number", "classwork", "sogang1a"]],
+
 
 ];
 
@@ -228,6 +244,12 @@ export interface MistakePattern {
 }
 
 export const MISTAKE_PATTERNS: MistakePattern[] = [
+  { id: 'age_numbers', title: 'Native Korean numbers for counting and age', summary: 'Numbers 1 to 4 and 20 modify their forms before counters and the age counter 살 (한, 두, 세, 네, 스무).', examples: ['하나 -> 한 살 (1 year old)', '둘 -> 두 살 (2 years old)', '셋 -> 세 살 (3 years old)', '넷 -> 네 살 (4 years old)', '스물 -> 스무 살 (20 years old)', '몇 살이에요? = How old are you?'], practice: 'Drop the final sound for 1 through 4 before counters such as 개, 명, 병, 권, and 살.', exercises: [
+    { prompt: 'Write “3 years old” in Korean.', answer: '세 살', hint: '셋 contracts to 세 before 살.' },
+    { prompt: 'How do you ask “How old are you?” politely?', answer: '몇 살이에요?', hint: 'Combine 몇, 살, and 이에요.' },
+    { prompt: 'Write “20 years old” in Korean.', answer: '스무 살', hint: '스물 drops the final sound to become 스무.' },
+  ]},
+
   { id: 'sound', title: 'Writing what you hear', summary: 'Fast speech blends sounds. Rebuild what you hear from syllable blocks, familiar stems, and endings.', examples: ['어제 = yesterday · 언제 = when', '얘들아, 가위바위보, 기다려, 플로리스트'], practice: 'Listen once, say it slowly, identify blocks, then check the complete word.', exercises: [
     { prompt: 'Which means “yesterday”: 어제 or 언제?', answer: '어제', hint: '언제 means “when.”' },
     { prompt: 'Correct the sound-spelling: 기다료', answer: '기다려', hint: 'The final syllable is 려.' },
@@ -263,6 +285,7 @@ export const MISTAKE_PATTERNS: MistakePattern[] = [
 ];
 
 export const WEEKLY_PRACTICE = [
+  'Practise Native Korean numbers 1 to 10 and age counting forms (한 살 through 열 살, 스무 살).',
   'Practise 어제/언제, 알았어/알아서, and the 그래 family.',
   'Repeat the contrast sets and write one example for each.',
   'Rewrite words containing 받침 and tense consonants.',
