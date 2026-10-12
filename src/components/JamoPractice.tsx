@@ -35,6 +35,27 @@ export default function JamoPractice({ onExit }: { onExit: () => void }) {
   const drawing = useRef(false);
   const lines = useRef<number[][][]>([]);
   const currentLine = useRef<number[][] | null>(null);
+  const [stylusOnly, setStylusOnly] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem('korean_stylus_only') === 'true';
+    } catch {
+      return false;
+    }
+  });
+  const activePointerId = useRef<number | null>(null);
+  const activePointerType = useRef<'pen' | 'touch' | 'mouse' | null>(null);
+
+  const toggleStylusOnly = () => {
+    setStylusOnly((prev) => {
+      const next = !prev;
+      try {
+        localStorage.setItem('korean_stylus_only', String(next));
+      } catch (e) {
+        console.error(e);
+      }
+      return next;
+    });
+  };
 
   useEffect(() => {
     try { setStats(JSON.parse(localStorage.getItem('korean_jamo_stats') || '{}')); }
@@ -50,10 +71,39 @@ export default function JamoPractice({ onExit }: { onExit: () => void }) {
     context.clearRect(0, 0, canvas.width, canvas.height);
     context.scale(ratio, ratio);
     context.fillStyle = '#4f46e5';
+
     const strokes = currentLine.current?.length ? [...lines.current, currentLine.current] : lines.current;
     strokes.forEach((line) => {
-      const stroke = getStroke(line, { size: 14, thinning: 0.55, smoothing: 0.5, streamline: 0.5, simulatePressure: false });
-      if (stroke.length) context.fill(new Path2D(strokePath(stroke)));
+      if (!line.length) return;
+      // Dot & micro-tap detection for Korean jamo
+      if (line.length === 1 || (line.length === 2 && Math.hypot(line[0][0] - line[1][0], line[0][1] - line[1][1]) < 2.5)) {
+        const [x, y] = line[0];
+        const pressure = line[0][2] || 0.5;
+        const radius = Math.max(5, pressure * 8);
+        context.beginPath();
+        context.arc(x, y, radius, 0, Math.PI * 2);
+        context.fill();
+        return;
+      }
+
+      const stroke = getStroke(line, {
+        size: 13,
+        thinning: 0.25,
+        smoothing: 0.35,
+        streamline: 0.10,
+        simulatePressure: false,
+        start: { cap: true, taper: 0 },
+        end: { cap: true, taper: 0 },
+      });
+
+      if (stroke.length) {
+        context.fill(new Path2D(strokePath(stroke)));
+      } else {
+        const [x, y] = line[0];
+        context.beginPath();
+        context.arc(x, y, 5, 0, Math.PI * 2);
+        context.fill();
+      }
     });
   }, []);
 
@@ -77,26 +127,75 @@ export default function JamoPractice({ onExit }: { onExit: () => void }) {
     return () => window.removeEventListener('resize', resize);
   }, [screen, index, renderCanvas]);
 
-  const begin = (event: PointerEvent<HTMLCanvasElement>) => {
-    const rect = event.currentTarget.getBoundingClientRect();
-    event.currentTarget.setPointerCapture(event.pointerId);
-    currentLine.current = [[event.clientX - rect.left, event.clientY - rect.top, event.pressure || 0.5]];
+  const begin = useCallback((event: PointerEvent) => {
+    if (stylusOnly && event.pointerType === 'touch') return;
+
+    if (event.pointerType === 'pen' && activePointerType.current === 'touch') {
+      currentLine.current = null;
+      activePointerId.current = null;
+      activePointerType.current = null;
+    }
+
+    if (activePointerId.current !== null && activePointerId.current !== event.pointerId) return;
+    if (event.pointerType === 'touch' && (event.width > 24 || event.height > 24)) return;
+
+    event.preventDefault();
+    activePointerId.current = event.pointerId;
+    activePointerType.current = event.pointerType as 'pen' | 'touch' | 'mouse';
+
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const rect = canvas.getBoundingClientRect();
+    const pressure = event.pointerType === 'pen' && event.pressure > 0 ? event.pressure : 0.5;
+
+    currentLine.current = [[event.clientX - rect.left, event.clientY - rect.top, pressure]];
     drawing.current = true;
     renderCanvas();
-  };
-  const move = (event: PointerEvent<HTMLCanvasElement>) => {
-    if (!drawing.current || !currentLine.current) return;
-    const rect = event.currentTarget.getBoundingClientRect();
-    currentLine.current.push([event.clientX - rect.left, event.clientY - rect.top, event.pressure || 0.5]);
+  }, [stylusOnly, renderCanvas]);
+
+  const move = useCallback((event: PointerEvent) => {
+    if (!drawing.current || !currentLine.current || activePointerId.current !== event.pointerId) return;
+    event.preventDefault();
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const rect = canvas.getBoundingClientRect();
+    const pressure = event.pointerType === 'pen' && event.pressure > 0 ? event.pressure : 0.5;
+    currentLine.current.push([event.clientX - rect.left, event.clientY - rect.top, pressure]);
     renderCanvas();
-  };
-  const end = () => {
-    if (!drawing.current) return;
+  }, [renderCanvas]);
+
+  const end = useCallback((event: PointerEvent) => {
+    if (!drawing.current || activePointerId.current !== event.pointerId) return;
+    event.preventDefault();
     drawing.current = false;
+    activePointerId.current = null;
+    activePointerType.current = null;
     if (currentLine.current?.length) lines.current.push([...currentLine.current]);
     currentLine.current = null;
     renderCanvas();
-  };
+  }, [renderCanvas]);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas || screen !== 'session') return;
+
+    const onPointerDown = (e: PointerEvent) => begin(e);
+    const onPointerMove = (e: PointerEvent) => move(e);
+    const onPointerUp = (e: PointerEvent) => end(e);
+    const onPointerCancel = (e: PointerEvent) => end(e);
+
+    canvas.addEventListener('pointerdown', onPointerDown, { passive: false });
+    window.addEventListener('pointermove', onPointerMove, { passive: false });
+    window.addEventListener('pointerup', onPointerUp, { passive: false });
+    window.addEventListener('pointercancel', onPointerCancel, { passive: false });
+
+    return () => {
+      canvas.removeEventListener('pointerdown', onPointerDown);
+      window.removeEventListener('pointermove', onPointerMove);
+      window.removeEventListener('pointerup', onPointerUp);
+      window.removeEventListener('pointercancel', onPointerCancel);
+    };
+  }, [screen, begin, move, end]);
 
   const filtered = useMemo(() => level === 'mixed' ? JAMO_EXERCISES : JAMO_EXERCISES.filter((item) => item.level === level), [level]);
   const start = () => {
@@ -145,9 +244,22 @@ export default function JamoPractice({ onExit }: { onExit: () => void }) {
         <section ref={canvasBoxRef} className="relative min-h-0 border-[3px] border-black bg-white overflow-hidden">
           <BlockTemplate layout={exercise.layout} />
           {revealed && showOverlay && <div className="absolute inset-0 z-[5] grid place-items-center pointer-events-none"><span className="text-[clamp(9rem,35vw,24rem)] leading-none font-black text-indigo-200/65">{exercise.syllable}</span></div>}
-          <canvas ref={canvasRef} onPointerDown={begin} onPointerMove={move} onPointerUp={end} onPointerCancel={end} className="absolute inset-0 z-10 w-full h-full touch-none cursor-crosshair" />
+          <canvas ref={canvasRef} className="absolute inset-0 z-10 w-full h-full touch-none cursor-crosshair" />
           <div className="absolute z-20 top-3 right-3 flex flex-wrap justify-end gap-2">
             {!revealed ? <button onClick={() => setRevealed(true)} className="h-12 min-w-40 px-5 bg-indigo-600 text-white border-2 border-black font-black shadow-[3px_3px_0_0_rgba(0,0,0,1)]">Reveal answer</button> : <button onClick={() => setShowOverlay((value) => !value)} className="h-12 px-4 bg-indigo-100 border-2 border-black font-black flex items-center gap-2">{showOverlay ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}{showOverlay ? 'Hide guide' : 'Show guide'}</button>}
+            <button
+              type="button"
+              onClick={toggleStylusOnly}
+              className={`h-12 px-3 border-2 border-black flex items-center gap-1.5 font-black text-xs transition-all shadow-[2px_2px_0_0_rgba(0,0,0,1)] ${
+                stylusOnly
+                  ? 'bg-emerald-600 text-white'
+                  : 'bg-white text-slate-700'
+              }`}
+              title={stylusOnly ? 'Stylus only mode is ON. Resting palms and touch inputs are completely ignored.' : 'Stylus only mode is OFF. Both touch and stylus inputs are accepted.'}
+            >
+              <PenTool className="w-4 h-4" />
+              <span>{stylusOnly ? 'Stylus only: ON' : 'Stylus only: OFF'}</span>
+            </button>
             <button onClick={undo} className="h-12 px-3 bg-white border-2 border-black flex items-center gap-2 font-black text-xs"><RotateCcw className="w-4 h-4" />Undo</button><button onClick={clear} className="h-12 px-3 bg-white border-2 border-black flex items-center gap-2 font-black text-xs"><Eraser className="w-4 h-4" />Clear</button>
           </div>
           {revealed && <div className="absolute z-20 inset-x-3 bottom-3 grid grid-cols-3 gap-2"><Rate label="Again" hint="Try soon" color="bg-rose-100" onClick={() => rate(0)} /><Rate label="Close" hint="Almost" color="bg-amber-100" onClick={() => rate(1)} /><Rate label="Correct" hint="Got it" color="bg-emerald-100" onClick={() => rate(2)} /></div>}
