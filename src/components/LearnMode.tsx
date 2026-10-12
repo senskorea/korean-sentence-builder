@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
-import { ArrowLeft, Award, BookOpen, Brain, Check, Clock3, Eraser, EyeOff, Grid2X2, PenTool, RotateCcw, Search, Sparkles, StickyNote, X } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
+import { ArrowLeft, Award, BookOpen, Brain, Check, Clock3, Eraser, EyeOff, Grid2X2, PenTool, RotateCcw, Search, Sparkles, StickyNote, Tag, X } from 'lucide-react';
 import { motion } from 'motion/react';
 import { getStroke } from 'perfect-freehand';
 import { SavedSentence, Word } from '../types';
@@ -77,6 +77,7 @@ export default function LearnMode({ vocab, savedPhrases = [], onExit }: Props) {
   const [wordStats, setWordStats] = useState<Record<string, Stats>>({});
   const [sentenceStats, setSentenceStats] = useState<Record<string, Stats>>({});
   const [search, setSearch] = useState('');
+  const [selectedTag, setSelectedTag] = useState<string | null>(null);
   const [showSensitive, setShowSensitive] = useState(false);
   const [selectedPattern, setSelectedPattern] = useState(0);
   const [revealedExercises, setRevealedExercises] = useState<Record<string, boolean>>({});
@@ -281,6 +282,59 @@ export default function LearnMode({ vocab, savedPhrases = [], onExit }: Props) {
     localStorage.setItem('korean_personal_mastery', JSON.stringify(next));
   };
 
+  const latestDate = useMemo(() => {
+    const dates = PERSONAL_VOCABULARY.map((i) => i.dateAdded).filter(Boolean) as string[];
+    if (!dates.length) return null;
+    return [...dates].sort().reverse()[0];
+  }, []);
+
+  const tagCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    PERSONAL_VOCABULARY.forEach((item) => {
+      if (!showSensitive && item.sensitive) return;
+      item.tags.forEach((tag) => {
+        counts[tag] = (counts[tag] || 0) + 1;
+      });
+    });
+    return counts;
+  }, [showSensitive]);
+
+  const availableTags = useMemo(() => {
+    const priority = ['classwork', 'sogang1a', 'place', 'counter', 'number', 'stationery', 'item', 'beverage', 'clothing', 'country', 'occupation', 'expression', 'foundation'];
+    return Object.keys(tagCounts).sort((a, b) => {
+      const aPri = priority.indexOf(a);
+      const bPri = priority.indexOf(b);
+      if (aPri !== -1 && bPri !== -1) return aPri - bPri;
+      if (aPri !== -1) return -1;
+      if (bPri !== -1) return 1;
+      return tagCounts[b] - tagCounts[a];
+    });
+  }, [tagCounts]);
+
+  const latestCount = useMemo(() => {
+    if (!latestDate) return 0;
+    return PERSONAL_VOCABULARY.filter((i) => i.dateAdded === latestDate && (showSensitive || !i.sensitive)).length;
+  }, [latestDate, showSensitive]);
+
+  const totalVocabCount = useMemo(() => {
+    return PERSONAL_VOCABULARY.filter((i) => showSensitive || !i.sensitive).length;
+  }, [showSensitive]);
+
+  const startFilteredSession = (filteredPool: PersonalVocabItem[]) => {
+    if (!filteredPool.length) return;
+    const shuffled = [...filteredPool].sort(() => Math.random() - 0.5);
+    setLearnType('personal');
+    setItems(shuffled.slice(0, Math.min(sessionLength, shuffled.length)));
+    setSessionBatchSize(0);
+    setElapsedSeconds(0);
+    setIndex(0);
+    setRatings([]);
+    setRevealed(false);
+    setNoteOpen(false);
+    clearCanvas();
+    setScreen('session');
+  };
+
   const startSession = (type: LearnType) => {
     const pool: StudyItem[] = type === 'words' ? words : type === 'sentences' ? sentences : PERSONAL_VOCABULARY.filter((item) => showSensitive || !item.sensitive);
     const stats = type === 'sentences' ? sentenceStats : wordStats;
@@ -401,21 +455,209 @@ export default function LearnMode({ vocab, savedPhrases = [], onExit }: Props) {
 
   if (screen === 'vocabulary') {
     const query = search.trim().toLowerCase();
-    const visibleVocabulary = PERSONAL_VOCABULARY.filter((item) =>
-      (showSensitive || !item.sensitive) && (!query || item.korean.includes(query) || item.english.toLowerCase().includes(query) || item.tags.some((tag) => tag.includes(query.replace(/^#/, ''))))
-    );
+    const visibleVocabulary = PERSONAL_VOCABULARY.filter((item) => {
+      if (!showSensitive && item.sensitive) return false;
+      if (selectedTag) {
+        if (selectedTag === 'latest') {
+          if (item.dateAdded !== latestDate) return false;
+        } else if (!item.tags.includes(selectedTag)) {
+          return false;
+        }
+      }
+      if (query) {
+        const clean = query.replace(/^#/, '');
+        const matchesKorean = item.korean.includes(query);
+        const matchesEnglish = item.english.toLowerCase().includes(query);
+        const matchesTag = item.tags.some((t) => t.toLowerCase().includes(clean));
+        const matchesDate = item.dateAdded ? item.dateAdded.includes(query) : false;
+        return matchesKorean || matchesEnglish || matchesTag || matchesDate;
+      }
+      return true;
+    });
+
+    const isFiltered = Boolean(selectedTag || query);
+
     return (
       <div className="w-full max-w-5xl mx-auto bg-white dark:bg-slate-950 border-[3px] border-black shadow-[5px_5px_0_0_rgba(0,0,0,1)] p-5 sm:p-8">
-        <div className="flex items-center justify-between gap-4"><div><p className="text-xs font-black uppercase tracking-[.2em] text-indigo-600">My vocabulary</p><h2 className="text-3xl sm:text-4xl font-black">{PERSONAL_VOCABULARY.length} words and expressions</h2></div><button onClick={() => setScreen('home')} className="min-h-11 px-4 flex items-center gap-2 border-2 border-black font-black text-xs"><ArrowLeft className="w-4 h-4" />Learn</button></div>
-        <div className="grid sm:grid-cols-[1fr_auto_auto] gap-3 my-6">
-          <label className="min-h-12 px-4 flex items-center gap-3 border-2 border-black"><Search className="w-5 h-5" /><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search Korean, English, or #tag" className="w-full bg-transparent outline-none font-bold" /></label>
-          <button onClick={() => setShowSensitive((value) => !value)} className={`min-h-12 px-4 border-2 border-black font-black text-sm flex items-center justify-center gap-2 ${showSensitive ? 'bg-rose-100' : 'bg-slate-100'}`}><EyeOff className="w-4 h-4" />Sensitive {showSensitive ? 'shown' : 'hidden'}</button>
-          <button onClick={() => startSession('personal')} className="min-h-12 px-5 bg-indigo-600 text-white border-2 border-black font-black">Practise deck</button>
+        <div className="flex items-center justify-between gap-4">
+          <div>
+            <p className="text-xs font-black uppercase tracking-[.2em] text-indigo-600">My vocabulary</p>
+            <h2 className="text-3xl sm:text-4xl font-black">{PERSONAL_VOCABULARY.length} words and expressions</h2>
+          </div>
+          <button onClick={() => setScreen('home')} className="min-h-11 px-4 flex items-center gap-2 border-2 border-black font-black text-xs">
+            <ArrowLeft className="w-4 h-4" />Learn
+          </button>
         </div>
-        <p className="mb-3 text-sm font-bold text-slate-500">Showing {visibleVocabulary.length} dictionary forms and conversational expressions.</p>
-        <div className="grid sm:grid-cols-2 gap-3 max-h-[62vh] overflow-y-auto pr-1">
-          {visibleVocabulary.map((item) => <div key={item.id} className="p-4 border-2 border-black bg-slate-50 dark:bg-slate-900"><div className="flex items-start justify-between gap-3"><strong className="text-xl">{item.korean}</strong><TagList tags={item.tags} /></div><p className="mt-2 font-semibold text-slate-600 dark:text-slate-300">{item.english}</p>{item.sensitive && <p className="mt-2 text-xs font-black text-rose-600">Strong profanity</p>}</div>)}
-          {!visibleVocabulary.length && <p className="sm:col-span-2 p-8 text-center font-bold text-slate-500 border-2 border-dashed border-slate-300">No matching entries.</p>}
+
+        {/* Search & Actions Toolbar */}
+        <div className="grid sm:grid-cols-[1fr_auto_auto] gap-3 mt-6 mb-3">
+          <label className="min-h-12 px-4 flex items-center gap-3 border-2 border-black">
+            <Search className="w-5 h-5 text-slate-400" />
+            <input
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder="Search Korean, English, date, or #tag"
+              className="w-full bg-transparent outline-none font-bold"
+            />
+            {search && (
+              <button
+                type="button"
+                onClick={() => setSearch('')}
+                className="text-xs font-black text-slate-400 hover:text-black dark:hover:text-white"
+              >
+                Clear
+              </button>
+            )}
+          </label>
+          <button
+            onClick={() => setShowSensitive((value) => !value)}
+            className={`min-h-12 px-4 border-2 border-black font-black text-sm flex items-center justify-center gap-2 ${showSensitive ? 'bg-rose-100 dark:bg-rose-950/60 dark:text-rose-200' : 'bg-slate-100 dark:bg-slate-900'}`}
+          >
+            <EyeOff className="w-4 h-4" />Sensitive {showSensitive ? 'shown' : 'hidden'}
+          </button>
+          <button
+            onClick={() => {
+              if (isFiltered) {
+                startFilteredSession(visibleVocabulary);
+              } else {
+                startSession('personal');
+              }
+            }}
+            className="min-h-12 px-5 bg-indigo-600 text-white border-2 border-black font-black hover:bg-indigo-700 active:translate-y-0.5 transition-all"
+          >
+            {isFiltered ? `Practise filtered (${visibleVocabulary.length})` : 'Practise deck'}
+          </button>
+        </div>
+
+        {/* Permanent Clickable Tags Toolbar */}
+        <div className="p-3 mb-4 bg-slate-50 dark:bg-slate-900 border-2 border-black">
+          <div className="flex items-center justify-between gap-2 mb-2">
+            <div className="flex items-center gap-1.5">
+              <Tag className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400 shrink-0" />
+              <span className="text-[10px] font-black uppercase tracking-wider text-slate-600 dark:text-slate-400">
+                Filter by tag or date
+              </span>
+            </div>
+            {selectedTag && (
+              <button
+                type="button"
+                onClick={() => setSelectedTag(null)}
+                className="text-[10px] font-black underline text-slate-500 hover:text-black dark:hover:text-white"
+              >
+                Reset tag filter
+              </button>
+            )}
+          </div>
+          <div className="flex flex-wrap items-center gap-1.5 max-h-36 overflow-y-auto pr-1">
+            <button
+              type="button"
+              onClick={() => setSelectedTag(null)}
+              className={`px-2.5 py-1 text-xs font-black border-2 border-black transition-all ${
+                selectedTag === null
+                  ? 'bg-black text-white dark:bg-indigo-600 dark:text-white shadow-[2px_2px_0_0_rgba(0,0,0,1)]'
+                  : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700'
+              }`}
+            >
+              All ({totalVocabCount})
+            </button>
+
+            {latestDate && (
+              <button
+                type="button"
+                onClick={() => setSelectedTag(selectedTag === 'latest' ? null : 'latest')}
+                className={`px-2.5 py-1 text-xs font-black border-2 border-black transition-all flex items-center gap-1 ${
+                  selectedTag === 'latest'
+                    ? 'bg-emerald-600 text-white shadow-[2px_2px_0_0_rgba(0,0,0,1)]'
+                    : 'bg-emerald-100 text-emerald-950 dark:bg-emerald-950/70 dark:text-emerald-200 hover:bg-emerald-200 dark:hover:bg-emerald-900'
+                }`}
+              >
+                <span>⚡ Latest {latestDate}</span>
+                <span className="text-[10px] opacity-80 font-bold">({latestCount})</span>
+              </button>
+            )}
+
+            {availableTags.map((tag) => {
+              const isSelected = selectedTag === tag;
+              return (
+                <button
+                  key={tag}
+                  type="button"
+                  onClick={() => setSelectedTag(isSelected ? null : tag)}
+                  className={`px-2 py-1 text-xs font-bold border-2 border-black transition-all ${
+                    isSelected
+                      ? 'bg-indigo-600 text-white dark:bg-indigo-500 shadow-[2px_2px_0_0_rgba(0,0,0,1)]'
+                      : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700'
+                  }`}
+                >
+                  <span>#{tag}</span>
+                  <span className="ml-1 text-[10px] opacity-70">({tagCounts[tag]})</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Results summary / Active filter banner */}
+        <div className="flex items-center justify-between gap-2 mb-3">
+          <p className="text-sm font-bold text-slate-500">
+            Showing {visibleVocabulary.length} of {totalVocabCount} dictionary forms and expressions
+            {selectedTag ? ` in ${selectedTag === 'latest' ? `Latest (${latestDate})` : `#${selectedTag}`}` : ''}.
+          </p>
+          {isFiltered && (
+            <button
+              type="button"
+              onClick={() => { setSelectedTag(null); setSearch(''); }}
+              className="text-xs font-black underline text-indigo-600 hover:text-indigo-800"
+            >
+              Clear all filters
+            </button>
+          )}
+        </div>
+
+        {/* Vocabulary Items Grid */}
+        <div className="grid sm:grid-cols-2 gap-3 max-h-[58vh] overflow-y-auto pr-1">
+          {visibleVocabulary.map((item) => (
+            <div key={item.id} className="p-4 border-2 border-black bg-slate-50 dark:bg-slate-900 flex flex-col justify-between">
+              <div>
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <strong className="text-xl">{item.korean}</strong>
+                    {item.dateAdded && (
+                      <div className="flex items-center gap-1.5 mt-1">
+                        <span className="text-[10px] font-black tracking-wider text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-950/70 px-1.5 py-0.5 border border-indigo-300 dark:border-indigo-800 rounded">
+                          {item.dateAdded}
+                        </span>
+                        {item.dateAdded === latestDate && (
+                          <span className="text-[9px] font-black uppercase tracking-widest text-emerald-800 bg-emerald-100 dark:bg-emerald-950 dark:text-emerald-300 px-1 py-0.5 border border-emerald-400 dark:border-emerald-700 rounded">
+                            NEW
+                          </span>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                  <TagList
+                    tags={item.tags}
+                    selectedTag={selectedTag}
+                    onSelectTag={(tag) => setSelectedTag(selectedTag === tag ? null : tag)}
+                  />
+                </div>
+                <p className="mt-2 font-semibold text-slate-600 dark:text-slate-300">{item.english}</p>
+              </div>
+              {item.sensitive && <p className="mt-2 text-xs font-black text-rose-600">Strong profanity</p>}
+            </div>
+          ))}
+          {!visibleVocabulary.length && (
+            <div className="sm:col-span-2 p-8 text-center border-2 border-dashed border-slate-300">
+              <p className="font-bold text-slate-500">No matching entries found.</p>
+              <button
+                type="button"
+                onClick={() => { setSelectedTag(null); setSearch(''); }}
+                className="mt-2 text-xs font-black underline text-indigo-600"
+              >
+                Reset filters
+              </button>
+            </div>
+          )}
         </div>
       </div>
     );
@@ -545,4 +787,46 @@ function Stat({ value, label }: { value: number; label: string }) { return <div 
 function Result({ value, label, color }: { value: number; label: string; color: string }) { return <div className={`p-5 ${color} text-black border-2 border-black`}><strong className="text-3xl block">{value}</strong><span className="text-xs font-black">{label}</span></div>; }
 function Answer({ korean, emoji, sentence, overlay = false }: { korean: string; emoji: string; sentence: boolean; overlay?: boolean }) { return <div className={`${overlay ? 'absolute inset-0 z-0 pointer-events-none bg-white/95 text-slate-300 dark:bg-slate-950/95 dark:text-slate-700' : ''} grid place-items-center p-6 text-center`}><div><div className={`${sentence ? 'text-4xl sm:text-6xl' : 'text-7xl sm:text-9xl'} font-black break-words`}>{korean}</div><div className={`text-4xl mt-5 ${overlay ? 'opacity-45' : ''}`}>{emoji}</div></div></div>; }
 function RatingButton({ label, hint, color, onClick }: { label: string; hint: string; color: string; onClick: () => void }) { return <button onClick={onClick} className={`min-h-16 p-1.5 ${color} text-black border-[3px] border-black font-black`}><span className="block text-sm sm:text-lg">{label}</span><small className="text-[9px] sm:text-xs">{hint}</small></button>; }
-function TagList({ tags, align = 'left' }: { tags: string[]; align?: 'left' | 'right' }) { return <div className={`flex flex-wrap gap-x-1.5 gap-y-0.5 ${align === 'right' ? 'justify-end' : ''}`}>{tags.map((tag) => <span key={tag} className="text-[9px] leading-3 font-bold tracking-wide text-slate-400 dark:text-slate-500">#{tag}</span>)}</div>; }
+function TagList({
+  tags,
+  align = 'left',
+  selectedTag,
+  onSelectTag,
+}: {
+  tags: string[];
+  align?: 'left' | 'right';
+  selectedTag?: string | null;
+  onSelectTag?: (tag: string) => void;
+}) {
+  return (
+    <div className={`flex flex-wrap gap-1 ${align === 'right' ? 'justify-end' : ''}`}>
+      {tags.map((tag) => {
+        const isSelected = selectedTag === tag;
+        if (onSelectTag) {
+          return (
+            <button
+              key={tag}
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onSelectTag(tag);
+              }}
+              className={`text-[9px] leading-3 font-bold tracking-wide px-1.5 py-0.5 border transition-all ${
+                isSelected
+                  ? 'bg-black text-white dark:bg-indigo-500 dark:text-white border-black font-black'
+                  : 'bg-white/80 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border-slate-300 dark:border-slate-700 hover:border-black dark:hover:border-slate-400 hover:text-black dark:hover:text-white'
+              }`}
+            >
+              #{tag}
+            </button>
+          );
+        }
+        return (
+          <span key={tag} className="text-[9px] leading-3 font-bold tracking-wide text-slate-400 dark:text-slate-500">
+            #{tag}
+          </span>
+        );
+      })}
+    </div>
+  );
+}
