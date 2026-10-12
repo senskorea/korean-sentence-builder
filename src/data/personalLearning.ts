@@ -267,6 +267,30 @@ const entries: PersonalVocabEntry[] = [
 
 
 
+  ["극장", "theater / cinema", ["noun", "place", "classwork", "sogang1a"], "2026.10.12"],
+  ["가위", "scissors", ["noun", "object", "classwork", "sogang1a"], "2026.10.12"],
+  ["층", "floor counter", ["noun", "counter", "classwork", "sogang1a"], "2026.10.12"],
+  ["전화번호", "phone number", ["noun", "communication", "classwork", "sogang1a"], "2026.10.12"],
+  ["핸드폰 번호", "mobile phone number", ["noun", "communication", "classwork", "sogang1a"], "2026.10.12"],
+  ["생일", "birthday", ["noun", "calendar", "classwork", "sogang1a"], "2026.10.12"],
+  ["내일", "tomorrow", ["noun", "calendar", "time", "classwork", "sogang1a"], "2026.10.12"],
+  ["표", "ticket", ["noun", "travel", "classwork", "sogang1a"], "2026.10.12"],
+  ["신문", "newspaper", ["noun", "media", "classwork", "sogang1a"], "2026.10.12"],
+  ["이메일", "email address", ["noun", "communication", "classwork", "sogang1a"], "2026.10.12"],
+  ["친구", "friend", ["noun", "people", "classwork", "sogang1a"], "2026.10.12"],
+  ["일", "one (Sino Korean 1)", ["number", "sino korean", "classwork", "sogang1a"], "2026.10.12"],
+  ["이", "two (Sino Korean 2)", ["number", "sino korean", "classwork", "sogang1a"], "2026.10.12"],
+  ["삼", "three (Sino Korean 3)", ["number", "sino korean", "classwork", "sogang1a"], "2026.10.12"],
+  ["사", "four (Sino Korean 4)", ["number", "sino korean", "classwork", "sogang1a"], "2026.10.12"],
+  ["오", "five (Sino Korean 5)", ["number", "sino korean", "classwork", "sogang1a"], "2026.10.12"],
+  ["육", "six (Sino Korean 6)", ["number", "sino korean", "classwork", "sogang1a"], "2026.10.12"],
+  ["칠", "seven (Sino Korean 7)", ["number", "sino korean", "classwork", "sogang1a"], "2026.10.12"],
+  ["팔", "eight (Sino Korean 8)", ["number", "sino korean", "classwork", "sogang1a"], "2026.10.12"],
+  ["구", "nine (Sino Korean 9)", ["number", "sino korean", "classwork", "sogang1a"], "2026.10.12"],
+  ["십", "ten (Sino Korean 10)", ["number", "sino korean", "classwork", "sogang1a"], "2026.10.12"],
+  ["백", "one hundred (100)", ["number", "sino korean", "classwork", "sogang1a"], "2026.10.12"],
+  ["천", "one thousand (1000)", ["number", "sino korean", "classwork", "sogang1a"], "2026.10.12"],
+  ["만", "ten thousand (10000)", ["number", "sino korean", "classwork", "sogang1a"], "2026.10.12"],
 ];
 
 export const PERSONAL_VOCABULARY: PersonalVocabItem[] = entries.map(([korean, english, tags, dateAdded]) => ({
