@@ -1,938 +1,101 @@
-import { useState, useEffect, type ReactNode } from 'react';
-import { analyzeSentence, SentenceAnalysis } from './lib/ai';
-import { Word, StepState, SavedSentence, AppConfig, EndingOption } from './types';
-import { getFullEnglishTranslation, CONJUGATIONS, SUBJECTS, OBJECTS, VERBS, conjugateVerbDynamically } from './data';
-import WorkingSentence from './components/WorkingSentence';
-import ConceptBlocks from './components/ConceptBlocks';
-import AgglutinationDrawer from './components/AgglutinationDrawer';
-import SavedPhrases from './components/SavedPhrases';
-import TopicGenerator from './components/TopicGenerator';
+import { useState, useEffect } from 'react';
+import { BookOpen, Sparkles } from 'lucide-react';
+import { SUBJECTS, OBJECTS, VERBS } from './data';
 import LearnMode from './components/LearnMode';
-import { PREGENERATED_TOPICS, KOREA_CLASSWORK_TEMPLATE } from './pregenerated';
-import { 
-  Sparkles, 
-  HelpCircle, 
-  Info, 
-  RotateCcw, 
-  Copy, 
-  Check, 
-  Volume2, 
-  Settings, 
-  Globe, 
-  Trash2,
-  BookOpen,
-  ChevronRight,
-  Bookmark,
-  Upload,
-  Database,
-  FileText,
-  PenTool,
-  X
-} from 'lucide-react';
-import { motion, AnimatePresence } from 'motion/react';
+import GrammarMode from './components/GrammarMode';
+import { Word } from './types';
 
-// Pre-defined Custom Templates to load dynamically
-const DATING_VOCAB_TEMPLATE = {
-  subjects: [
-    { id: "sub_i", korean: "저", english: "I", emoji: "👤", type: "subject", hasBatchim: false },
-    { id: "sub_bf", korean: "남자친구", english: "Boyfriend", emoji: "👦", type: "subject", hasBatchim: false },
-    { id: "sub_gf", korean: "여자친구", english: "Girlfriend", emoji: "👧", type: "subject", hasBatchim: false },
-    { id: "sub_crush", korean: "짝사랑", english: "Crush", emoji: "💖", type: "subject", hasBatchim: true },
-    { id: "sub_partner", korean: "애인", english: "Lover", emoji: "👩‍❤️‍👨", type: "subject", hasBatchim: true },
-    { id: "sub_we", korean: "우리", english: "We", emoji: "👥", type: "subject", hasBatchim: false }
-  ],
-  objects: [
-    { id: "obj_love", korean: "사랑", english: "Love", emoji: "❤️", type: "object", hasBatchim: true, compatibleVerbs: ["verb_give", "verb_confess", "verb_like", "verb_love"] },
-    { id: "obj_gift", korean: "선물", english: "Gift", emoji: "🎁", type: "object", hasBatchim: true, compatibleVerbs: ["verb_give", "verb_buy"] },
-    { id: "obj_coffee", korean: "커피", english: "Coffee", emoji: "☕", type: "object", hasBatchim: false, compatibleVerbs: ["verb_drink", "verb_buy", "verb_like"] },
-    { id: "obj_movie", korean: "영화", english: "Movie", emoji: "🎬", type: "object", hasBatchim: false, compatibleVerbs: ["verb_watch", "verb_like"] },
-    { id: "obj_message", korean: "메시지", english: "Message", emoji: "💬", type: "object", hasBatchim: false, compatibleVerbs: ["verb_send", "verb_like"] },
-    { id: "obj_flowers", korean: "꽃", english: "Flowers", emoji: "💐", type: "object", hasBatchim: true, compatibleVerbs: ["verb_buy", "verb_give"] },
-    { id: "obj_heart", korean: "마음", english: "Heart", emoji: "💝", type: "object", hasBatchim: true, compatibleVerbs: ["verb_give", "verb_confess", "verb_like"] }
-  ],
-  verbs: [
-    { id: "verb_meet", korean: "만나다", english: "To meet", emoji: "👩‍❤️‍👨", type: "verb", hasBatchim: false, stem: "만나" },
-    { id: "verb_love", korean: "사랑하다", english: "To love", emoji: "❤️", type: "verb", hasBatchim: false, stem: "사랑하" },
-    { id: "verb_confess", korean: "고백하다", english: "To confess", emoji: "💌", type: "verb", hasBatchim: false, stem: "고백하" },
-    { id: "verb_give", korean: "주다", english: "To give", emoji: "🤲", type: "verb", hasBatchim: false, stem: "주" },
-    { id: "verb_buy", korean: "사다", english: "To buy", emoji: "🛒", type: "verb", hasBatchim: false, stem: "사" },
-    { id: "verb_watch", korean: "보다", english: "To watch", emoji: "👀", type: "verb", hasBatchim: false, stem: "보" },
-    { id: "verb_send", korean: "보내다", english: "To send", emoji: "✉️", type: "verb", hasBatchim: false, stem: "보내" },
-    { id: "verb_like", korean: "좋아하다", english: "To like", emoji: "🥰", type: "verb", hasBatchim: false, stem: "좋아하" }
-  ],
-  conjugations: {
-    verb_meet: {
-      end_present: { korean: "만나요", english: "meets" },
-      end_want: { korean: "만나고 싶어요", english: "wants to meet" },
-      end_past: { korean: "만났어요", english: "met" },
-      end_future: { korean: "만날 거예요", english: "will meet" }
-    },
-    verb_love: {
-      end_present: { korean: "사랑해요", english: "loves" },
-      end_want: { korean: "사랑하고 싶어요", english: "wants to love" },
-      end_past: { korean: "사랑했어요", english: "loved" },
-      end_future: { korean: "사랑할 거예요", english: "will love" }
-    },
-    verb_confess: {
-      end_present: { korean: "고백해요", english: "confesses" },
-      end_want: { korean: "고백하고 싶어요", english: "wants to confess" },
-      end_past: { korean: "고백했어요", english: "confessed" },
-      end_future: { korean: "고백할 거예요", english: "will confess" }
-    },
-    verb_give: {
-      end_present: { korean: "줘요", english: "gives" },
-      end_want: { korean: "주고 싶어요", english: "wants to give" },
-      end_past: { korean: "줬어요", english: "gave" },
-      end_future: { korean: "줄 거예요", english: "will give" }
-    },
-    verb_buy: {
-      end_present: { korean: "사요", english: "buys" },
-      end_want: { korean: "사고 싶어요", english: "wants to buy" },
-      end_past: { korean: "샀어요", english: "bought" },
-      end_future: { korean: "살 거예요", english: "will buy" }
-    },
-    verb_watch: {
-      end_present: { korean: "봐요", english: "watches" },
-      end_want: { korean: "보고 싶어요", english: "wants to watch" },
-      end_past: { korean: "봤어요", english: "watched" },
-      end_future: { korean: "볼 거예요", english: "will watch" }
-    },
-    verb_send: {
-      end_present: { korean: "보내요", english: "sends" },
-      end_want: { korean: "보내고 싶어요", english: "wants to send" },
-      end_past: { korean: "보냈어요", english: "sent" },
-      end_future: { korean: "보낼 거예요", english: "will send" }
-    },
-    verb_like: {
-      end_present: { korean: "좋아해요", english: "likes" },
-      end_want: { korean: "좋아하고 싶어요", english: "wants to like" },
-      end_past: { korean: "좋아했어요", english: "liked" },
-      end_future: { korean: "좋아할 거예요", english: "will like" }
-    }
-  }
-};
+type ModuleTab = 'vocab' | 'grammar';
 
-const TRAVEL_VOCAB_TEMPLATE = {
-  subjects: [
-    { id: "sub_i", korean: "저", english: "I", emoji: "👤", type: "subject", hasBatchim: false },
-    { id: "sub_friend", korean: "친구", english: "Friend", emoji: "🧑‍🤝‍🧑", type: "subject", hasBatchim: false },
-    { id: "sub_teacher", korean: "선생님", english: "Teacher", emoji: "🧑‍🏫", type: "subject", hasBatchim: true }
-  ],
-  objects: [
-    { id: "obj_ticket", korean: "표", english: "Ticket", emoji: "🎫", type: "object", hasBatchim: false, compatibleVerbs: ["verb_buy", "verb_give"] },
-    { id: "obj_hotel", korean: "호텔", english: "Hotel", emoji: "🏨", type: "object", hasBatchim: false, compatibleVerbs: ["verb_find", "verb_go"] },
-    { id: "obj_coffee", korean: "커피", english: "Coffee", emoji: "☕", type: "object", hasBatchim: false, compatibleVerbs: ["verb_drink", "verb_buy"] }
-  ],
-  verbs: [
-    { id: "verb_buy", korean: "사다", english: "To buy", emoji: "🛒", type: "verb", hasBatchim: false, stem: "사" },
-    { id: "verb_drink", korean: "마시다", english: "To drink", emoji: "🥤", type: "verb", hasBatchim: false, stem: "마시" },
-    { id: "verb_go", korean: "가다", english: "To go", emoji: "🚶", type: "verb", hasBatchim: false, stem: "가" }
-  ]
+const INITIAL_VOCAB: { subjects: Word[]; objects: Word[]; verbs: Word[] } = {
+  subjects: SUBJECTS,
+  objects: OBJECTS,
+  verbs: VERBS
 };
 
 export default function App() {
-  // --- Core State Machine ---
-  const [currentStep, setCurrentStep] = useState<StepState>('START');
-  const [selectedSubject, setSelectedSubject] = useState<Word | null>(null);
-  const [subjectParticle, setSubjectParticle] = useState<string>('');
-  const [selectedObject, setSelectedObject] = useState<Word | null>(null);
-  const [objectParticle, setObjectParticle] = useState<string>('');
-  const [selectedVerb, setSelectedVerb] = useState<Word | null>(null);
-  const [selectedEnding, setSelectedEnding] = useState<EndingOption | null>(null);
-
-  // --- Dynamic Vocabulary State ---
-  const [vocab, setVocab] = useState<{
-    subjects: Word[];
-    objects: Word[];
-    verbs: Word[];
-    conjugations?: Record<string, Record<string, { korean: string; english: string }>>;
-  }>(() => {
-    const saved = localStorage.getItem('korean_sentences_custom_vocab');
-    if (saved) {
-      try {
-        return JSON.parse(saved);
-      } catch (e) {
-        console.error('Failed to parse custom vocab', e);
-      }
-    }
-    return { subjects: SUBJECTS, objects: OBJECTS, verbs: VERBS };
-  });
-
-  const [showVocabPanel, setShowVocabPanel] = useState<boolean>(false);
-  const [showAdvancedVocab, setShowAdvancedVocab] = useState<boolean>(false);
-  const [showResourcesPanel, setShowResourcesPanel] = useState<boolean>(false);
-  const [vocabJsonInput, setVocabJsonInput] = useState<string>('');
-  const [vocabError, setVocabError] = useState<string | null>(null);
-
-  // --- Configuration & Utilities State ---
-  const [appMode, setAppMode] = useState<'build' | 'learn'>('learn');
-  const [config, setConfig] = useState<AppConfig>({
-    copyFormat: 'bilingual',
-    bypassMode: false,
-  });
-  
-  const [activeTab, setActiveTab] = useState<'subject' | 'object' | 'verb'>('subject');
-  const [savedPhrases, setSavedPhrases] = useState<SavedSentence[]>([]);
-  const [toast, setToast] = useState<{ message: string; type: 'success' | 'info' } | null>(null);
-  const [showConfigPanel, setShowConfigPanel] = useState<boolean>(false);
-
-  const classOptions = [
-    { id: 'korea_classwork', title: 'Korea Classwork', emoji: '📚', description: 'Sogang 1A classroom, drinks, stationery, items and numbers', vocab: KOREA_CLASSWORK_TEMPLATE, tone: 'bg-emerald-100' },
-    { id: 'romance', title: 'Romance', emoji: '💖', description: 'Dating, feelings and relationships', vocab: PREGENERATED_TOPICS['Dating (Romance)'], tone: 'bg-rose-100' },
-    { id: 'huena', title: 'Huena', emoji: '👧', description: 'Personal expressions and conversation', vocab: PREGENERATED_TOPICS['Huena'], tone: 'bg-violet-100' },
-    { id: 'dating', title: 'Dating basics', emoji: '💘', description: 'Meeting, gifts and everyday dates', vocab: DATING_VOCAB_TEMPLATE, tone: 'bg-amber-100' },
-    { id: 'travel', title: 'Travel & shopping', emoji: '✈️', description: 'Tickets, hotels, coffee and getting around', vocab: TRAVEL_VOCAB_TEMPLATE, tone: 'bg-sky-100' },
-  ];
-  const [activeClass, setActiveClass] = useState(() => localStorage.getItem('korean_active_class') || 'default');
-
-  const activateClass = (option: typeof classOptions[number]) => {
-    setVocab(option.vocab as typeof vocab);
-    setVocabJsonInput(JSON.stringify(option.vocab, null, 2));
-    localStorage.setItem('korean_sentences_custom_vocab', JSON.stringify(option.vocab));
-    localStorage.setItem('korean_active_class', option.id);
-    setActiveClass(option.id);
-    setVocabError(null);
-    handleReset();
-    showToast(`${option.title} class is ready!`, 'success');
-  };
-
-  // --- AI Analysis State ---
-  const [isAnalyzing, setIsAnalyzing] = useState<boolean>(false);
-  const [analysisResult, setAnalysisResult] = useState<SentenceAnalysis | null>(null);
-  const [isConceptBlocksFlipped, setIsConceptBlocksFlipped] = useState<boolean>(false);
-
-  // --- LocalStorage Persistence ---
-  useEffect(() => {
-    const loaded = localStorage.getItem('korean_sentences_history');
-    if (loaded) {
-      try {
-        setSavedPhrases(JSON.parse(loaded));
-      } catch (e) {
-        console.error('Failed to parse history', e);
-      }
-    }
-  }, []);
-
-  const saveHistory = (newHistory: SavedSentence[]) => {
-    setSavedPhrases(newHistory);
-    localStorage.setItem('korean_sentences_history', JSON.stringify(newHistory));
-  };
-
-  // --- Compile English and Korean output ---
-  const compiledKorean = (): string => {
-    let result = '';
-    if (selectedSubject) {
-      result += selectedSubject.korean;
-      if (subjectParticle) result += subjectParticle;
-    }
-    if (selectedObject) {
-      if (result) result += ' ';
-      result += selectedObject.korean;
-      if (objectParticle) result += objectParticle;
-    }
-    if (selectedVerb) {
-      if (result) result += ' ';
-      if (selectedEnding) {
-        let conj = vocab.conjugations?.[selectedVerb.id]?.[selectedEnding.id] || CONJUGATIONS[selectedVerb.id]?.[selectedEnding.id];
-        if (!conj) {
-          conj = conjugateVerbDynamically(selectedVerb, selectedEnding.id);
-        }
-        result += conj ? conj.korean : selectedVerb.korean;
-      } else {
-        result += selectedVerb.korean;
-      }
-    }
-    return result;
-  };
-
-  const activeKorean = compiledKorean();
-  const activeEnglish = getFullEnglishTranslation(
-    selectedSubject,
-    selectedObject,
-    selectedVerb,
-    selectedEnding?.id || null,
-    vocab.conjugations
-  );
-
-  const activeEmojis = (): string => {
-    let emojis = '';
-    if (selectedSubject) emojis += selectedSubject.emoji;
-    if (selectedObject) emojis += ` ➔ ${selectedObject.emoji}`;
-    if (selectedVerb) emojis += ` ➔ ${selectedVerb.emoji}`;
-    return emojis;
-  };
-
-  // --- Audio Synthesis Helper (TTS) ---
-  const handlePlayAudio = () => {
-    if (!activeKorean) return;
-    if ('speechSynthesis' in window) {
-      window.speechSynthesis.cancel();
-      const utterance = new SpeechSynthesisUtterance(activeKorean);
-      utterance.lang = 'ko-KR';
-      utterance.rate = 0.8; // slightly slower for educational learning
-      window.speechSynthesis.speak(utterance);
-      showToast('Playing Korean audio...', 'info');
-    } else {
-      showToast('Text-to-Speech not supported in this browser.', 'info');
-    }
-  };
-
-  // --- Toast Manager ---
-  const showToast = (message: string, type: 'success' | 'info' = 'success') => {
-    setToast({ message, type });
-    setTimeout(() => setToast(null), 2500);
-  };
-
-  const handleCopyText = (textToCopy: string) => {
-    navigator.clipboard.writeText(textToCopy);
-    showToast('Copied to clipboard!', 'success');
-  };
-
-  // --- Save current sentence state to History ---
-  const handleSaveSentence = () => {
-    if (!selectedSubject || !selectedObject || !selectedVerb || !selectedEnding) return;
-    
-    const newPhrase: SavedSentence = {
-      id: `phrase_${Date.now()}`,
-      korean: activeKorean,
-      english: activeEnglish,
-      emojis: activeEmojis(),
-      timestamp: Date.now()
-    };
-
-    const updated = [newPhrase, ...savedPhrases];
-    saveHistory(updated);
-    showToast('Saved to custom phrase book!', 'success');
-  };
-
-  // --- State Machine Select Handlers ---
-  const handleSelectWord = (word: Word) => {
-    setIsConceptBlocksFlipped(false);
-    setAnalysisResult(null);
-    if (config.bypassMode) {
-      // In bypass mode, user can select anything in any order
-      if (word.type === 'subject') {
-        if (selectedSubject?.id === word.id) {
-          setSelectedSubject(null);
-          setSubjectParticle('');
-        } else {
-          setSelectedSubject(word);
-          // Auto-apply recommended particle
-          setSubjectParticle(word.hasBatchim ? '은' : '는');
-        }
-      } else if (word.type === 'object') {
-        if (selectedObject?.id === word.id) {
-          setSelectedObject(null);
-          setObjectParticle('');
-        } else {
-          setSelectedObject(word);
-          // Auto-apply recommended particle
-          setObjectParticle(word.hasBatchim ? '을' : '를');
-        }
-      } else if (word.type === 'verb') {
-        if (selectedVerb?.id === word.id) {
-          setSelectedVerb(null);
-          setSelectedEnding(null);
-        } else {
-          setSelectedVerb(word);
-        }
-      }
-      return;
-    }
-
-    // --- STRICT STATE SEQUENCE LOGIC ---
-    switch (currentStep) {
-      case 'START':
-        if (word.type === 'subject') {
-          setSelectedSubject(word);
-          setCurrentStep('SUBJECT_SELECTED');
-          setActiveTab('object'); // Auto forward to object tab
-        }
-        break;
-
-      case 'SUBJECT_SELECTED':
-        if (word.type === 'subject') {
-          setSelectedSubject(word);
-          setSubjectParticle('');
-        } else if (word.type === 'object') {
-          setSelectedObject(word);
-          setCurrentStep('OBJECT_SELECTED');
-          setActiveTab('verb'); // Auto forward to verb tab
-        }
-        break;
-
-      case 'OBJECT_SELECTED':
-        if (word.type === 'subject') {
-          setSelectedSubject(word);
-          setSubjectParticle('');
-        } else if (word.type === 'object') {
-          setSelectedObject(word);
-          setObjectParticle('');
-        } else if (word.type === 'verb') {
-          setSelectedVerb(word);
-          setCurrentStep('VERB_STEM_SELECTED');
-        }
-        break;
-
-      case 'VERB_STEM_SELECTED':
-      case 'COMPLETED':
-        if (word.type === 'subject') {
-          setSelectedSubject(word);
-          setSubjectParticle('');
-        } else if (word.type === 'object') {
-          setSelectedObject(word);
-          setObjectParticle('');
-        } else if (word.type === 'verb') {
-          setSelectedVerb(word);
-          setSelectedEnding(null);
-        }
-        break;
-
-      default:
-        break;
-    }
-  };
-
-  const handleAttachSubjectParticle = (particle: string) => {
-    setSubjectParticle(particle);
-  };
-
-  const handleAttachObjectParticle = (particle: string) => {
-    setObjectParticle(particle);
-  };
-
-  const handleSelectEnding = (ending: EndingOption) => {
-    setSelectedEnding(ending);
-    if (!config.bypassMode) {
-      setCurrentStep('COMPLETED');
-    }
-  };
-
-  const handleReset = () => {
-    setSelectedSubject(null);
-    setSubjectParticle('');
-    setSelectedObject(null);
-    setObjectParticle('');
-    setSelectedVerb(null);
-    setSelectedEnding(null);
-    setCurrentStep('START');
-    setActiveTab('subject');
-    setIsConceptBlocksFlipped(false);
-    setAnalysisResult(null);
-    showToast('Sentence builder reset.', 'info');
-  };
-
-  // --- AI Analysis Handler ---
-  const handleAnalyzeSentence = async () => {
-    if (!activeKorean || !activeEnglish) return;
-    setIsAnalyzing(true);
-    setIsConceptBlocksFlipped(true);
+  const [activeTab, setActiveTab] = useState<ModuleTab>(() => {
     try {
-      const result = await analyzeSentence(activeKorean, activeEnglish);
-      setAnalysisResult(result);
-    } catch (error) {
-      console.error('Failed to analyze sentence', error);
-      showToast('Failed to analyze sentence', 'info');
-      setIsConceptBlocksFlipped(false);
-    } finally {
-      setIsAnalyzing(false);
+      const saved = localStorage.getItem('korean_app_active_module');
+      return (saved === 'grammar' || saved === 'vocab') ? saved : 'vocab';
+    } catch {
+      return 'vocab';
     }
-  };
+  });
 
-  const handleFlipBack = () => {
-    setIsConceptBlocksFlipped(false);
-  };
-
-  // --- Deletion Helpers for Saved List ---
-  const handleDeletePhrase = (id: string) => {
-    const updated = savedPhrases.filter(p => p.id !== id);
-    saveHistory(updated);
-    showToast('Deleted phrase.', 'info');
-  };
-
-  const handleClearAllHistory = () => {
-    if (window.confirm('Clear all saved phrases?')) {
-      saveHistory([]);
-      showToast('Saved history cleared.', 'info');
+  const handleTabChange = (tab: ModuleTab) => {
+    setActiveTab(tab);
+    try {
+      localStorage.setItem('korean_app_active_module', tab);
+    } catch (e) {
+      console.error(e);
     }
   };
 
   return (
-    <div className={`min-h-screen font-sans text-slate-800 transition-colors duration-300 ${appMode === 'learn' ? 'bg-white p-0' : 'bg-brand-bg-light dark:bg-brand-bg-dark dot-pattern dark:text-slate-100 py-6 px-4 md:px-8'}`}>
-      
-
-
-      {/* Layout Content wrapper */}
-      <div className={`${appMode === 'learn' ? 'w-full min-h-screen' : 'max-w-6xl mx-auto'} flex flex-col items-stretch justify-center gap-6`}>
-        
-        {/* Main interactive application sandbox */}
-        <div className="flex-1 w-full">
-          <div className="w-full flex flex-col gap-5">
-            <div className="flex flex-col gap-4">
-              {appMode === 'learn' ? (
-                <LearnMode vocab={vocab} savedPhrases={savedPhrases} onExit={() => setAppMode('build')} />
-              ) : (
-                <>
-                  <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white border-[3px] border-black p-3 shadow-[4px_4px_0_0_rgba(0,0,0,1)]">
-                    <div>
-                      <p className="text-[10px] font-black uppercase tracking-[.2em] text-indigo-600">Builder</p>
-                      <h1 className="text-xl font-black">Build a Korean sentence</h1>
-                    </div>
-                    <div className="grid grid-cols-2 sm:flex gap-2">
-                      <BuilderMenuButton label="Learn" active={false} icon={<PenTool className="w-4 h-4" />} onClick={() => setAppMode('learn')} />
-                      <BuilderMenuButton label="Library" active={showResourcesPanel} icon={<BookOpen className="w-4 h-4" />} onClick={() => { setShowResourcesPanel(!showResourcesPanel); setShowVocabPanel(false); setShowConfigPanel(false); }} />
-                      <BuilderMenuButton label="Vocab" active={showVocabPanel} icon={<Database className="w-4 h-4" />} onClick={() => { setShowVocabPanel(!showVocabPanel); setShowResourcesPanel(false); setShowConfigPanel(false); if (!vocabJsonInput) setVocabJsonInput(JSON.stringify(vocab, null, 2)); }} />
-                      <BuilderMenuButton label="Settings" active={showConfigPanel} icon={<Settings className="w-4 h-4" />} onClick={() => { setShowConfigPanel(!showConfigPanel); setShowResourcesPanel(false); setShowVocabPanel(false); }} />
-                    </div>
-                  </header>
-                  {/* Zone 1 & 2: Working Sentence Ribbon (Blended with Roadmap) */}
-                  <WorkingSentence
-                subject={selectedSubject}
-                subjectParticle={subjectParticle}
-                object={selectedObject}
-                objectParticle={objectParticle}
-                verb={selectedVerb}
-                ending={selectedEnding}
-                bypassMode={config.bypassMode}
-                onReset={handleReset}
-                onCopy={handleCopyText}
-                copyFormat={config.copyFormat}
-                englishTranslation={activeEnglish}
-                onPlayAudio={handlePlayAudio}
-                activeKorean={activeKorean}
-                onSave={handleSaveSentence}
-                onAnalyze={handleAnalyzeSentence}
-                isAnalyzing={isAnalyzing}
-              />
-
-              {/* Zone 3: Concept Blocks */}
-              <ConceptBlocks
-                currentStep={currentStep}
-                selectedSubject={selectedSubject}
-                selectedObject={selectedObject}
-                selectedVerb={selectedVerb}
-                bypassMode={config.bypassMode}
-                onSelectWord={handleSelectWord}
-                activeTab={activeTab}
-                setActiveTab={setActiveTab}
-                subjects={vocab.subjects}
-                objects={vocab.objects}
-                verbs={vocab.verbs}
-                isFlipped={isConceptBlocksFlipped}
-                isAnalyzing={isAnalyzing}
-                analysisResult={analysisResult}
-                onFlipBack={handleFlipBack}
-              />
-
-              {/* Zone 4: Agglutination Drawer */}
-              <AgglutinationDrawer
-                currentStep={currentStep}
-                selectedSubject={selectedSubject}
-                selectedObject={selectedObject}
-                selectedVerb={selectedVerb}
-                bypassMode={config.bypassMode}
-                onAttachSubjectParticle={handleAttachSubjectParticle}
-                onAttachObjectParticle={handleAttachObjectParticle}
-                onSelectEnding={handleSelectEnding}
-                subjectParticle={subjectParticle}
-                objectParticle={objectParticle}
-                  selectedEnding={selectedEnding}
-                />
-                </>
-              )}
-
-            </div>
-
-          </div>
-        </div>
-
-      </div>
-
-      {appMode === 'build' && showResourcesPanel && (
-        <div className="fixed inset-0 z-50 bg-slate-900/45 backdrop-blur-sm p-3 sm:p-6 flex items-center justify-center" onClick={() => setShowResourcesPanel(false)}>
-        <div className="max-w-5xl w-full max-h-[88vh] bg-white border-[3px] border-black shadow-[8px_8px_0_0_rgba(0,0,0,1)] overflow-y-auto p-4 sm:p-6" onClick={(event) => event.stopPropagation()}>
-          <div className="sticky top-0 z-10 bg-white flex items-center justify-between border-b-2 border-black pb-3 mb-5">
-            <div><p className="text-[10px] font-black uppercase tracking-[.2em] text-indigo-600">Resources</p><h2 className="text-2xl font-black">Library & Topics</h2></div>
-            <button onClick={() => setShowResourcesPanel(false)} className="w-12 h-12 grid place-items-center border-2 border-black" aria-label="Close Library and Topics"><X /></button>
-          </div>
-          <SavedPhrases
-            phrases={savedPhrases}
-            onCopy={handleCopyText}
-            onDelete={handleDeletePhrase}
-            onClearAll={handleClearAllHistory}
-          />
-          <TopicGenerator onVocabGenerated={(newVocab) => {
-            setVocab(newVocab);
-            setVocabJsonInput(JSON.stringify(newVocab, null, 2));
-            handleReset();
-            showToast('Custom vocabulary loaded from AI!', 'success');
-          }} />
-        </div>
-        </div>
-      )}
-
-      {appMode === 'build' && <>
-      {/* Settings Overlay Panel */}
-      <AnimatePresence>
-        {showConfigPanel && <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-40 bg-slate-900/45 backdrop-blur-sm" onClick={() => setShowConfigPanel(false)} />}
-        {showConfigPanel && (
-          <motion.div
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            className="fixed inset-x-3 top-3 bottom-3 z-50 max-w-4xl mx-auto p-5 bg-white border-[3px] border-black shadow-[6px_6px_0_0_rgba(0,0,0,1)] text-sm overflow-y-auto"
-          >
-            <button onClick={() => setShowConfigPanel(false)} className="absolute top-3 right-3 w-11 h-11 grid place-items-center border-2 border-black bg-white" aria-label="Close settings"><X className="w-5 h-5" /></button>
-            <h3 className="font-extrabold font-display text-slate-900 dark:text-white mb-3 text-sm flex items-center gap-1.5 uppercase tracking-wider">
-              <Settings className="w-4 h-4 text-indigo-500" />
-              FORMATTING & BEHAVIOR PREFERENCES
-            </h3>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <span className="font-bold block mb-1">Clipboard Copy Payload Format</span>
-                <p className="text-[11px] text-slate-500 dark:text-slate-400 mb-2">
-                  Configure format delivered on copy interaction.
-                </p>
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => setConfig({ ...config, copyFormat: 'korean_only' })}
-                    className={`flex-1 py-1.5 border rounded-lg font-bold transition-all ${
-                      config.copyFormat === 'korean_only'
-                        ? 'bg-indigo-600 text-white border-indigo-700 shadow-sm'
-                        : 'bg-slate-50 dark:bg-slate-950 hover:bg-slate-100 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-800'
-                    }`}
-                  >
-                    Korean Only
-                  </button>
-                  <button
-                    onClick={() => setConfig({ ...config, copyFormat: 'bilingual' })}
-                    className={`flex-1 py-1.5 border rounded-lg font-bold transition-all ${
-                      config.copyFormat === 'bilingual'
-                        ? 'bg-indigo-600 text-white border-indigo-700 shadow-sm'
-                        : 'bg-slate-50 dark:bg-slate-950 hover:bg-slate-100 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-800'
-                    }`}
-                  >
-                    Bilingual Format
-                  </button>
-                </div>
-              </div>
-
-              <div>
-                <span className="font-bold block mb-1">Interaction Sequence Lock</span>
-                <p className="text-[11px] text-slate-500 dark:text-slate-400 mb-2">
-                  Lock tabs into sequential Subject ➔ Object ➔ Verb grammar flow, or enable freeform.
-                </p>
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => {
-                      setConfig({ ...config, bypassMode: false });
-                      handleReset();
-                    }}
-                    className={`flex-1 py-1.5 border rounded-lg font-bold transition-all ${
-                      !config.bypassMode
-                        ? 'bg-indigo-600 text-white border-indigo-700 shadow-sm'
-                        : 'bg-slate-50 dark:bg-slate-950 hover:bg-slate-100 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-800'
-                    }`}
-                  >
-                    Strict Sequence
-                  </button>
-                  <button
-                    onClick={() => setConfig({ ...config, bypassMode: true })}
-                    className={`flex-1 py-1.5 border rounded-lg font-bold transition-all ${
-                      config.bypassMode
-                        ? 'bg-indigo-600 text-white border-indigo-700 shadow-sm'
-                        : 'bg-slate-50 dark:bg-slate-950 hover:bg-slate-100 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-800'
-                    }`}
-                  >
-                    Bypass Mode (Sandbox)
-                  </button>
-                </div>
-              </div>
-            </div>
-            
-            <button
-              onClick={() => setShowConfigPanel(false)}
-              className="mt-4 px-4 py-1.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 font-bold rounded-lg border border-slate-200 dark:border-slate-700 block ml-auto transition-colors"
-            >
-              Close
-            </button>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Custom Vocabulary Manager Panel */}
-      <AnimatePresence>
-        {showVocabPanel && <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-40 bg-slate-900/45 backdrop-blur-sm" onClick={() => setShowVocabPanel(false)} />}
-        {showVocabPanel && (
-          <motion.div
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            className="fixed inset-x-3 top-3 bottom-3 z-50 max-w-6xl mx-auto p-5 bg-white border-[3px] border-black shadow-[6px_6px_0_0_rgba(0,0,0,1)] text-sm overflow-y-auto"
-          >
-            <button onClick={() => setShowVocabPanel(false)} className="absolute top-3 right-3 w-11 h-11 grid place-items-center border-2 border-black bg-white z-20" aria-label="Close vocabulary"><X className="w-5 h-5" /></button>
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between border-b border-slate-200 dark:border-slate-800 pb-3 mb-4 gap-2">
-              <h3 className="font-extrabold font-display text-slate-900 text-sm flex items-center gap-1.5 uppercase tracking-wider">
-                <Database className="w-4 h-4 text-indigo-500" />
-                CLASS LIBRARY
-              </h3>
-              <div className="flex items-center gap-1.5">
-                <span className="text-[10px] text-slate-400 dark:text-slate-500 font-bold uppercase">Active Set:</span>
-                <span className="bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 font-extrabold px-2 py-0.5 rounded-md border border-indigo-200/50 dark:border-indigo-900/40">
-                  {classOptions.find((option) => option.id === activeClass)?.title || (activeClass === 'custom' ? 'Custom class' : 'Default class')}
+    <div className="min-h-screen bg-brand-bg-light dark:bg-brand-bg-dark text-slate-800 dark:text-slate-100 flex flex-col font-sans">
+      {/* Top Persistent Navigation Bar */}
+      <header className="sticky top-0 z-30 bg-white dark:bg-slate-900 border-b-[3px] border-black px-4 py-3 shadow-[0_3px_0_0_rgba(0,0,0,1)]">
+        <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3">
+          {/* Logo / Branding */}
+          <div className="flex items-center gap-2.5 self-start sm:self-auto">
+            <span className="w-9 h-9 grid place-items-center bg-black text-white font-black text-base border-2 border-black shadow-[2px_2px_0_0_rgba(0,0,0,1)]">
+              한
+            </span>
+            <div>
+              <div className="flex items-center gap-2">
+                <h1 className="text-lg font-black tracking-tight leading-none">
+                  Korean Practice
+                </h1>
+                <span className="px-2 py-0.5 text-[10px] font-black uppercase bg-indigo-100 dark:bg-indigo-950 text-indigo-800 dark:text-indigo-200 border border-black">
+                  Sogang 1A
                 </span>
               </div>
+              <p className="text-[11px] font-bold text-slate-500 dark:text-slate-400 mt-0.5">
+                Vocabulary Memorization & Grammar Mastery
+              </p>
             </div>
+          </div>
 
-            <p className="text-sm text-slate-500 mb-5 leading-relaxed font-semibold">
-              Choose what you want to study. Your selected class becomes available immediately in both Builder and Learn mode.
-            </p>
+          {/* Module Switcher Tabs */}
+          <nav className="flex items-center gap-2 w-full sm:w-auto">
+            <button
+              onClick={() => handleTabChange('vocab')}
+              className={`flex-1 sm:flex-none min-h-11 px-4 py-2 border-2 border-black font-black text-xs sm:text-sm flex items-center justify-center gap-2 transition-transform active:translate-y-0.5 ${
+                activeTab === 'vocab'
+                  ? 'bg-indigo-600 text-white shadow-[3px_3px_0_0_rgba(0,0,0,1)]'
+                  : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700'
+              }`}
+            >
+              <BookOpen className="w-4 h-4" />
+              <span>단어 Vocabulary</span>
+            </button>
 
-            <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-              {classOptions.map((option) => {
-                const wordCount = option.vocab.subjects.length + option.vocab.objects.length + option.vocab.verbs.length;
-                const selected = activeClass === option.id;
-                return (
-                  <article key={option.id} className={`flex flex-col min-h-64 border-[3px] border-black p-4 ${option.tone} ${selected ? 'shadow-none translate-x-1 translate-y-1' : 'shadow-[5px_5px_0_0_rgba(0,0,0,1)]'}`}>
-                    <div className="flex items-start justify-between gap-3">
-                      <span className="text-4xl" aria-hidden="true">{option.emoji}</span>
-                      {selected && <span className="bg-black text-white px-2 py-1 text-[9px] font-black uppercase tracking-widest">Active</span>}
-                    </div>
-                    <h4 className="text-xl font-black mt-5 text-slate-950">{option.title}</h4>
-                    <p className="text-xs font-bold text-slate-600 mt-1.5 leading-relaxed">{option.description}</p>
-                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mt-3">{wordCount} vocabulary items</p>
-                    <button
-                      onClick={() => activateClass(option)}
-                      disabled={selected}
-                      className={`mt-auto min-h-12 border-[3px] border-black font-black text-sm ${selected ? 'bg-white/70 text-slate-500 cursor-default' : 'bg-indigo-600 text-white hover:bg-indigo-700 active:translate-y-0.5'}`}
-                    >
-                      {selected ? 'Currently studying' : 'Start this class'}
-                    </button>
-                  </article>
-                );
-              })}
-            </div>
+            <button
+              onClick={() => handleTabChange('grammar')}
+              className={`flex-1 sm:flex-none min-h-11 px-4 py-2 border-2 border-black font-black text-xs sm:text-sm flex items-center justify-center gap-2 transition-transform active:translate-y-0.5 ${
+                activeTab === 'grammar'
+                  ? 'bg-amber-400 text-black shadow-[3px_3px_0_0_rgba(0,0,0,1)]'
+                  : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700'
+              }`}
+            >
+              <Sparkles className="w-4 h-4" />
+              <span>문법 Grammar</span>
+            </button>
+          </nav>
+        </div>
+      </header>
 
-            <div className="flex flex-wrap items-center justify-between gap-3 border-t-2 border-slate-200 pt-5 mb-4">
-              <div><h4 className="font-black text-base">Create or edit a class</h4><p className="text-xs font-semibold text-slate-500">Advanced tools for importing your own vocabulary.</p></div>
-              <button onClick={() => setShowAdvancedVocab(!showAdvancedVocab)} className="min-h-12 px-5 bg-white border-[3px] border-black font-black shadow-[3px_3px_0_0_rgba(0,0,0,1)]">
-                {showAdvancedVocab ? 'Hide advanced tools' : 'Open advanced tools'}
-              </button>
-            </div>
-
-            {showAdvancedVocab && <div className="grid grid-cols-1 gap-5 bg-slate-50 border-2 border-slate-200 p-4">
-              {/* Left Column: Quick Templates */}
-              <div className="hidden">
-                <div>
-                  <h4 className="font-extrabold text-slate-800 dark:text-slate-200 mb-2 uppercase tracking-wide text-[10px] flex items-center gap-1">
-                    <FileText className="w-3.5 h-3.5 text-indigo-500" /> Load Templates
-                  </h4>
-                  <p className="text-[10px] text-slate-500 dark:text-slate-400 mb-3">
-                    Click to load a pre-formatted vocabulary structure into the editor, then customize or save it!
-                  </p>
-                  
-                  <div className="space-y-2">
-                    <button
-                      onClick={() => {
-                        setVocabJsonInput(JSON.stringify(PREGENERATED_TOPICS['Dating (Romance)'], null, 2));
-                        setVocabError(null);
-                      }}
-                      className="w-full text-left p-2 border border-slate-200 dark:border-slate-800 hover:border-indigo-500 dark:hover:border-indigo-400 bg-white dark:bg-slate-900 rounded-lg transition-all"
-                    >
-                      <div className="font-bold text-[11px] text-indigo-600 dark:text-indigo-400">💖 Romance (New)</div>
-                      <div className="text-[9px] text-slate-400 dark:text-slate-500 mt-0.5">Sun, good weather, blind date, breakup...</div>
-                    </button>
-                    <button
-                      onClick={() => {
-                        setVocabJsonInput(JSON.stringify(PREGENERATED_TOPICS['Huena'], null, 2));
-                        setVocabError(null);
-                      }}
-                      className="w-full text-left p-2 border border-slate-200 dark:border-slate-800 hover:border-indigo-500 dark:hover:border-indigo-400 bg-white dark:bg-slate-900 rounded-lg transition-all"
-                    >
-                      <div className="font-bold text-[11px] text-indigo-600 dark:text-indigo-400">👧 Huena (New)</div>
-                      <div className="text-[9px] text-slate-400 dark:text-slate-500 mt-0.5">Confucian Girl, Jeong, Cheers!, Ciao...</div>
-                    </button>
-
-
-                    <button
-                      onClick={() => {
-                        setVocabJsonInput(JSON.stringify(KOREA_CLASSWORK_TEMPLATE, null, 2));
-                        setVocabError(null);
-                      }}
-                      className="w-full text-left p-2 border border-slate-200 dark:border-slate-800 hover:border-indigo-500 dark:hover:border-indigo-400 bg-white dark:bg-slate-900 rounded-lg transition-all"
-                    >
-                      <div className="font-bold text-[11px] text-indigo-600 dark:text-indigo-400">📚 Korea Classwork (Sogang 1A)</div>
-                      <div className="text-[9px] text-slate-400 dark:text-slate-500 mt-0.5">Drinks, books, stationery, classroom items, people...</div>
-                    </button>
-
-                    <button
-                      onClick={() => {
-                        setVocabJsonInput(JSON.stringify(DATING_VOCAB_TEMPLATE, null, 2));
-                        setVocabError(null);
-                      }}
-                      className="w-full text-left p-2 border border-slate-200 dark:border-slate-800 hover:border-indigo-500 dark:hover:border-indigo-400 bg-white dark:bg-slate-900 rounded-lg transition-all"
-                    >
-                      <div className="font-bold text-[11px] text-indigo-600 dark:text-indigo-400">💘 Dating (Vanilla)</div>
-                      <div className="text-[9px] text-slate-400 dark:text-slate-500 mt-0.5">Boyfriend, girlfriend, love, confess, meet, flowers...</div>
-                    </button>
-
-                    <button
-                      onClick={() => {
-                        setVocabJsonInput(JSON.stringify(TRAVEL_VOCAB_TEMPLATE, null, 2));
-                        setVocabError(null);
-                      }}
-                      className="w-full text-left p-2 border border-slate-200 dark:border-slate-800 hover:border-indigo-500 dark:hover:border-indigo-400 bg-white dark:bg-slate-900 rounded-lg transition-all"
-                    >
-                      <div className="font-bold text-[11px] text-indigo-600 dark:text-indigo-400">✈️ Travel & Shopping</div>
-                      <div className="text-[9px] text-slate-400 dark:text-slate-500 mt-0.5">Tickets, hotels, buying, coffee, going...</div>
-                    </button>
-                  </div>
-                </div>
-
-                <div className="border-t border-slate-200/50 dark:border-slate-800 pt-3 mt-2">
-                  <button
-                    onClick={() => {
-                      if (window.confirm('Revert all custom vocabulary and restore default Dating Theme defaults?')) {
-                        setVocab({ subjects: SUBJECTS, objects: OBJECTS, verbs: VERBS });
-                        localStorage.removeItem('korean_sentences_custom_vocab');
-                        localStorage.setItem('korean_active_class', 'default');
-                        setActiveClass('default');
-                        setVocabJsonInput('');
-                        setVocabError(null);
-                        handleReset();
-                        showToast('Restored default dating vocabulary!', 'success');
-                        setShowVocabPanel(false);
-                      }
-                    }}
-                    className="w-full py-2 bg-slate-200 hover:bg-slate-300 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-extrabold rounded-lg transition-colors text-center block"
-                  >
-                    Restore Default Dating Set
-                  </button>
-                </div>
-              </div>
-
-              {/* Right Columns: Editor area */}
-              <div className="flex flex-col gap-3">
-                <div className="flex items-center justify-between">
-                  <span className="font-bold block text-slate-700 dark:text-slate-300">JSON Configuration Editor</span>
-                  <span className="text-[10px] text-slate-400 dark:text-slate-500">Edit values or paste custom blocks</span>
-                </div>
-
-                <div className="relative">
-                  <textarea
-                    value={vocabJsonInput}
-                    onChange={(e) => setVocabJsonInput(e.target.value)}
-                    placeholder="Pasted vocabulary JSON..."
-                    className="w-full h-56 font-mono text-[11px] p-3 border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50 dark:bg-slate-950 focus:ring-1 focus:ring-indigo-500 focus:outline-hidden text-slate-800 dark:text-slate-100"
-                  />
-                </div>
-
-                {vocabError && (
-                  <div className="p-2 border border-rose-200 dark:border-rose-900/40 bg-rose-50 dark:bg-rose-950/20 text-rose-600 dark:text-rose-400 font-bold rounded-lg leading-relaxed text-[10px]">
-                    ⚠️ Error: {vocabError}
-                  </div>
-                )}
-
-                <div className="flex gap-2 justify-end mt-1">
-                  <button
-                    onClick={() => {
-                      setShowVocabPanel(false);
-                      setVocabError(null);
-                    }}
-                    className="px-4 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 font-bold rounded-lg transition-colors border border-slate-200 dark:border-slate-700"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    onClick={() => {
-                      if (!vocabJsonInput.trim()) {
-                        setVocabError('Pasted text cannot be empty.');
-                        return;
-                      }
-                      try {
-                        const parsed = JSON.parse(vocabJsonInput);
-                        
-                        // Validation
-                        if (!parsed.subjects || !Array.isArray(parsed.subjects)) {
-                          throw new Error('Missing or invalid "subjects" array.');
-                        }
-                        if (!parsed.objects || !Array.isArray(parsed.objects)) {
-                          throw new Error('Missing or invalid "objects" array.');
-                        }
-                        if (!parsed.verbs || !Array.isArray(parsed.verbs)) {
-                          throw new Error('Missing or invalid "verbs" array.');
-                        }
-
-                        // Check fields of items
-                        const checkWord = (w: any, type: string) => {
-                          if (!w.id || typeof w.id !== 'string') throw new Error(`Items in ${type} must contain a unique string "id".`);
-                          if (!w.korean || typeof w.korean !== 'string') throw new Error(`Item "${w.id}" must contain a string "korean".`);
-                          if (!w.english || typeof w.english !== 'string') throw new Error(`Item "${w.id}" must contain a string "english".`);
-                          if (!w.emoji || typeof w.emoji !== 'string') throw new Error(`Item "${w.id}" must contain a string "emoji".`);
-                          if (w.hasBatchim === undefined) throw new Error(`Item "${w.id}" must specify boolean "hasBatchim".`);
-                        };
-
-                        parsed.subjects.forEach((w: any) => checkWord(w, 'subjects'));
-                        parsed.objects.forEach((w: any) => checkWord(w, 'objects'));
-                        parsed.verbs.forEach((w: any) => checkWord(w, 'verbs'));
-
-                        // Save state and localStorage
-                        setVocab(parsed);
-                        localStorage.setItem('korean_sentences_custom_vocab', JSON.stringify(parsed));
-                        localStorage.setItem('korean_active_class', 'custom');
-                        setActiveClass('custom');
-                        setVocabError(null);
-                        handleReset(); // Reset sentence state
-                        showToast('Custom vocabulary loaded!', 'success');
-                        setShowVocabPanel(false);
-                      } catch (err: any) {
-                        setVocabError(err?.message || 'Invalid JSON format.');
-                      }
-                    }}
-                    className="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold rounded-lg transition-colors shadow-sm flex items-center gap-1"
-                  >
-                    <Upload className="w-3.5 h-3.5" />
-                    <span>Apply Custom Vocab</span>
-                  </button>
-                </div>
-              </div>
-            </div>}
-          </motion.div>
-        )}
-      </AnimatePresence>
-      </>}
-
-      {/* Floating System Notification/Toast alert */}
-      <AnimatePresence>
-        {toast && (
-          <motion.div
-            initial={{ opacity: 0, y: 50, scale: 0.9 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 50, scale: 0.9 }}
-            className={`fixed bottom-5 left-1/2 -translate-x-1/2 z-50 px-5 py-3 rounded-full shadow-lg border text-xs font-bold flex items-center gap-2 ${
-              toast.type === 'success'
-                ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-950 border-slate-850 dark:border-slate-200 shadow-md'
-                : 'bg-slate-100 text-slate-800 dark:bg-slate-900 dark:text-slate-100 border-slate-200 dark:border-slate-800'
-            }`}
-          >
-            <Sparkles className="w-4 h-4 text-indigo-500 animate-pulse" />
-            <span>{toast.message}</span>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {/* Main Content Area */}
+      <main className="flex-1 w-full p-3 sm:p-6 md:p-8">
+        <div className="max-w-6xl mx-auto">
+          {activeTab === 'vocab' ? (
+            <LearnMode vocab={INITIAL_VOCAB} />
+          ) : (
+            <GrammarMode onBackToVocab={() => handleTabChange('vocab')} />
+          )}
+        </div>
+      </main>
     </div>
-  );
-}
-
-function BuilderMenuButton({ label, icon, active, onClick }: { label: string; icon: ReactNode; active: boolean; onClick: () => void }) {
-  return (
-    <button
-      onClick={onClick}
-      className={`min-h-11 px-3 flex items-center justify-center gap-2 border-2 border-black font-black text-xs transition-colors ${active ? 'bg-indigo-600 text-white' : 'bg-white hover:bg-slate-100'}`}
-    >
-      {icon}
-      <span>{label}</span>
-    </button>
   );
 }
