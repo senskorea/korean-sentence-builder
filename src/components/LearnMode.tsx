@@ -66,7 +66,7 @@ function formatDuration(totalSeconds: number) {
 export default function LearnMode({ vocab, savedPhrases = [], onExit }: Props) {
   const words = [...vocab.subjects, ...vocab.objects, ...vocab.verbs];
   const sentences = savedPhrases;
-  const [screen, setScreen] = useState<'home' | 'session' | 'summary' | 'jamo' | 'vocabulary' | 'mistakes' | 'lesson'>('home');
+  const [screen, setScreen] = useState<'home' | 'session' | 'summary' | 'jamo' | 'vocabulary' | 'mistakes' | 'lesson'>('vocabulary');
   const [learnType, setLearnType] = useState<LearnType>('words');
   const [practiceMode, setPracticeMode] = useState<PracticeMode>('write');
   const [sessionLength, setSessionLength] = useState(10);
@@ -77,7 +77,7 @@ export default function LearnMode({ vocab, savedPhrases = [], onExit }: Props) {
   const [wordStats, setWordStats] = useState<Record<string, Stats>>({});
   const [sentenceStats, setSentenceStats] = useState<Record<string, Stats>>({});
   const [search, setSearch] = useState('');
-  const [selectedTag, setSelectedTag] = useState<string | null>(null);
+  const [selectedTag, setSelectedTag] = useState<string | null>('latest');
   const [showSensitive, setShowSensitive] = useState(false);
   const [selectedPattern, setSelectedPattern] = useState(0);
   const [revealedExercises, setRevealedExercises] = useState<Record<string, boolean>>({});
@@ -484,9 +484,14 @@ export default function LearnMode({ vocab, savedPhrases = [], onExit }: Props) {
             <p className="text-xs font-black uppercase tracking-[.2em] text-indigo-600">My vocabulary</p>
             <h2 className="text-3xl sm:text-4xl font-black">{PERSONAL_VOCABULARY.length} words and expressions</h2>
           </div>
-          <button onClick={() => setScreen('home')} className="min-h-11 px-4 flex items-center gap-2 border-2 border-black font-black text-xs">
-            <ArrowLeft className="w-4 h-4" />Learn
-          </button>
+          <div className="flex items-center gap-2">
+            <button onClick={() => setScreen('home')} className="min-h-11 px-3 sm:px-4 flex items-center gap-1.5 border-2 border-black bg-white font-black text-xs">
+              <ArrowLeft className="w-4 h-4" />Practice hub
+            </button>
+            <button onClick={onExit} className="min-h-11 px-3 sm:px-4 flex items-center gap-1.5 border-2 border-black bg-white font-black text-xs">
+              Builder
+            </button>
+          </div>
         </div>
 
         {/* Search & Actions Toolbar */}
