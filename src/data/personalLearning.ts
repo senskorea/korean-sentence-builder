@@ -3,10 +3,20 @@ export interface PersonalVocabItem {
   korean: string;
   english: string;
   tags: string[];
+  dateAdded: string; // Format: YYYY.MM.DD (e.g. 2026.10.08)
   sensitive?: boolean;
 }
 
-const entries: [string, string, string[]][] = [
+export type PersonalVocabEntry = [
+  korean: string,
+  english: string,
+  tags: string[],
+  dateAdded?: string
+];
+
+// When adding new vocabulary, always include the addition date as the 4th element:
+// e.g. ["단어", "word", ["noun", "tag"], "2026.10.12"]
+const entries: PersonalVocabEntry[] = [
   ['오다', 'to come', ['verb']], ['그냥', 'just; simply', ['adverb']], ['거기', 'there; that place', ['pronoun']],
   ['근데', 'but; by the way', ['conjunction']], ['알다', 'to know', ['verb']], ['돈', 'money', ['noun']],
   ['선생님', 'teacher', ['noun', 'classwork', 'sogang1a', 'occupation']], ['괜찮다', 'to be okay', ['adjective']], ['친구', 'friend', ['noun']],
@@ -235,11 +245,12 @@ const entries: [string, string, string[]][] = [
 
 ];
 
-export const PERSONAL_VOCABULARY: PersonalVocabItem[] = entries.map(([korean, english, tags]) => ({
+export const PERSONAL_VOCABULARY: PersonalVocabItem[] = entries.map(([korean, english, tags, dateAdded]) => ({
   id: `personal-${korean}`,
   korean,
   english,
   tags,
+  dateAdded: dateAdded || (tags.includes('classwork') ? '2026.10.08' : '2026.09.08'),
   sensitive: tags.includes('vulgar'),
 }));
 
