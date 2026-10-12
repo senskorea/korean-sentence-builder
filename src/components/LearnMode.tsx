@@ -78,6 +78,26 @@ export default function LearnMode({ vocab, savedPhrases = [], onExit }: Props) {
   const [sentenceStats, setSentenceStats] = useState<Record<string, Stats>>({});
   const [search, setSearch] = useState('');
   const [selectedTag, setSelectedTag] = useState<string | null>('latest');
+  const [stylusOnly, setStylusOnly] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem('korean_stylus_only') === 'true';
+    } catch {
+      return false;
+    }
+  });
+  const activePointerType = useRef<'pen' | 'touch' | 'mouse' | null>(null);
+
+  const toggleStylusOnly = () => {
+    setStylusOnly((prev) => {
+      const next = !prev;
+      try {
+        localStorage.setItem('korean_stylus_only', String(next));
+      } catch (e) {
+        console.error(e);
+      }
+      return next;
+    });
+  };
   const [showSensitive, setShowSensitive] = useState(false);
   const [selectedPattern, setSelectedPattern] = useState(0);
   const [revealedExercises, setRevealedExercises] = useState<Record<string, boolean>>({});
@@ -134,14 +154,41 @@ export default function LearnMode({ vocab, savedPhrases = [], onExit }: Props) {
     if (!rect.width || !rect.height) return;
     context.setTransform(1, 0, 0, 1, 0, 0);
     context.clearRect(0, 0, canvas.width, canvas.height);
-    // Derive the transform from the actual bitmap and visible canvas. This stays
-    // accurate when iPad Safari changes its dynamic viewport or browser chrome.
     context.scale(canvas.width / rect.width, canvas.height / rect.height);
     context.fillStyle = '#4f46e5';
+
     const visibleLines = currentLine.current?.length ? [...lines.current, currentLine.current] : lines.current;
     visibleLines.forEach((line) => {
-      const stroke = getStroke(line, { size: 12, thinning: 0.4, smoothing: 0.65, streamline: 0.25, simulatePressure: false });
-      if (stroke.length) context.fill(new Path2D(pathFromStroke(stroke)));
+      if (!line.length) return;
+      // Dot and micro-tap detection for short Korean vowel marks (ㅏ, ㅓ, ㅗ, ㅜ)
+      if (line.length === 1 || (line.length === 2 && Math.hypot(line[0][0] - line[1][0], line[0][1] - line[1][1]) < 2.5)) {
+        const [x, y] = line[0];
+        const pressure = line[0][2] || 0.5;
+        const radius = Math.max(4, pressure * 7);
+        context.beginPath();
+        context.arc(x, y, radius, 0, Math.PI * 2);
+        context.fill();
+        return;
+      }
+
+      const stroke = getStroke(line, {
+        size: 11,
+        thinning: 0.25,
+        smoothing: 0.35,
+        streamline: 0.10,
+        simulatePressure: false,
+        start: { cap: true, taper: 0 },
+        end: { cap: true, taper: 0 },
+      });
+
+      if (stroke.length) {
+        context.fill(new Path2D(pathFromStroke(stroke)));
+      } else {
+        const [x, y] = line[0];
+        context.beginPath();
+        context.arc(x, y, 4.5, 0, Math.PI * 2);
+        context.fill();
+      }
     });
   }, []);
 
@@ -201,31 +248,33 @@ export default function LearnMode({ vocab, savedPhrases = [], onExit }: Props) {
     };
   }, [screen, writingCard, index, syncCanvasSize]);
 
-  const pointFromEvent = (event: globalThis.PointerEvent, canvas: HTMLCanvasElement) => {
+  const appendPointerSamples = useCallback((event: PointerEvent, includeEndpoint = true) => {
+    if (!currentLine.current || !canvasRef.current) return;
+    const canvas = canvasRef.current;
     const rect = canvas.getBoundingClientRect();
-    const pressure = event.pointerType === 'pen' && event.pressure > 0 ? event.pressure : 0.5;
-    return [event.clientX - rect.left, event.clientY - rect.top, pressure];
-  };
+    const coalesced = event.getCoalescedEvents?.() || [];
+    const samples = includeEndpoint ? [...coalesced, event] : coalesced;
 
-  const appendPointerSamples = (event: ReactPointerEvent<HTMLCanvasElement>, includeEndpoint = true) => {
-    if (!currentLine.current) return;
-    const coalesced = event.nativeEvent.getCoalescedEvents?.() || [];
-    const samples = includeEndpoint ? [...coalesced, event.nativeEvent] : coalesced;
     samples.forEach((sample) => {
       const previous = currentLine.current?.[currentLine.current.length - 1];
-      const next = pointFromEvent(sample, event.currentTarget);
+      const pressure = sample.pointerType === 'pen' && sample.pressure > 0 ? sample.pressure : 0.5;
+      const next = [sample.clientX - rect.left, sample.clientY - rect.top, pressure];
+
       if (!previous) {
         currentLine.current?.push(next);
         return;
       }
-      if (sample.pointerType === 'pen' && sample.pressure === 0) next[2] = previous[2];
+
+      if (sample.pointerType === 'pen' && sample.pressure === 0) {
+        next[2] = previous[2];
+      }
+
       const dx = next[0] - previous[0];
       const dy = next[1] - previous[1];
       const distance = Math.hypot(dx, dy);
       if (distance < 0.2) return;
-      // Safari can provide sparse samples during a quick flick. Add evenly spaced
-      // points so the stroke engine retains its shape and does not lose corners.
-      const steps = Math.max(1, Math.ceil(distance / 4));
+
+      const steps = Math.max(1, Math.ceil(distance / 3));
       for (let step = 1; step <= steps; step += 1) {
         const amount = step / steps;
         currentLine.current?.push([
@@ -235,42 +284,98 @@ export default function LearnMode({ vocab, savedPhrases = [], onExit }: Props) {
         ]);
       }
     });
-  };
+  }, []);
 
-  const beginStroke = (event: ReactPointerEvent<HTMLCanvasElement>) => {
-    if (!event.isPrimary || event.button !== 0 || activePointerId.current !== null) return;
-    // Large touch contacts are usually a resting palm on iPad, not an intended finger stroke.
-    if (event.pointerType === 'touch' && (event.width > 22 || event.height > 22)) return;
+  const beginStroke = useCallback((event: PointerEvent) => {
+    if (stylusOnly && event.pointerType === 'touch') {
+      return;
+    }
+
+    // PALM REJECTION & PEN PREEMPTION:
+    // If a touch was active (resting palm), but now Apple Pencil touches down,
+    // Apple Pencil takes absolute priority and overrides the palm touch!
+    if (event.pointerType === 'pen' && activePointerType.current === 'touch') {
+      currentLine.current = null;
+      activePointerId.current = null;
+      activePointerType.current = null;
+    }
+
+    if (activePointerId.current !== null && activePointerId.current !== event.pointerId) {
+      return;
+    }
+
+    // Reject broad palm contacts in hybrid mode
+    if (event.pointerType === 'touch' && (event.width > 24 || event.height > 24)) {
+      return;
+    }
+
     event.preventDefault();
-    syncCanvasSize();
-    const rect = event.currentTarget.getBoundingClientRect();
-    event.currentTarget.setPointerCapture(event.pointerId);
     activePointerId.current = event.pointerId;
-    currentLine.current = [[event.clientX - rect.left, event.clientY - rect.top, event.pointerType === 'pen' && event.pressure > 0 ? event.pressure : 0.5]];
+    activePointerType.current = event.pointerType as 'pen' | 'touch' | 'mouse';
+
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const rect = canvas.getBoundingClientRect();
+    const pressure = event.pointerType === 'pen' && event.pressure > 0 ? event.pressure : 0.5;
+
+    currentLine.current = [[event.clientX - rect.left, event.clientY - rect.top, pressure]];
     drawing.current = true;
     requestCanvasRender();
-  };
-  const continueStroke = (event: ReactPointerEvent<HTMLCanvasElement>) => {
-    if (!drawing.current || !currentLine.current || activePointerId.current !== event.pointerId) return;
+  }, [stylusOnly, requestCanvasRender]);
+
+  const continueStroke = useCallback((event: PointerEvent) => {
+    if (!drawing.current || !currentLine.current || activePointerId.current !== event.pointerId) {
+      return;
+    }
     event.preventDefault();
     appendPointerSamples(event);
     requestCanvasRender();
-  };
-  const endStroke = (event: ReactPointerEvent<HTMLCanvasElement>) => {
-    if (!drawing.current || activePointerId.current !== event.pointerId) return;
+  }, [appendPointerSamples, requestCanvasRender]);
+
+  const endStroke = useCallback((event: PointerEvent) => {
+    if (!drawing.current || activePointerId.current !== event.pointerId) {
+      return;
+    }
     event.preventDefault();
-    // Capture the lift position explicitly: very fast marks can have no final
-    // pointermove between contact and pointerup.
     appendPointerSamples(event, event.type !== 'pointercancel');
-    if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
+
     drawing.current = false;
     activePointerId.current = null;
-    if (currentLine.current?.length) lines.current.push([...currentLine.current]);
+    activePointerType.current = null;
+
+    if (currentLine.current?.length) {
+      lines.current.push([...currentLine.current]);
+    }
     currentLine.current = null;
-    if (renderFrame.current !== null) window.cancelAnimationFrame(renderFrame.current);
-    renderFrame.current = null;
-    syncCanvasSize();
-  };
+
+    if (renderFrame.current !== null) {
+      window.cancelAnimationFrame(renderFrame.current);
+      renderFrame.current = null;
+    }
+    renderCanvas();
+  }, [appendPointerSamples, renderCanvas]);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas || !writingCard || screen !== 'session') return;
+
+    const onPointerDown = (e: PointerEvent) => beginStroke(e);
+    const onPointerMove = (e: PointerEvent) => continueStroke(e);
+    const onPointerUp = (e: PointerEvent) => endStroke(e);
+    const onPointerCancel = (e: PointerEvent) => endStroke(e);
+
+    canvas.addEventListener('pointerdown', onPointerDown, { passive: false });
+    window.addEventListener('pointermove', onPointerMove, { passive: false });
+    window.addEventListener('pointerup', onPointerUp, { passive: false });
+    window.addEventListener('pointercancel', onPointerCancel, { passive: false });
+
+    return () => {
+      canvas.removeEventListener('pointerdown', onPointerDown);
+      window.removeEventListener('pointermove', onPointerMove);
+      window.removeEventListener('pointerup', onPointerUp);
+      window.removeEventListener('pointercancel', onPointerCancel);
+    };
+  }, [writingCard, screen, beginStroke, continueStroke, endStroke]);
 
   const due = (pool: { id: string }[], stats: Record<string, Stats>) =>
     pool.filter((item) => !stats[item.id] || stats[item.id].nextReviewDate <= Date.now()).length;
@@ -769,9 +874,22 @@ export default function LearnMode({ vocab, savedPhrases = [], onExit }: Props) {
           <div ref={canvasBoxRef} className="relative flex-1 min-h-0 bg-white border-[3px] border-black overflow-hidden">
             <div className="absolute inset-0 grid place-items-center pointer-events-none text-slate-200 dark:text-slate-800"><PenTool className="w-24 h-24" /></div>
             {revealed && <Answer korean={korean} emoji={emoji} sentence={learnType === 'sentences'} overlay />}
-            <canvas ref={canvasRef} onPointerDown={beginStroke} onPointerMove={continueStroke} onPointerUp={endStroke} onPointerCancel={endStroke} className="absolute inset-0 z-10 w-full h-full touch-none cursor-crosshair" />
+            <canvas ref={canvasRef} className="absolute inset-0 z-10 w-full h-full touch-none cursor-crosshair" />
             <div className="absolute z-20 top-3 right-3 flex flex-wrap justify-end gap-2 pl-3">
               {!revealed && <button onClick={() => setRevealed(true)} className="h-12 min-w-36 px-5 bg-indigo-600 text-white border-2 border-black font-black text-sm shadow-[3px_3px_0_0_rgba(0,0,0,1)]">Reveal answer</button>}
+              <button
+                type="button"
+                onClick={toggleStylusOnly}
+                className={`h-12 px-3 border-2 border-black flex items-center gap-1.5 font-black text-xs transition-all shadow-[2px_2px_0_0_rgba(0,0,0,1)] ${
+                  stylusOnly
+                    ? 'bg-emerald-600 text-white'
+                    : 'bg-white dark:bg-slate-950 text-slate-700 dark:text-slate-300'
+                }`}
+                title={stylusOnly ? 'Stylus only mode is ON. Resting palms and touch inputs are completely ignored.' : 'Stylus only mode is OFF. Both touch and stylus inputs are accepted.'}
+              >
+                <PenTool className="w-4 h-4" />
+                <span>{stylusOnly ? 'Stylus only: ON' : 'Stylus only: OFF'}</span>
+              </button>
               <button onClick={undoStroke} className="h-12 px-3 bg-white dark:bg-slate-950 border-2 border-black flex items-center gap-2 font-black text-xs"><RotateCcw className="w-4 h-4" />Undo</button>
               <button onClick={clearCanvas} className="h-12 px-3 bg-white dark:bg-slate-950 border-2 border-black flex items-center gap-2 font-black text-xs"><Eraser className="w-4 h-4" />Clear</button>
               <button onClick={() => { setNoteDraft(notes[item.id] || ''); setNoteOpen(true); }} className={`h-12 px-3 border-2 border-black flex items-center gap-2 font-black text-xs ${notes[item.id] ? 'bg-amber-200 text-black' : 'bg-white dark:bg-slate-950'}`}><StickyNote className="w-4 h-4" />Note</button>
