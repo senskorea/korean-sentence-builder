@@ -3,24 +3,28 @@ import {
   ArrowLeft, 
   ChevronLeft, 
   ChevronRight, 
-  BookOpen, 
   PenTool, 
+  Highlighter, 
   Eraser, 
   RotateCcw, 
   Check, 
-  HelpCircle, 
   Sparkles, 
-  Layers, 
-  Award,
-  Eye,
-  CheckCircle2,
-  XCircle
+  Eye, 
+  EyeOff,
+  BookOpen
 } from 'lucide-react';
 import { getStroke } from 'perfect-freehand';
-import { GRAMMAR_CARDS, type GrammarCard, type GrammarDrillItem } from '../data/grammarRules';
+import { GRAMMAR_CARDS, type GrammarCard } from '../data/grammarRules';
 
 interface Props {
   onBackToVocab?: () => void;
+}
+
+interface StrokeData {
+  points: number[][];
+  color: string;
+  size: number;
+  opacity: number;
 }
 
 function pathFromStroke(stroke: number[][]) {
@@ -36,15 +40,8 @@ function pathFromStroke(stroke: number[][]) {
 
 export default function GrammarMode({ onBackToVocab }: Props) {
   const [selectedCardId, setSelectedCardId] = useState<string | null>(null);
-  const [drillIndex, setDrillIndex] = useState(0);
-  const [selectedOption, setSelectedOption] = useState<string | null>(null);
-  const [revealed, setRevealed] = useState(false);
-  const [completedDrills, setCompletedDrills] = useState<Record<string, boolean>>({});
-
-  // Canvas Drawing State
-  const [strokes, setStrokes] = useState<number[][][]>([]);
-  const [currentStroke, setCurrentStroke] = useState<number[][] | null>(null);
-  const [tool, setTool] = useState<'pen' | 'eraser'>('pen');
+  const [tool, setTool] = useState<'pen' | 'highlighter' | 'eraser'>('pen');
+  const [showSelfCheckAnswers, setShowSelfCheckAnswers] = useState(false);
   const [stylusOnly, setStylusOnly] = useState<boolean>(() => {
     try {
       return localStorage.getItem('korean_stylus_only') === 'true';
@@ -53,7 +50,19 @@ export default function GrammarMode({ onBackToVocab }: Props) {
     }
   });
 
+  // Card strokes mapping: cardId -> StrokeData[]
+  const [cardStrokes, setCardStrokes] = useState<Record<string, StrokeData[]>>(() => {
+    try {
+      const saved = localStorage.getItem('korean_grammar_card_strokes');
+      return saved ? JSON.parse(saved) : {};
+    } catch {
+      return {};
+    }
+  });
+
+  const [currentPoints, setCurrentPoints] = useState<number[][] | null>(null);
   const activePointerType = useRef<'pen' | 'touch' | 'mouse' | null>(null);
+  const cardContainerRef = useRef<HTMLDivElement>(null);
 
   const toggleStylusOnly = () => {
     setStylusOnly((prev) => {
@@ -68,20 +77,34 @@ export default function GrammarMode({ onBackToVocab }: Props) {
   };
 
   const currentCard = GRAMMAR_CARDS.find((c) => c.id === selectedCardId) || null;
-  const currentDrill: GrammarDrillItem | undefined = currentCard?.drills[drillIndex];
+  const currentStrokes: StrokeData[] = selectedCardId ? cardStrokes[selectedCardId] || [] : [];
 
-  // Reset drill state when card or drill changes
-  useEffect(() => {
-    setSelectedOption(null);
-    setRevealed(false);
-    setStrokes([]);
-    setCurrentStroke(null);
-  }, [selectedCardId, drillIndex]);
+  const saveStrokesForCard = useCallback((cardId: string, updated: StrokeData[]) => {
+    setCardStrokes((prev) => {
+      const next = { ...prev, [cardId]: updated };
+      try {
+        localStorage.setItem('korean_grammar_card_strokes', JSON.stringify(next));
+      } catch (e) {
+        console.error(e);
+      }
+      return next;
+    });
+  }, []);
 
-  // Pointer Handlers for Handwriting Canvas
+  const clearCardStrokes = () => {
+    if (!selectedCardId) return;
+    saveStrokesForCard(selectedCardId, []);
+    setCurrentPoints(null);
+  };
+
+  // Pointer Handlers for Full Card Annotation Canvas
   const handlePointerDown = (e: ReactPointerEvent<SVGSVGElement>) => {
     activePointerType.current = e.pointerType as 'pen' | 'touch' | 'mouse';
-    if (stylusOnly && e.pointerType !== 'pen') return;
+
+    // If stylus-only is on, ignore non-pen input so touch can scroll naturally
+    if (stylusOnly && e.pointerType !== 'pen') {
+      return;
+    }
 
     e.currentTarget.setPointerCapture(e.pointerId);
     const rect = e.currentTarget.getBoundingClientRect();
@@ -90,7 +113,7 @@ export default function GrammarMode({ onBackToVocab }: Props) {
     if (tool === 'eraser') {
       eraseNear(point[0], point[1]);
     } else {
-      setCurrentStroke([point]);
+      setCurrentPoints([point]);
     }
   };
 
@@ -105,8 +128,8 @@ export default function GrammarMode({ onBackToVocab }: Props) {
       if (e.buttons === 1) {
         eraseNear(point[0], point[1]);
       }
-    } else if (currentStroke) {
-      setCurrentStroke((prev) => (prev ? [...prev, point] : [point]));
+    } else if (currentPoints) {
+      setCurrentPoints((prev) => (prev ? [...prev, point] : [point]));
     }
   };
 
@@ -114,59 +137,46 @@ export default function GrammarMode({ onBackToVocab }: Props) {
     if (stylusOnly && e.pointerType !== 'pen') return;
     activePointerType.current = null;
 
-    if (currentStroke && currentStroke.length > 0) {
-      setStrokes((prev) => [...prev, currentStroke]);
-      setCurrentStroke(null);
+    if (currentPoints && currentPoints.length > 0 && selectedCardId) {
+      const newStroke: StrokeData = {
+        points: currentPoints,
+        color: tool === 'highlighter' ? '#fbbf24' : '#1e1b4b',
+        size: tool === 'highlighter' ? 14 : 3.5,
+        opacity: tool === 'highlighter' ? 0.45 : 0.95
+      };
+      saveStrokesForCard(selectedCardId, [...currentStrokes, newStroke]);
+      setCurrentPoints(null);
     }
   };
 
   const eraseNear = (x: number, y: number, radius = 25) => {
-    setStrokes((prev) =>
-      prev.filter((stroke) =>
-        !stroke.some(([sx, sy]) => Math.hypot(sx - x, sy - y) < radius)
-      )
+    if (!selectedCardId) return;
+    const remaining = currentStrokes.filter((stroke) =>
+      !stroke.points.some(([sx, sy]) => Math.hypot(sx - x, sy - y) < radius)
     );
+    saveStrokesForCard(selectedCardId, remaining);
   };
 
-  const clearCanvas = () => {
-    setStrokes([]);
-    setCurrentStroke(null);
-  };
-
-  // Card Navigation
+  // Navigation
   const currentIndex = GRAMMAR_CARDS.findIndex((c) => c.id === selectedCardId);
   const handlePrevCard = () => {
     if (currentIndex > 0) {
       setSelectedCardId(GRAMMAR_CARDS[currentIndex - 1].id);
-      setDrillIndex(0);
+      setShowSelfCheckAnswers(false);
     }
   };
 
   const handleNextCard = () => {
     if (currentIndex < GRAMMAR_CARDS.length - 1) {
       setSelectedCardId(GRAMMAR_CARDS[currentIndex + 1].id);
-      setDrillIndex(0);
-    }
-  };
-
-  // Check Answer
-  const handleCheckDrill = () => {
-    setRevealed(true);
-    if (currentDrill) {
-      setCompletedDrills((prev) => ({
-        ...prev,
-        [currentDrill.id]: true
-      }));
+      setShowSelfCheckAnswers(false);
     }
   };
 
   // ==========================================
-  // VIEW 1: Chronological Cards Overview
+  // VIEW 1: Chronological Overview
   // ==========================================
   if (!currentCard) {
-    const totalDrills = GRAMMAR_CARDS.reduce((acc, c) => acc + c.drills.length, 0);
-    const completedCount = Object.keys(completedDrills).length;
-
     return (
       <div className="w-full max-w-5xl mx-auto p-4 sm:p-6 space-y-6">
         {/* Header Banner */}
@@ -177,43 +187,31 @@ export default function GrammarMode({ onBackToVocab }: Props) {
                 Sogang Korean 1A
               </span>
               <span className="text-xs font-bold text-amber-900 dark:text-amber-200">
-                Chronological Curriculum
+                Textbook Study Cards
               </span>
             </div>
             <h1 className="text-3xl sm:text-4xl font-black mt-2">문법 Grammar Learning Points</h1>
             <p className="text-sm font-bold text-slate-700 dark:text-slate-300 mt-1">
-              Interactive rule breakdowns, liaison guides, and Apple Pencil stylus handwriting practice.
+              Read the lesson and write notes, underline text, or practice directly on the card with your stylus.
             </p>
           </div>
-          <div className="flex items-center gap-3">
-            <div className="text-right sm:text-center px-4 py-2 bg-white dark:bg-slate-900 border-2 border-black">
-              <p className="text-xs font-bold text-slate-500">Drills Done</p>
-              <p className="text-xl font-black">{completedCount} / {totalDrills}</p>
-            </div>
-            <button
-              onClick={() => {
-                setSelectedCardId(GRAMMAR_CARDS[0].id);
-                setDrillIndex(0);
-              }}
-              className="px-5 py-3 border-2 border-black bg-indigo-600 text-white font-black hover:bg-indigo-700 active:translate-x-0.5 active:translate-y-0.5 shadow-[3px_3px_0_0_rgba(0,0,0,1)] flex items-center gap-2 text-sm"
-            >
-              Start in order
-              <ChevronRight className="w-4 h-4" />
-            </button>
-          </div>
+          <button
+            onClick={() => setSelectedCardId(GRAMMAR_CARDS[0].id)}
+            className="px-5 py-3 border-2 border-black bg-indigo-600 text-white font-black hover:bg-indigo-700 active:translate-x-0.5 active:translate-y-0.5 shadow-[3px_3px_0_0_rgba(0,0,0,1)] flex items-center gap-2 text-sm self-start sm:self-auto"
+          >
+            Open Card 1
+            <ChevronRight className="w-4 h-4" />
+          </button>
         </div>
 
         {/* Chronological Card List */}
         <div className="grid md:grid-cols-2 gap-4">
           {GRAMMAR_CARDS.map((card, idx) => {
-            const cardDone = card.drills.every((d) => completedDrills[d.id]);
+            const hasNotes = Boolean(cardStrokes[card.id]?.length);
             return (
               <div
                 key={card.id}
-                onClick={() => {
-                  setSelectedCardId(card.id);
-                  setDrillIndex(0);
-                }}
+                onClick={() => setSelectedCardId(card.id)}
                 className="cursor-pointer border-[3px] border-black bg-white dark:bg-slate-900 p-5 shadow-[4px_4px_0_0_rgba(0,0,0,1)] hover:-translate-y-0.5 transition-transform flex flex-col justify-between group"
               >
                 <div>
@@ -221,9 +219,9 @@ export default function GrammarMode({ onBackToVocab }: Props) {
                     <span className="text-xs font-black uppercase tracking-wider text-indigo-600 dark:text-indigo-400">
                       Step {idx + 1} · {card.unit}
                     </span>
-                    {cardDone && (
-                      <span className="flex items-center gap-1 text-xs font-black text-emerald-600 bg-emerald-100 px-2 py-0.5 border border-emerald-400">
-                        <Check className="w-3.5 h-3.5" /> Complete
+                    {hasNotes && (
+                      <span className="text-[10px] font-black uppercase bg-amber-200 text-amber-900 px-2 py-0.5 border border-black">
+                        Handwritten notes saved
                       </span>
                     )}
                   </div>
@@ -244,10 +242,10 @@ export default function GrammarMode({ onBackToVocab }: Props) {
 
                 <div className="mt-4 pt-3 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between text-xs font-bold">
                   <span className="text-slate-500">
-                    {card.drills.length} practice drills
+                    {card.examples.length} textbook examples
                   </span>
                   <span className="text-indigo-600 dark:text-indigo-400 flex items-center gap-1 font-black group-hover:translate-x-1 transition-transform">
-                    Practice with Stylus →
+                    Annotate & Study →
                   </span>
                 </div>
               </div>
@@ -259,17 +257,17 @@ export default function GrammarMode({ onBackToVocab }: Props) {
   }
 
   // ==========================================
-  // VIEW 2: Focused Grammar Card & Stylus Drill
+  // VIEW 2: Single Card with Full Overlay Canvas
   // ==========================================
   return (
-    <div className="w-full max-w-5xl mx-auto p-4 sm:p-6 space-y-6">
-      {/* Top Navigation Bar */}
-      <div className="flex items-center justify-between gap-3 border-[3px] border-black bg-white dark:bg-slate-900 p-3 shadow-[4px_4px_0_0_rgba(0,0,0,1)]">
+    <div className="w-full max-w-5xl mx-auto p-2 sm:p-4 md:p-6 space-y-4">
+      {/* Top Header Bar */}
+      <div className="flex items-center justify-between gap-2 border-[3px] border-black bg-white dark:bg-slate-900 p-3 shadow-[4px_4px_0_0_rgba(0,0,0,1)]">
         <button
           onClick={() => setSelectedCardId(null)}
           className="min-h-10 px-3 flex items-center gap-1.5 border-2 border-black bg-slate-100 dark:bg-slate-800 font-black text-xs hover:bg-slate-200"
         >
-          <ArrowLeft className="w-4 h-4" /> All Grammar Cards
+          <ArrowLeft className="w-4 h-4" /> All Cards
         </button>
 
         <div className="flex items-center gap-2">
@@ -293,291 +291,236 @@ export default function GrammarMode({ onBackToVocab }: Props) {
         </div>
       </div>
 
-      {/* Card Header & Rule Breakdown */}
-      <div className="border-[3px] border-black bg-white dark:bg-slate-900 p-5 sm:p-6 shadow-[5px_5px_0_0_rgba(0,0,0,1)] space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b-2 border-black pb-3">
-          <div>
-            <span className="text-xs font-black uppercase tracking-wider text-indigo-600 dark:text-indigo-400">
-              {currentCard.unit}
-            </span>
-            <h2 className="text-2xl sm:text-3xl font-black">{currentCard.title}</h2>
-            <p className="text-xs font-bold text-slate-500">{currentCard.koreanTitle}</p>
-          </div>
-          <div className="self-start sm:self-center">
-            <span className="px-3 py-1 text-xs font-black border-2 border-black bg-indigo-100 dark:bg-indigo-950 text-indigo-900 dark:text-indigo-200">
-              #{currentCard.tag}
-            </span>
-          </div>
+      {/* Floating Stylus Toolbar */}
+      <div className="sticky top-16 z-20 flex flex-wrap items-center justify-between gap-2 border-2 border-black bg-amber-50 dark:bg-slate-800 p-2.5 shadow-[3px_3px_0_0_rgba(0,0,0,1)]">
+        <div className="flex items-center gap-1.5">
+          <button
+            onClick={() => setTool('pen')}
+            className={`min-h-9 px-3 border-2 border-black font-black text-xs flex items-center gap-1.5 ${
+              tool === 'pen' ? 'bg-black text-white' : 'bg-white text-black'
+            }`}
+          >
+            <PenTool className="w-3.5 h-3.5" /> Pen
+          </button>
+          <button
+            onClick={() => setTool('highlighter')}
+            className={`min-h-9 px-3 border-2 border-black font-black text-xs flex items-center gap-1.5 ${
+              tool === 'highlighter' ? 'bg-amber-400 text-black' : 'bg-white text-black'
+            }`}
+          >
+            <Highlighter className="w-3.5 h-3.5" /> Highlighter
+          </button>
+          <button
+            onClick={() => setTool('eraser')}
+            className={`min-h-9 px-3 border-2 border-black font-black text-xs flex items-center gap-1.5 ${
+              tool === 'eraser' ? 'bg-rose-500 text-white' : 'bg-white text-black'
+            }`}
+          >
+            <Eraser className="w-3.5 h-3.5" /> Eraser
+          </button>
+          <button
+            onClick={clearCardStrokes}
+            className="min-h-9 px-3 border-2 border-black bg-white hover:bg-rose-100 font-black text-xs flex items-center gap-1 text-rose-700"
+          >
+            <RotateCcw className="w-3.5 h-3.5" /> Clear Notes
+          </button>
         </div>
 
-        {/* Formula Box */}
-        <div className="p-3 bg-amber-50 dark:bg-amber-950/40 border-2 border-black font-mono font-bold text-sm text-amber-950 dark:text-amber-200 flex items-center gap-2">
-          <Sparkles className="w-4 h-4 text-amber-600 flex-shrink-0" />
-          <span>{currentCard.formula}</span>
-        </div>
-
-        {/* Core Rules List */}
-        <div className="space-y-1.5 text-xs sm:text-sm font-medium">
-          {currentCard.rules.map((rule, idx) => (
-            <div key={idx} className="flex items-start gap-2">
-              <span className="font-black text-indigo-600 flex-shrink-0 mt-0.5">•</span>
-              <span>{rule}</span>
-            </div>
-          ))}
-        </div>
-
-        {/* Examples Grid */}
-        <div className="mt-4 pt-3 border-t border-slate-200 dark:border-slate-800">
-          <p className="text-xs font-black uppercase tracking-wider text-slate-400 mb-2">
-            Curriculum Examples
-          </p>
-          <div className="grid sm:grid-cols-2 gap-2 text-xs">
-            {currentCard.examples.map((ex, idx) => (
-              <div key={idx} className="p-2.5 bg-slate-50 dark:bg-slate-800/60 border border-black/30">
-                <div className="flex items-baseline gap-2">
-                  <span className="font-black text-sm text-slate-900 dark:text-slate-100">{ex.korean}</span>
-                  {ex.pronunciation && (
-                    <span className="font-mono text-indigo-600 dark:text-indigo-400 font-bold">
-                      {ex.pronunciation}
-                    </span>
-                  )}
-                </div>
-                <p className="text-slate-600 dark:text-slate-400 mt-0.5">{ex.english}</p>
-              </div>
-            ))}
-          </div>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={toggleStylusOnly}
+            className={`min-h-9 px-3 border-2 border-black font-black text-xs flex items-center gap-1.5 ${
+              stylusOnly
+                ? 'bg-emerald-600 text-white'
+                : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300'
+            }`}
+          >
+            {stylusOnly ? 'Stylus Only: Touch Scrolls' : 'Stylus Only: Off'}
+          </button>
+          <button
+            onClick={() => setShowSelfCheckAnswers(!showSelfCheckAnswers)}
+            className="min-h-9 px-3 border-2 border-black bg-white dark:bg-slate-900 font-black text-xs flex items-center gap-1.5"
+          >
+            {showSelfCheckAnswers ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+            {showSelfCheckAnswers ? 'Hide Answers' : 'Reveal Answers'}
+          </button>
         </div>
       </div>
 
-      {/* Interactive Stylus Practice Drill */}
-      {currentDrill && (
-        <div className="border-[3px] border-black bg-white dark:bg-slate-900 p-5 sm:p-6 shadow-[5px_5px_0_0_rgba(0,0,0,1)] space-y-5">
-          {/* Drill Navigation Tabs */}
-          <div className="flex items-center justify-between border-b-2 border-black pb-3">
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-black uppercase tracking-wider text-indigo-600">
-                Drill {drillIndex + 1} of {currentCard.drills.length}
-              </span>
-              {completedDrills[currentDrill.id] && (
-                <span className="text-xs font-bold text-emerald-600 flex items-center gap-1">
-                  <Check className="w-3.5 h-3.5" /> Solved
-                </span>
+      {/* The Unified Card Container with Overlay Handwriting Canvas */}
+      <div 
+        ref={cardContainerRef} 
+        className="relative border-[3px] border-black bg-white dark:bg-slate-900 shadow-[6px_6px_0_0_rgba(0,0,0,1)] select-none"
+      >
+        {/* Full Card SVG Canvas for Direct Handwriting and Marginalia */}
+        <svg
+          className="absolute inset-0 z-10 w-full h-full cursor-crosshair"
+          style={{ touchAction: stylusOnly ? 'pan-y' : 'none' }}
+          onPointerDown={handlePointerDown}
+          onPointerMove={handlePointerMove}
+          onPointerUp={handlePointerUp}
+        >
+          {currentStrokes.map((s, idx) => (
+            <path
+              key={idx}
+              d={pathFromStroke(
+                getStroke(s.points, {
+                  size: s.size,
+                  thinning: 0.5,
+                  smoothing: 0.5,
+                  streamline: 0.5
+                })
               )}
-            </div>
-            <div className="flex items-center gap-1">
-              {currentCard.drills.map((_, idx) => (
-                <button
-                  key={idx}
-                  onClick={() => setDrillIndex(idx)}
-                  className={`w-7 h-7 text-xs font-black border-2 border-black ${
-                    drillIndex === idx
-                      ? 'bg-black text-white'
-                      : completedDrills[currentCard.drills[idx].id]
-                      ? 'bg-emerald-200 text-black'
-                      : 'bg-slate-100'
-                  }`}
-                >
-                  {idx + 1}
-                </button>
+              fill={s.color}
+              opacity={s.opacity}
+            />
+          ))}
+          {currentPoints && (
+            <path
+              d={pathFromStroke(
+                getStroke(currentPoints, {
+                  size: tool === 'highlighter' ? 14 : 3.5,
+                  thinning: 0.5,
+                  smoothing: 0.5,
+                  streamline: 0.5
+                })
+              )}
+              fill={tool === 'highlighter' ? '#fbbf24' : '#1e1b4b'}
+              opacity={tool === 'highlighter' ? 0.45 : 0.95}
+            />
+          )}
+        </svg>
+
+        {/* Card Content (Rendered Underneath the Handwriting Layer) */}
+        <div className="relative z-0 p-6 sm:p-10 space-y-8 pointer-events-none">
+          {/* Unit & Title */}
+          <div className="border-b-2 border-black pb-4">
+            <span className="text-xs font-black uppercase tracking-wider text-indigo-600 dark:text-indigo-400">
+              {currentCard.unit}
+            </span>
+            <h2 className="text-3xl sm:text-4xl font-black mt-1">{currentCard.title}</h2>
+            <p className="text-sm font-bold text-slate-500 mt-0.5">{currentCard.koreanTitle}</p>
+          </div>
+
+          {/* Formula Banner */}
+          <div className="p-4 bg-amber-50 dark:bg-amber-950/40 border-2 border-black font-mono font-bold text-base text-amber-950 dark:text-amber-200 flex items-center gap-3">
+            <Sparkles className="w-5 h-5 text-amber-600 flex-shrink-0" />
+            <span>{currentCard.formula}</span>
+          </div>
+
+          {/* Summary */}
+          <div className="p-4 bg-slate-50 dark:bg-slate-800/50 border-l-4 border-indigo-600 text-sm font-semibold text-slate-700 dark:text-slate-300">
+            {currentCard.summary}
+          </div>
+
+          {/* Mechanics & Conditions */}
+          <div className="space-y-3">
+            <h3 className="text-xs font-black uppercase tracking-wider text-slate-400">
+              Grammar Mechanics & Batchim Rules
+            </h3>
+            <div className="space-y-2 text-sm sm:text-base font-medium">
+              {currentCard.rules.map((rule, idx) => (
+                <div key={idx} className="flex items-start gap-3">
+                  <span className="font-black text-indigo-600 text-lg leading-none mt-0.5">•</span>
+                  <span>{rule}</span>
+                </div>
               ))}
             </div>
           </div>
 
-          {/* Drill Prompt */}
-          <div className="space-y-1">
-            <p className="text-xs font-bold text-slate-500">Practice Prompt</p>
-            <h4 className="text-lg sm:text-xl font-black">{currentDrill.prompt}</h4>
-            <div className="inline-block mt-1 px-3 py-1 bg-indigo-50 dark:bg-indigo-950 border border-indigo-200 text-xs font-bold text-indigo-800 dark:text-indigo-200">
-              Target: <span className="font-black text-sm">{currentDrill.target}</span>
+          {/* Curriculum Examples & Liaison Guides */}
+          <div className="space-y-3">
+            <h3 className="text-xs font-black uppercase tracking-wider text-slate-400">
+              Textbook Dialogue & Sentence Examples
+            </h3>
+            <div className="grid sm:grid-cols-2 gap-3">
+              {currentCard.examples.map((ex, idx) => (
+                <div key={idx} className="p-4 bg-slate-50 dark:bg-slate-800 border-2 border-black/40 space-y-1">
+                  <div className="flex items-baseline gap-2.5">
+                    <span className="font-black text-lg text-slate-900 dark:text-slate-100">{ex.korean}</span>
+                    {ex.pronunciation && (
+                      <span className="font-mono text-sm text-indigo-600 dark:text-indigo-400 font-bold">
+                        {ex.pronunciation}
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 font-medium">{ex.english}</p>
+                </div>
+              ))}
             </div>
           </div>
 
-          {/* Stylus Handwriting Canvas Area */}
-          <div className="border-2 border-black bg-slate-50 dark:bg-slate-950 p-3 space-y-2">
-            <div className="flex items-center justify-between text-xs font-bold">
-              <span className="flex items-center gap-1.5 text-slate-700 dark:text-slate-300">
-                <PenTool className="w-3.5 h-3.5" /> Write here with iPad Stylus or Touch
+          {/* Integrated Study Prompts & Notes Space */}
+          <div className="pt-6 border-t-2 border-dashed border-slate-300 dark:border-slate-700 space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-xs font-black uppercase tracking-wider text-indigo-600">
+                Self Practice Check & Textbook Marginalia
+              </h3>
+              <span className="text-[11px] font-bold text-slate-400">
+                Use your stylus to write notes or answers directly here
               </span>
-              
-              {/* Canvas Controls */}
-              <div className="flex items-center gap-1.5">
-                <button
-                  onClick={toggleStylusOnly}
-                  className={`px-2 py-1 text-xs font-black border border-black flex items-center gap-1 ${
-                    stylusOnly
-                      ? 'bg-indigo-600 text-white'
-                      : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300'
-                  }`}
-                >
-                  {stylusOnly ? 'Stylus Only (On)' : 'Stylus Only (Off)'}
-                </button>
-                <button
-                  onClick={() => setTool('pen')}
-                  className={`px-2 py-1 text-xs font-black border border-black ${
-                    tool === 'pen' ? 'bg-black text-white' : 'bg-white text-black'
-                  }`}
-                >
-                  Pen
-                </button>
-                <button
-                  onClick={() => setTool('eraser')}
-                  className={`px-2 py-1 text-xs font-black border border-black ${
-                    tool === 'eraser' ? 'bg-black text-white' : 'bg-white text-black'
-                  }`}
-                >
-                  Eraser
-                </button>
-                <button
-                  onClick={clearCanvas}
-                  className="px-2 py-1 text-xs font-black border border-black bg-white dark:bg-slate-800 hover:bg-rose-50"
-                >
-                  <RotateCcw className="w-3 h-3 inline mr-1" />
-                  Clear
-                </button>
-              </div>
             </div>
 
-            {/* SVG Canvas with subtle writing grid */}
-            <div className="relative w-full h-40 bg-white dark:bg-slate-900 border-2 border-dashed border-slate-300 dark:border-slate-700 overflow-hidden touch-none">
-              {/* Syllable grid background */}
-              <div className="absolute inset-0 pointer-events-none opacity-10 bg-[linear-gradient(to_right,#808080_1px,transparent_1px),linear-gradient(to_bottom,#808080_1px,transparent_1px)] bg-[size:32px_32px]" />
-              
-              <svg
-                className="w-full h-full cursor-crosshair"
-                onPointerDown={handlePointerDown}
-                onPointerMove={handlePointerMove}
-                onPointerUp={handlePointerUp}
-              >
-                {strokes.map((stroke, i) => (
-                  <path
-                    key={i}
-                    d={pathFromStroke(
-                      getStroke(stroke, {
-                        size: 4,
-                        thinning: 0.5,
-                        smoothing: 0.5,
-                        streamline: 0.5
-                      })
-                    )}
-                    fill="currentColor"
-                    className="text-slate-900 dark:text-slate-100"
-                  />
-                ))}
-                {currentStroke && (
-                  <path
-                    d={pathFromStroke(
-                      getStroke(currentStroke, {
-                        size: 4,
-                        thinning: 0.5,
-                        smoothing: 0.5,
-                        streamline: 0.5
-                      })
-                    )}
-                    fill="currentColor"
-                    className="text-slate-900 dark:text-slate-100"
-                  />
-                )}
-              </svg>
+            <div className="space-y-4">
+              {currentCard.drills.map((drill, idx) => (
+                <div key={drill.id} className="p-4 border-2 border-black bg-slate-50/70 dark:bg-slate-800/40 space-y-2">
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <span className="text-[11px] font-black uppercase text-slate-400">Exercise {idx + 1}</span>
+                      <p className="text-sm font-bold text-slate-900 dark:text-slate-100">{drill.prompt}</p>
+                    </div>
+                    <div className="text-right">
+                      <span className="text-xs font-mono font-bold px-2 py-0.5 bg-slate-200 dark:bg-slate-700">
+                        {drill.target}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Lined Writing Space for Hand Notes */}
+                  <div className="h-16 w-full border-b-2 border-slate-300 dark:border-slate-700 flex items-end pb-1 text-xs text-slate-300 italic">
+                    Write solution here with stylus...
+                  </div>
+
+                  {/* Revealed Solution */}
+                  {showSelfCheckAnswers && (
+                    <div className="mt-2 p-2.5 bg-emerald-100 dark:bg-emerald-950/60 border border-emerald-400 text-xs space-y-1">
+                      <p className="font-black text-emerald-900 dark:text-emerald-200 font-mono text-sm">
+                        {drill.fullSentence}
+                      </p>
+                      <p className="font-bold text-emerald-800 dark:text-emerald-300">
+                        {drill.explanation}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              ))}
             </div>
           </div>
 
-          {/* Option Selector Chips (if options available) */}
-          {currentDrill.options && (
-            <div className="space-y-1.5">
-              <p className="text-xs font-bold text-slate-500">Select Rule Option</p>
-              <div className="flex flex-wrap gap-2">
-                {currentDrill.options.map((opt) => (
-                  <button
-                    key={opt}
-                    onClick={() => setSelectedOption(opt)}
-                    className={`min-h-11 px-4 py-2 border-2 border-black font-black text-sm transition-transform active:translate-y-0.5 ${
-                      selectedOption === opt
-                        ? 'bg-indigo-600 text-white shadow-[2px_2px_0_0_rgba(0,0,0,1)]'
-                        : 'bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 hover:bg-slate-100'
-                    }`}
-                  >
-                    {opt}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Action Check Button */}
-          <div className="flex items-center gap-3 pt-2">
-            {!revealed ? (
+          {/* Footer Card Navigation */}
+          <div className="pt-6 border-t-2 border-black flex items-center justify-between">
+            <span className="text-xs font-bold text-slate-500">
+              Handwritten annotations are automatically preserved on this card.
+            </span>
+            <div className="flex items-center gap-2">
               <button
-                onClick={handleCheckDrill}
-                className="min-h-12 px-6 border-2 border-black bg-black text-white font-black text-sm flex items-center gap-2 hover:bg-slate-800 active:translate-y-0.5 shadow-[3px_3px_0_0_rgba(0,0,0,1)]"
+                onClick={handlePrevCard}
+                disabled={currentIndex === 0}
+                className="pointer-events-auto min-h-11 px-4 border-2 border-black bg-white dark:bg-slate-800 font-black text-xs disabled:opacity-40"
               >
-                <Eye className="w-4 h-4" /> Check Answer & Rule
+                ← Prev Card
               </button>
-            ) : (
-              <div className="flex items-center gap-3">
-                <button
-                  onClick={() => {
-                    setRevealed(false);
-                    clearCanvas();
-                    setSelectedOption(null);
-                  }}
-                  className="min-h-12 px-4 border-2 border-black bg-white dark:bg-slate-800 font-black text-sm flex items-center gap-1.5 hover:bg-slate-100"
-                >
-                  <RotateCcw className="w-4 h-4" /> Try Again
-                </button>
-                {drillIndex < currentCard.drills.length - 1 ? (
-                  <button
-                    onClick={() => setDrillIndex((idx) => idx + 1)}
-                    className="min-h-12 px-6 border-2 border-black bg-indigo-600 text-white font-black text-sm flex items-center gap-2 hover:bg-indigo-700 shadow-[3px_3px_0_0_rgba(0,0,0,1)]"
-                  >
-                    Next Drill <ChevronRight className="w-4 h-4" />
-                  </button>
-                ) : (
-                  <button
-                    onClick={handleNextCard}
-                    disabled={currentIndex === GRAMMAR_CARDS.length - 1}
-                    className="min-h-12 px-6 border-2 border-black bg-emerald-600 text-white font-black text-sm flex items-center gap-2 hover:bg-emerald-700 shadow-[3px_3px_0_0_rgba(0,0,0,1)] disabled:opacity-40"
-                  >
-                    Next Grammar Card <ChevronRight className="w-4 h-4" />
-                  </button>
-                )}
-              </div>
-            )}
-          </div>
-
-          {/* Feedback & Explanation Box */}
-          {revealed && (
-            <div className={`p-4 border-[3px] border-black space-y-2 ${
-              selectedOption === currentDrill.correctAnswer || !selectedOption
-                ? 'bg-emerald-50 dark:bg-emerald-950/40'
-                : 'bg-rose-50 dark:bg-rose-950/40'
-            }`}>
-              <div className="flex items-center gap-2 font-black text-sm">
-                {selectedOption === currentDrill.correctAnswer ? (
-                  <span className="flex items-center gap-1.5 text-emerald-700 dark:text-emerald-300">
-                    <CheckCircle2 className="w-5 h-5" /> Correct Rule Match!
-                  </span>
-                ) : selectedOption ? (
-                  <span className="flex items-center gap-1.5 text-rose-700 dark:text-rose-300">
-                    <XCircle className="w-5 h-5" /> Not quite: check the formula below
-                  </span>
-                ) : (
-                  <span className="flex items-center gap-1.5 text-indigo-700 dark:text-indigo-300">
-                    <BookOpen className="w-5 h-5" /> Verified Solution
-                  </span>
-                )}
-              </div>
-
-              <div className="text-lg font-black text-slate-900 dark:text-slate-100 font-mono">
-                {currentDrill.fullSentence}
-              </div>
-
-              <p className="text-xs sm:text-sm font-bold text-slate-700 dark:text-slate-300">
-                {currentDrill.explanation}
-              </p>
+              <button
+                onClick={handleNextCard}
+                disabled={currentIndex === GRAMMAR_CARDS.length - 1}
+                className="pointer-events-auto min-h-11 px-4 border-2 border-black bg-indigo-600 text-white font-black text-xs disabled:opacity-40"
+              >
+                Next Card →
+              </button>
             </div>
-          )}
+          </div>
         </div>
-      )}
+      </div>
     </div>
   );
 }
