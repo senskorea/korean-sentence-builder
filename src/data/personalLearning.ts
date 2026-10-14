@@ -291,6 +291,18 @@ const entries: PersonalVocabEntry[] = [
   ["백", "one hundred (100)", ["number", "sino korean", "classwork", "sogang1a"], "2026.10.12"],
   ["천", "one thousand (1000)", ["number", "sino korean", "classwork", "sogang1a"], "2026.10.12"],
   ["만", "ten thousand (10000)", ["number", "sino korean", "classwork", "sogang1a"], "2026.10.12"],
+  ["월요일", "Monday", ["noun", "calendar", "time", "classwork", "sogang1a"], "2026.10.14"],
+  ["화요일", "Tuesday", ["noun", "calendar", "time", "classwork", "sogang1a"], "2026.10.14"],
+  ["수요일", "Wednesday", ["noun", "calendar", "time", "classwork", "sogang1a"], "2026.10.14"],
+  ["목요일", "Thursday", ["noun", "calendar", "time", "classwork", "sogang1a"], "2026.10.14"],
+  ["금요일", "Friday", ["noun", "calendar", "time", "classwork", "sogang1a"], "2026.10.14"],
+  ["토요일", "Saturday", ["noun", "calendar", "time", "classwork", "sogang1a"], "2026.10.14"],
+  ["일요일", "Sunday", ["noun", "calendar", "time", "classwork", "sogang1a"], "2026.10.14"],
+  ["평일", "weekday / business day", ["noun", "calendar", "time", "classwork", "sogang1a"], "2026.10.14"],
+  ["주말", "weekend", ["noun", "calendar", "time", "classwork", "sogang1a"], "2026.10.14"],
+  ["가게", "store / shop", ["noun", "places", "shopping", "classwork", "sogang1a"], "2026.10.14"],
+  ["얼마", "how much", ["expression", "shopping", "questions", "classwork", "sogang1a"], "2026.10.14"],
+  ["억", "one hundred million (100,000,000)", ["number", "sino korean", "classwork", "sogang1a"], "2026.10.14"],
 ];
 
 export const PERSONAL_VOCABULARY: PersonalVocabItem[] = entries.map(([korean, english, tags, dateAdded]) => ({
