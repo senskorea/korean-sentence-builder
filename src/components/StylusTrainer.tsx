@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { PenTool, RotateCcw, Eraser, Eye, EyeOff, Sliders } from 'lucide-react';
+import { PenTool, RotateCcw, Eraser, Eye, EyeOff, Sliders, Type } from 'lucide-react';
 
 interface LetterItem {
   char: string;
@@ -65,6 +65,15 @@ export default function StylusTrainer() {
     }
   });
 
+  // Toggle for letter names and romanization (hidden by default)
+  const [showLetterNames, setShowLetterNames] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem('korean_stylus_show_names') === 'true';
+    } catch {
+      return false; // Hidden by default
+    }
+  });
+
   const letters = sheetType === 'consonants' ? CONSONANTS : VOWELS;
 
   // Global Canvas Drawing State
@@ -88,6 +97,18 @@ export default function StylusTrainer() {
     });
   };
 
+  const toggleShowLetterNames = () => {
+    setShowLetterNames((prev) => {
+      const next = !prev;
+      try {
+        localStorage.setItem('korean_stylus_show_names', String(next));
+      } catch (e) {
+        console.error(e);
+      }
+      return next;
+    });
+  };
+
   const renderCanvas = useCallback(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -99,75 +120,84 @@ export default function StylusTrainer() {
     context.lineCap = 'round';
     context.lineJoin = 'round';
 
-    lines.current.forEach((line) => {
-      if (line.length > 1) {
-        context.beginPath();
-        context.lineWidth = 4;
-        context.moveTo(line[0][0], line[0][1]);
-        for (let i = 1; i < line.length; i++) {
-          context.lineTo(line[i][0], line[i][1]);
+    const allLines = currentLine.current ? [...lines.current, currentLine.current] : lines.current;
+
+    for (const stroke of allLines) {
+      if (stroke.length < 2) {
+        if (stroke.length === 1) {
+          context.beginPath();
+          context.arc(stroke[0][0], stroke[0][1], 2, 0, Math.PI * 2);
+          context.fill();
         }
-        context.stroke();
-      } else if (line.length === 1) {
-        const [x, y] = line[0];
-        context.beginPath();
-        context.arc(x, y, 3, 0, Math.PI * 2);
-        context.fill();
+        continue;
       }
-    });
+
+      context.beginPath();
+      context.lineWidth = 3.5;
+      context.moveTo(stroke[0][0], stroke[0][1]);
+
+      for (let i = 1; i < stroke.length - 1; i++) {
+        const xc = (stroke[i][0] + stroke[i + 1][0]) / 2;
+        const yc = (stroke[i][1] + stroke[i + 1][1]) / 2;
+        context.quadraticCurveTo(stroke[i][0], stroke[i][1], xc, yc);
+      }
+      context.lineTo(stroke[stroke.length - 1][0], stroke[stroke.length - 1][1]);
+      context.stroke();
+    }
   }, []);
 
-  const syncCanvasSize = useCallback(() => {
-    const canvas = canvasRef.current;
-    const container = gridContainerRef.current;
-    if (!canvas || !container || drawing.current) return;
-    const rect = container.getBoundingClientRect();
-    if (!rect.width || !rect.height) return;
-    const ratio = Math.min(window.devicePixelRatio || 1, 3);
-    const width = Math.round(rect.width * ratio);
-    const height = Math.round(rect.height * ratio);
-    if (canvas.width !== width || canvas.height !== height) {
-      canvas.width = width;
-      canvas.height = height;
-      renderCanvas();
-    }
-  }, [renderCanvas]);
-
+  // Resize canvas to match the responsive grid bounds
   useEffect(() => {
-    const container = gridContainerRef.current;
-    const observer = new ResizeObserver(syncCanvasSize);
-    if (container) observer.observe(container);
-    window.addEventListener('resize', syncCanvasSize);
-    syncCanvasSize();
-    return () => {
-      observer.disconnect();
-      window.removeEventListener('resize', syncCanvasSize);
+    const updateSize = () => {
+      const container = gridContainerRef.current;
+      const canvas = canvasRef.current;
+      if (!container || !canvas) return;
+
+      const rect = container.getBoundingClientRect();
+      const ratio = Math.min(window.devicePixelRatio || 1, 3);
+
+      canvas.width = Math.round(rect.width * ratio);
+      canvas.height = Math.round(rect.height * ratio);
+      canvas.style.width = `${rect.width}px`;
+      canvas.style.height = `${rect.height}px`;
+
+      renderCanvas();
     };
-  }, [syncCanvasSize]);
 
-  // Pointer event handlers for Apple Pencil / Stylus
+    updateSize();
+    window.addEventListener('resize', updateSize);
+    return () => window.removeEventListener('resize', updateSize);
+  }, [renderCanvas, sheetType]);
+
   const handlePointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
-    const pointerType = e.pointerType as 'pen' | 'touch' | 'mouse';
-    if (stylusOnly && pointerType !== 'pen') return;
+    if (stylusOnly && e.pointerType !== 'pen') {
+      return;
+    }
 
-    e.currentTarget.setPointerCapture(e.pointerId);
-    drawing.current = true;
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    canvas.setPointerCapture(e.pointerId);
     activePointerId.current = e.pointerId;
-    activePointerType.current = pointerType;
+    activePointerType.current = e.pointerType as 'pen' | 'touch' | 'mouse';
+    drawing.current = true;
 
-    const rect = e.currentTarget.getBoundingClientRect();
+    const rect = canvas.getBoundingClientRect();
     const ratio = Math.min(window.devicePixelRatio || 1, 3);
     const x = Math.round((e.clientX - rect.left) * ratio);
     const y = Math.round((e.clientY - rect.top) * ratio);
 
     currentLine.current = [[x, y]];
-    lines.current.push(currentLine.current);
     renderCanvas();
   };
 
   const handlePointerMove = (e: React.PointerEvent<HTMLCanvasElement>) => {
-    if (!drawing.current || activePointerId.current !== e.pointerId || !currentLine.current) return;
-    const rect = e.currentTarget.getBoundingClientRect();
+    if (!drawing.current || activePointerId.current !== e.pointerId) return;
+
+    const canvas = canvasRef.current;
+    if (!canvas || !currentLine.current) return;
+
+    const rect = canvas.getBoundingClientRect();
     const ratio = Math.min(window.devicePixelRatio || 1, 3);
     const x = Math.round((e.clientX - rect.left) * ratio);
     const y = Math.round((e.clientY - rect.top) * ratio);
@@ -178,6 +208,9 @@ export default function StylusTrainer() {
 
   const handlePointerUp = (e: React.PointerEvent<HTMLCanvasElement>) => {
     if (activePointerId.current === e.pointerId) {
+      if (currentLine.current && currentLine.current.length > 0) {
+        lines.current.push(currentLine.current);
+      }
       drawing.current = false;
       activePointerId.current = null;
       currentLine.current = null;
@@ -187,6 +220,7 @@ export default function StylusTrainer() {
 
   const clearCanvas = () => {
     lines.current = [];
+    currentLine.current = null;
     renderCanvas();
   };
 
@@ -220,7 +254,7 @@ export default function StylusTrainer() {
     <div className="w-full max-w-5xl mx-auto flex flex-col gap-3 select-none">
       {/* Control Toolbar */}
       <div className="bg-white dark:bg-slate-900 border-[3px] border-black p-3.5 shadow-[4px_4px_0_0_rgba(0,0,0,1)] flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           <div className="flex bg-slate-100 dark:bg-slate-800 border-2 border-black p-0.5">
             <button
               onClick={() => { setSheetType('consonants'); clearCanvas(); setRevealed(false); }}
@@ -248,7 +282,7 @@ export default function StylusTrainer() {
               <button
                 key={lvl}
                 onClick={() => { setMaskLevel(lvl); setRevealed(false); }}
-                className={`w-6 h-6 border border-black grid place-items-center text-xs ${
+                className={`w-6 h-6 border border-black grid place-items-center text-xs font-black ${
                   maskLevel === lvl ? 'bg-indigo-600 text-white' : 'bg-white dark:bg-slate-700'
                 }`}
                 title={`Level ${lvl}: ${lvl * 25}% Masked`}
@@ -260,12 +294,27 @@ export default function StylusTrainer() {
         </div>
 
         {/* Action Controls */}
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Hide/Show Letter Names & Romanization Toggle (Hidden by default) */}
+          <button
+            type="button"
+            onClick={toggleShowLetterNames}
+            className={`h-9 px-3 border-2 border-black flex items-center gap-1.5 font-black text-xs shadow-[2px_2px_0_0_rgba(0,0,0,1)] transition-transform active:translate-y-0.5 ${
+              showLetterNames
+                ? 'bg-amber-400 text-black'
+                : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-100'
+            }`}
+            title="Toggle visibility of letter names and romanization"
+          >
+            <Type className="w-3.5 h-3.5" />
+            <span>{showLetterNames ? 'Names: Visible' : 'Names: Hidden'}</span>
+          </button>
+
           {/* Stylus Mode Toggle */}
           <button
             type="button"
             onClick={toggleStylusOnly}
-            className={`h-9 px-3 border-2 border-black flex items-center gap-1.5 font-black text-xs shadow-[2px_2px_0_0_rgba(0,0,0,1)] ${
+            className={`h-9 px-3 border-2 border-black flex items-center gap-1.5 font-black text-xs shadow-[2px_2px_0_0_rgba(0,0,0,1)] transition-transform active:translate-y-0.5 ${
               stylusOnly ? 'bg-emerald-600 text-white' : 'bg-white dark:bg-slate-800 text-slate-700'
             }`}
             title="When active, touch and palm touches are ignored"
@@ -277,7 +326,7 @@ export default function StylusTrainer() {
           {/* Reveal & Check Button */}
           <button
             onClick={() => setRevealed(!revealed)}
-            className={`h-9 px-4 border-2 border-black font-black text-xs flex items-center gap-1.5 shadow-[2px_2px_0_0_rgba(0,0,0,1)] ${
+            className={`h-9 px-4 border-2 border-black font-black text-xs flex items-center gap-1.5 shadow-[2px_2px_0_0_rgba(0,0,0,1)] transition-transform active:translate-y-0.5 ${
               revealed ? 'bg-emerald-500 text-white' : 'bg-indigo-600 text-white'
             }`}
           >
@@ -287,13 +336,13 @@ export default function StylusTrainer() {
 
           <button
             onClick={undoStroke}
-            className="h-9 px-2.5 bg-white dark:bg-slate-800 border-2 border-black flex items-center gap-1 font-black text-xs"
+            className="h-9 px-2.5 bg-white dark:bg-slate-800 border-2 border-black flex items-center gap-1 font-black text-xs shadow-[1px_1px_0_0_rgba(0,0,0,1)] active:translate-y-0.5"
           >
             <RotateCcw className="w-3.5 h-3.5" /> Undo
           </button>
           <button
             onClick={clearCanvas}
-            className="h-9 px-2.5 bg-white dark:bg-slate-800 border-2 border-black flex items-center gap-1 font-black text-xs"
+            className="h-9 px-2.5 bg-white dark:bg-slate-800 border-2 border-black flex items-center gap-1 font-black text-xs shadow-[1px_1px_0_0_rgba(0,0,0,1)] active:translate-y-0.5"
           >
             <Eraser className="w-3.5 h-3.5" /> Clear
           </button>
@@ -322,8 +371,12 @@ export default function StylusTrainer() {
                   : 'bg-slate-50 dark:bg-slate-800/80'
               }`}
             >
-              {/* Header Label: Name & Sound */}
-              <div className="flex justify-between items-center text-[10px] font-black text-slate-400 pointer-events-none">
+              {/* Header Label: Name & Sound (Hidden by default unless toggled or revealed) */}
+              <div
+                className={`flex justify-between items-center text-[10px] font-black pointer-events-none transition-opacity ${
+                  showLetterNames || revealed ? 'opacity-100 text-slate-400' : 'opacity-0'
+                }`}
+              >
                 <span>{item.name}</span>
                 <span>{item.pron}</span>
               </div>
@@ -357,7 +410,7 @@ export default function StylusTrainer() {
       {/* Instructions footer */}
       <div className="p-3 bg-slate-50 dark:bg-slate-900/60 border-2 border-black text-xs text-slate-600 dark:text-slate-400 flex flex-wrap items-center justify-between gap-2">
         <div>
-          <strong>Active Recall Instruction:</strong> Use your Apple Pencil or stylus to write each letter directly over its box.
+          <strong>Active Recall Instruction:</strong> Letter names and romanizations are hidden by default. Use your Apple Pencil or stylus to write each letter directly over its box.
         </div>
         <div className="font-bold">
           When finished, tap <span className="text-indigo-600 dark:text-indigo-400">"Reveal & Check"</span> to compare your handwriting against the ground truth.
