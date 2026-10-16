@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Hash, Phone, Building2, ShoppingBag, Calendar, ArrowRight, Eye, EyeOff } from 'lucide-react';
+import { Hash, Phone, Building2, ShoppingBag, Calendar, ArrowRight, Eye, EyeOff, Shuffle, Check, X } from 'lucide-react';
 
 type SubTab = 'high_numbers' | 'phone' | 'floors' | 'prices' | 'calendar';
 
@@ -52,12 +52,83 @@ function numberToSinoKoreanSub10k(n: number): string {
   return str.trim();
 }
 
+
+function generateRandomHighNumber(): number {
+  const poolType = Math.floor(Math.random() * 6);
+  if (poolType === 0) {
+    return (Math.floor(Math.random() * 9) + 1) * 1000;
+  } else if (poolType === 1) {
+    const th = (Math.floor(Math.random() * 9) + 1) * 1000;
+    const h = (Math.floor(Math.random() * 9) + 1) * 100;
+    return th + h;
+  } else if (poolType === 2) {
+    return (Math.floor(Math.random() * 9) + 1) * 10000;
+  } else if (poolType === 3) {
+    const man = (Math.floor(Math.random() * 9) + 1) * 10000;
+    const th = (Math.floor(Math.random() * 9) + 1) * 1000;
+    const h = Math.random() > 0.5 ? 500 : 0;
+    return man + th + h;
+  } else if (poolType === 4) {
+    return (Math.floor(Math.random() * 18) + 2) * 50000;
+  } else {
+    const traps = [100, 1000, 10000, 100000, 1000000, 10500, 20400, 50000, 102000, 305000, 1150000];
+    return traps[Math.floor(Math.random() * traps.length)];
+  }
+}
+
 export default function NumbersLab() {
   const [activeTab, setActiveTab] = useState<SubTab>('high_numbers');
 
   // Sub Module 1: High Numbers State
   const [sliderVal, setSliderVal] = useState<number>(45000);
   const [revealedHighNumber, setRevealedHighNumber] = useState(false);
+  const [practiceStats, setPracticeStats] = useState<{ right: number; wrong: number; streak: number }>(() => {
+    try {
+      const saved = localStorage.getItem('korean_numbers_practice_stats');
+      return saved ? JSON.parse(saved) : { right: 0, wrong: 0, streak: 0 };
+    } catch {
+      return { right: 0, wrong: 0, streak: 0 };
+    }
+  });
+
+  const saveStats = (next: { right: number; wrong: number; streak: number }) => {
+    setPracticeStats(next);
+    try {
+      localStorage.setItem('korean_numbers_practice_stats', JSON.stringify(next));
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const handleRandomNumber = () => {
+    const nextVal = generateRandomHighNumber();
+    setSliderVal(nextVal);
+    setRevealedHighNumber(false);
+  };
+
+  const handleMarkRight = () => {
+    const next = {
+      right: practiceStats.right + 1,
+      wrong: practiceStats.wrong,
+      streak: practiceStats.streak + 1,
+    };
+    saveStats(next);
+    handleRandomNumber();
+  };
+
+  const handleMarkWrong = () => {
+    const next = {
+      right: practiceStats.right,
+      wrong: practiceStats.wrong + 1,
+      streak: 0,
+    };
+    saveStats(next);
+    setRevealedHighNumber(true);
+  };
+
+  const handleResetStats = () => {
+    saveStats({ right: 0, wrong: 0, streak: 0 });
+  };
 
   // Sub Module 2: Phone Numbers State
   const [phoneSeed, setPhoneSeed] = useState(0);
@@ -207,36 +278,88 @@ export default function NumbersLab() {
           </div>
 
           {/* Value Card */}
-          <div className="bg-slate-50 dark:bg-slate-800 border-2 border-black p-6 text-center flex flex-col items-center">
-            <span className="text-xs font-black uppercase text-slate-400">Target Value</span>
+          <div className="bg-slate-50 dark:bg-slate-800 border-2 border-black p-5 sm:p-6 text-center flex flex-col items-center">
+            {/* Score header bar */}
+            <div className="w-full flex items-center justify-between text-xs font-black pb-2 mb-2 border-b border-slate-200 dark:border-slate-700">
+              <span className="uppercase text-slate-400">Target Value</span>
+              <div className="flex items-center gap-2">
+                <span className="text-emerald-600 dark:text-emerald-400">Right: {practiceStats.right}</span>
+                <span className="text-slate-300 dark:text-slate-600">•</span>
+                <span className="text-rose-600 dark:text-rose-400">Wrong: {practiceStats.wrong}</span>
+                {practiceStats.streak > 1 && (
+                  <>
+                    <span className="text-slate-300 dark:text-slate-600">•</span>
+                    <span className="text-amber-500 font-bold">🔥 {practiceStats.streak} streak</span>
+                  </>
+                )}
+                {(practiceStats.right > 0 || practiceStats.wrong > 0) && (
+                  <button
+                    type="button"
+                    onClick={handleResetStats}
+                    className="ml-1 text-[10px] text-slate-400 hover:text-black dark:hover:text-white underline font-bold"
+                    title="Reset practice score"
+                  >
+                    Reset
+                  </button>
+                )}
+              </div>
+            </div>
+
             <div className="text-4xl sm:text-5xl font-black text-slate-900 dark:text-white font-mono mt-1">
               {sliderVal.toLocaleString()} 원
             </div>
 
-            {/* Hidden Result Gate */}
-            {revealedHighNumber ? (
-              <div className="mt-5 p-4 bg-white dark:bg-slate-900 border-2 border-black w-full max-w-md">
+            {/* Spoken Korean Answer Box */}
+            {revealedHighNumber && (
+              <div className="mt-4 p-4 bg-white dark:bg-slate-900 border-2 border-black w-full max-w-md">
                 <span className="text-xs font-black text-slate-400 uppercase">Spoken Korean</span>
                 <div className="text-2xl sm:text-3xl font-black text-indigo-600 dark:text-indigo-400 mt-1">
                   {numberToSinoKorean(sliderVal)} 원이에요
                 </div>
-                <button
-                  onClick={() => setRevealedHighNumber(false)}
-                  className="mt-3 px-3 py-1 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 border border-black text-xs font-bold flex items-center gap-1 mx-auto"
-                >
-                  <EyeOff className="w-3.5 h-3.5" />
-                  <span>Hide Result</span>
-                </button>
               </div>
-            ) : (
-              <button
-                onClick={() => setRevealedHighNumber(true)}
-                className="mt-5 px-6 py-3 bg-black hover:bg-slate-800 text-white font-black text-sm border-2 border-black shadow-[3px_3px_0_0_rgba(0,0,0,1)] active:translate-y-0.5 flex items-center gap-2"
-              >
-                <Eye className="w-4 h-4" />
-                <span>Check Result (정답 확인)</span>
-              </button>
             )}
+
+            {/* Action buttons on the same line */}
+            <div className="mt-5 flex flex-wrap items-center justify-center gap-2">
+              <button
+                type="button"
+                onClick={handleRandomNumber}
+                className="h-11 px-4 bg-indigo-600 hover:bg-indigo-700 text-white font-black text-xs sm:text-sm border-2 border-black shadow-[2px_2px_0_0_rgba(0,0,0,1)] active:translate-y-0.5 flex items-center gap-1.5"
+                title="Generate a random number to practice"
+              >
+                <Shuffle className="w-4 h-4" />
+                <span>Random Number</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setRevealedHighNumber(!revealedHighNumber)}
+                className="h-11 px-4 bg-black hover:bg-slate-800 text-white font-black text-xs sm:text-sm border-2 border-black shadow-[2px_2px_0_0_rgba(0,0,0,1)] active:translate-y-0.5 flex items-center gap-1.5"
+              >
+                {revealedHighNumber ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                <span>{revealedHighNumber ? 'Hide Result' : 'Check Result'}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={handleMarkWrong}
+                className="h-11 px-3.5 bg-rose-100 hover:bg-rose-200 text-rose-800 dark:bg-rose-950 dark:text-rose-200 font-black text-xs sm:text-sm border-2 border-black shadow-[2px_2px_0_0_rgba(0,0,0,1)] active:translate-y-0.5 flex items-center gap-1.5"
+                title="Mark as wrong and reveal answer"
+              >
+                <X className="w-4 h-4" />
+                <span>Wrong</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={handleMarkRight}
+                className="h-11 px-3.5 bg-emerald-100 hover:bg-emerald-200 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200 font-black text-xs sm:text-sm border-2 border-black shadow-[2px_2px_0_0_rgba(0,0,0,1)] active:translate-y-0.5 flex items-center gap-1.5"
+                title="Mark as right and generate next number"
+              >
+                <Check className="w-4 h-4" />
+                <span>Right</span>
+              </button>
+            </div>
           </div>
 
           {/* Slider */}
