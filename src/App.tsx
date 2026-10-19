@@ -1,15 +1,16 @@
 import { useState } from 'react';
-import { BookOpen, Sparkles, Flame, Hash, PenTool, Smartphone } from 'lucide-react';
+import { BookOpen, Sparkles, Flame, Hash, PenTool, Smartphone, Zap } from 'lucide-react';
 import { SUBJECTS, OBJECTS, VERBS } from './data';
 import LearnMode from './components/LearnMode';
 import GrammarMode from './components/GrammarMode';
 import BatchimGame from './components/BatchimGame';
+import ParticleTrainer from './components/ParticleTrainer';
 import NumbersLab from './components/NumbersLab';
 import StylusTrainer from './components/StylusTrainer';
 import SmartphoneMode from './components/SmartphoneMode';
 import { Word } from './types';
 
-type ModuleTab = 'vocab' | 'grammar' | 'batchim' | 'numbers' | 'stylus' | 'smartphone';
+type ModuleTab = 'vocab' | 'grammar' | 'particle' | 'batchim' | 'numbers' | 'stylus' | 'smartphone';
 
 const INITIAL_VOCAB: { subjects: Word[]; objects: Word[]; verbs: Word[] } = {
   subjects: SUBJECTS,
@@ -21,7 +22,7 @@ export default function App() {
   const [activeTab, setActiveTab] = useState<ModuleTab>(() => {
     try {
       const saved = localStorage.getItem('korean_app_active_module') as ModuleTab;
-      return ['vocab', 'grammar', 'batchim', 'numbers', 'stylus', 'smartphone'].includes(saved) ? saved : 'smartphone';
+      return ['vocab', 'grammar', 'particle', 'batchim', 'numbers', 'stylus', 'smartphone'].includes(saved) ? saved : 'smartphone';
     } catch {
       return 'smartphone';
     }
@@ -56,7 +57,7 @@ export default function App() {
                 </span>
               </div>
               <p className="text-[10px] sm:text-[11px] font-bold text-slate-500 dark:text-slate-400 mt-0.5">
-                Smartphone, Vocabulary, Grammar, Batchim, Numbers & Stylus Trainer
+                Smartphone, Vocab, Grammar, Particle Duel, Batchim, Numbers & Stylus Trainer
               </p>
             </div>
           </div>
@@ -85,6 +86,18 @@ export default function App() {
             >
               <BookOpen className="w-3.5 h-3.5" />
               <span>단어 Vocab</span>
+            </button>
+
+            <button
+              onClick={() => handleTabChange('particle')}
+              className={`flex-1 md:flex-none min-h-10 px-3 py-1.5 border-2 border-black font-black text-xs sm:text-sm flex items-center justify-center gap-1.5 transition-transform active:translate-y-0.5 whitespace-nowrap ${
+                activeTab === 'particle'
+                  ? 'bg-amber-500 text-black shadow-[2px_2px_0_0_rgba(0,0,0,1)]'
+                  : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700'
+              }`}
+            >
+              <Zap className="w-3.5 h-3.5" />
+              <span>조사 Particles</span>
             </button>
 
             <button
@@ -144,6 +157,7 @@ export default function App() {
           {activeTab === 'smartphone' && <SmartphoneMode />}
           {activeTab === 'vocab' && <LearnMode vocab={INITIAL_VOCAB} />}
           {activeTab === 'grammar' && <GrammarMode onBackToVocab={() => handleTabChange('vocab')} />}
+          {activeTab === 'particle' && <ParticleTrainer />}
           {activeTab === 'batchim' && <BatchimGame />}
           {activeTab === 'numbers' && <NumbersLab />}
           {activeTab === 'stylus' && <StylusTrainer />}
