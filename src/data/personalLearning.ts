@@ -303,6 +303,20 @@ const entries: PersonalVocabEntry[] = [
   ["가게", "store / shop", ["noun", "places", "shopping", "classwork", "sogang1a"], "2026.10.14"],
   ["얼마", "how much", ["expression", "shopping", "questions", "classwork", "sogang1a"], "2026.10.14"],
   ["억", "one hundred million (100,000,000)", ["number", "sino korean", "classwork", "sogang1a"], "2026.10.14"],
+  ["며칠", "what date", ["number", "calendar", "questions", "classwork", "sogang1a"], "2026.10.19"],
+  ["축하합니다", "congratulations", ["expression", "courtesy", "classwork", "sogang1a"], "2026.10.19"],
+  ["생일 축하합니다", "happy birthday", ["expression", "courtesy", "classwork", "sogang1a"], "2026.10.19"],
+  ["어서 오세요", "welcome", ["expression", "shopping", "courtesy", "classwork", "sogang1a"], "2026.10.19"],
+  ["장", "counter for flat objects/tickets/paper", ["counter", "classwork", "sogang1a"], "2026.10.19"],
+  ["여보세요", "hello on phone", ["expression", "phone", "classwork", "sogang1a"], "2026.10.19"],
+  ["바꿔 주세요", "please put someone on the phone / please transfer", ["expression", "phone", "classwork", "sogang1a"], "2026.10.19"],
+  ["실례지만 누구세요?", "excuse me, but who is calling?", ["expression", "phone", "questions", "classwork", "sogang1a"], "2026.10.19"],
+  ["시간 있어요?", "do you have time? / are you free?", ["expression", "questions", "classwork", "sogang1a"], "2026.10.19"],
+  ["왜요?", "why?", ["expression", "questions", "classwork", "sogang1a"], "2026.10.19"],
+  ["필통", "pencil case", ["noun", "objects", "classroom", "classwork", "sogang1a"], "2026.10.19"],
+  ["배낭", "backpack", ["noun", "objects", "classwork", "sogang1a"], "2026.10.19"],
+  ["주스", "juice", ["noun", "food", "classwork", "sogang1a"], "2026.10.19"],
+  ["이태원", "Itaewon", ["noun", "places", "seoul", "classwork", "sogang1a"], "2026.10.19"],
 ];
 
 export const PERSONAL_VOCABULARY: PersonalVocabItem[] = entries.map(([korean, english, tags, dateAdded]) => ({
