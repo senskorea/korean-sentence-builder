@@ -317,6 +317,9 @@ const entries: PersonalVocabEntry[] = [
   ["배낭", "backpack", ["noun", "objects", "classwork", "sogang1a"], "2026.10.19"],
   ["주스", "juice", ["noun", "food", "classwork", "sogang1a"], "2026.10.19"],
   ["이태원", "Itaewon", ["noun", "places", "seoul", "classwork", "sogang1a"], "2026.10.19"],
+  ["유월", "June (6월: irregular month)", ["number", "calendar", "classwork", "sogang1a"], "2026.10.21"],
+  ["시월", "October (10월: irregular month)", ["number", "calendar", "classwork", "sogang1a"], "2026.10.21"],
+  ["얼마예요?", "how much is it?", ["expression", "shopping", "questions", "classwork", "sogang1a"], "2026.10.21"],
 ];
 
 export const PERSONAL_VOCABULARY: PersonalVocabItem[] = entries.map(([korean, english, tags, dateAdded]) => ({
