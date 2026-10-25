@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
-import { ArrowLeft, Award, BookOpen, Brain, Check, Clock3, Eraser, EyeOff, Grid2X2, PenTool, RotateCcw, Search, Sparkles, StickyNote, Tag, X } from 'lucide-react';
+import { ArrowLeft, ArrowUpDown, Award, BookOpen, Brain, Check, Clock3, Eraser, EyeOff, Grid2X2, PenTool, RotateCcw, Search, Sparkles, StickyNote, Tag, X } from 'lucide-react';
 import { motion } from 'motion/react';
 import { getStroke } from 'perfect-freehand';
 import { SavedSentence, Word } from '../types';
@@ -31,6 +31,7 @@ type LearnType = 'words' | 'sentences' | 'personal';
 type PracticeMode = 'cards' | 'write' | 'mixed';
 type Rating = 0 | 1 | 2;
 type StudyItem = Word | SavedSentence | PersonalVocabItem;
+export type VocabSortOption = 'newest' | 'oldest' | 'alphabetical' | 'random';
 
 function pathFromStroke(stroke: number[][]) {
   if (!stroke.length) return '';
@@ -77,6 +78,23 @@ export default function LearnMode({ vocab, savedPhrases = [], onExit }: Props) {
   const [sentenceStats, setSentenceStats] = useState<Record<string, Stats>>({});
   const [search, setSearch] = useState('');
   const [selectedTag, setSelectedTag] = useState<string | null>('latest');
+  const [vocabSort, setVocabSort] = useState<VocabSortOption>(() => {
+    try {
+      const saved = localStorage.getItem('korean_vocab_sort') as VocabSortOption;
+      return ['newest', 'oldest', 'alphabetical', 'random'].includes(saved) ? saved : 'newest';
+    } catch {
+      return 'newest';
+    }
+  });
+
+  const handleSortChange = (option: VocabSortOption) => {
+    setVocabSort(option);
+    try {
+      localStorage.setItem('korean_vocab_sort', option);
+    } catch (e) {
+      console.error(e);
+    }
+  };
   const [stylusOnly, setStylusOnly] = useState<boolean>(() => {
     try {
       return localStorage.getItem('korean_stylus_only') === 'true';
@@ -421,9 +439,26 @@ export default function LearnMode({ vocab, savedPhrases = [], onExit }: Props) {
 
   const startFilteredSession = (filteredPool: PersonalVocabItem[]) => {
     if (!filteredPool.length) return;
-    const shuffled = [...filteredPool].sort(() => Math.random() - 0.5);
+    let ordered: PersonalVocabItem[];
+    if (vocabSort === 'newest') {
+      ordered = [...filteredPool].sort((a, b) => {
+        const dateCmp = (b.dateAdded || '').localeCompare(a.dateAdded || '');
+        if (dateCmp !== 0) return dateCmp;
+        return a.korean.localeCompare(b.korean, 'ko');
+      });
+    } else if (vocabSort === 'oldest') {
+      ordered = [...filteredPool].sort((a, b) => {
+        const dateCmp = (a.dateAdded || '').localeCompare(b.dateAdded || '');
+        if (dateCmp !== 0) return dateCmp;
+        return a.korean.localeCompare(b.korean, 'ko');
+      });
+    } else if (vocabSort === 'alphabetical') {
+      ordered = [...filteredPool].sort((a, b) => a.korean.localeCompare(b.korean, 'ko'));
+    } else {
+      ordered = [...filteredPool].sort(() => Math.random() - 0.5);
+    }
     setLearnType('personal');
-    setItems(shuffled.slice(0, Math.min(sessionLength, shuffled.length)));
+    setItems(ordered.slice(0, Math.min(sessionLength, ordered.length)));
     setSessionBatchSize(0);
     setElapsedSeconds(0);
     setIndex(0);
@@ -443,7 +478,23 @@ export default function LearnMode({ vocab, savedPhrases = [], onExit }: Props) {
       const learnedIds = personalMastery.learnedIds.filter((id) => availableIds.has(id));
       let activeIds = personalMastery.activeIds.filter((id) => availableIds.has(id) && !learnedIds.includes(id));
       if (!activeIds.length) {
-        activeIds = personalPool.filter((item) => !learnedIds.includes(item.id)).slice(0, sessionLength).map((item) => item.id);
+        const prioritized = [...personalPool].sort((a, b) => {
+          if (vocabSort === 'newest') {
+            const dateCmp = (b.dateAdded || '').localeCompare(a.dateAdded || '');
+            if (dateCmp !== 0) return dateCmp;
+            return a.korean.localeCompare(b.korean, 'ko');
+          }
+          if (vocabSort === 'oldest') {
+            const dateCmp = (a.dateAdded || '').localeCompare(b.dateAdded || '');
+            if (dateCmp !== 0) return dateCmp;
+            return a.korean.localeCompare(b.korean, 'ko');
+          }
+          if (vocabSort === 'alphabetical') {
+            return a.korean.localeCompare(b.korean, 'ko');
+          }
+          return Math.random() - 0.5;
+        });
+        activeIds = prioritized.filter((item) => !learnedIds.includes(item.id)).slice(0, sessionLength).map((item) => item.id);
       }
       const nextMastery = { ...personalMastery, activeIds, learnedIds };
       savePersonalMastery(nextMastery);
@@ -453,7 +504,19 @@ export default function LearnMode({ vocab, savedPhrases = [], onExit }: Props) {
       const activeCards = activeIds
         .filter((id) => (nextMastery.goodStreaks[id] || 0) < 2)
         .map((id) => personalPool.find((item) => item.id === id))
-        .filter((item): item is PersonalVocabItem => Boolean(item));
+        .filter((item): item is PersonalVocabItem => Boolean(item))
+        .sort((a, b) => {
+          if (vocabSort === 'newest') {
+            return (b.dateAdded || '').localeCompare(a.dateAdded || '');
+          }
+          if (vocabSort === 'oldest') {
+            return (a.dateAdded || '').localeCompare(b.dateAdded || '');
+          }
+          if (vocabSort === 'alphabetical') {
+            return a.korean.localeCompare(b.korean, 'ko');
+          }
+          return 0;
+        });
       const masteryQueue = [...dueReviews, ...activeCards];
       if (!masteryQueue.length) return;
       setLearnType(type);
@@ -575,6 +638,28 @@ export default function LearnMode({ vocab, savedPhrases = [], onExit }: Props) {
 
     const isFiltered = Boolean(selectedTag || query);
 
+    const sortedVocabulary = useMemo(() => {
+      const list = [...visibleVocabulary];
+      if (vocabSort === 'newest') {
+        return list.sort((a, b) => {
+          const dateDiff = (b.dateAdded || '').localeCompare(a.dateAdded || '');
+          if (dateDiff !== 0) return dateDiff;
+          return a.korean.localeCompare(b.korean, 'ko');
+        });
+      }
+      if (vocabSort === 'oldest') {
+        return list.sort((a, b) => {
+          const dateDiff = (a.dateAdded || '').localeCompare(b.dateAdded || '');
+          if (dateDiff !== 0) return dateDiff;
+          return a.korean.localeCompare(b.korean, 'ko');
+        });
+      }
+      if (vocabSort === 'alphabetical') {
+        return list.sort((a, b) => a.korean.localeCompare(b.korean, 'ko'));
+      }
+      return list;
+    }, [visibleVocabulary, vocabSort]);
+
     return (
       <div className="w-full max-w-5xl mx-auto bg-white dark:bg-slate-950 border-[3px] border-black shadow-[5px_5px_0_0_rgba(0,0,0,1)] p-5 sm:p-8">
         <div className="flex items-center justify-between gap-4">
@@ -619,16 +704,72 @@ export default function LearnMode({ vocab, savedPhrases = [], onExit }: Props) {
           </button>
           <button
             onClick={() => {
-              if (isFiltered) {
-                startFilteredSession(visibleVocabulary);
+              if (isFiltered || vocabSort === 'newest') {
+                startFilteredSession(sortedVocabulary);
               } else {
                 startSession('personal');
               }
             }}
             className="min-h-12 px-5 bg-indigo-600 text-white border-2 border-black font-black hover:bg-indigo-700 active:translate-y-0.5 transition-all"
           >
-            {isFiltered ? `Practise filtered (${visibleVocabulary.length})` : 'Practise deck'}
+            {isFiltered ? `Practise filtered (${sortedVocabulary.length})` : 'Practise deck'}
           </button>
+        </div>
+
+        {/* Sort Order Selector */}
+        <div className="p-3 mb-3 bg-slate-50 dark:bg-slate-900 border-2 border-black flex flex-wrap items-center justify-between gap-2.5">
+          <div className="flex items-center gap-2">
+            <ArrowUpDown className="w-4 h-4 text-indigo-600 dark:text-indigo-400 shrink-0" />
+            <span className="text-[11px] font-black uppercase tracking-wider text-slate-700 dark:text-slate-300">
+              Sort order:
+            </span>
+          </div>
+          <div className="flex flex-wrap items-center gap-1.5">
+            <button
+              type="button"
+              onClick={() => handleSortChange('newest')}
+              className={`px-2.5 py-1 text-xs font-black border-2 border-black rounded transition-all flex items-center gap-1 ${
+                vocabSort === 'newest'
+                  ? 'bg-indigo-600 text-white shadow-[2px_2px_0_0_rgba(0,0,0,1)]'
+                  : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700'
+              }`}
+            >
+              <span>⚡ Newest first (Default)</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => handleSortChange('oldest')}
+              className={`px-2.5 py-1 text-xs font-bold border-2 border-black rounded transition-all ${
+                vocabSort === 'oldest'
+                  ? 'bg-indigo-600 text-white shadow-[2px_2px_0_0_rgba(0,0,0,1)]'
+                  : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700'
+              }`}
+            >
+              Oldest first
+            </button>
+            <button
+              type="button"
+              onClick={() => handleSortChange('alphabetical')}
+              className={`px-2.5 py-1 text-xs font-bold border-2 border-black rounded transition-all ${
+                vocabSort === 'alphabetical'
+                  ? 'bg-indigo-600 text-white shadow-[2px_2px_0_0_rgba(0,0,0,1)]'
+                  : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700'
+              }`}
+            >
+              가나다 Alphabetical
+            </button>
+            <button
+              type="button"
+              onClick={() => handleSortChange('random')}
+              className={`px-2.5 py-1 text-xs font-bold border-2 border-black rounded transition-all ${
+                vocabSort === 'random'
+                  ? 'bg-indigo-600 text-white shadow-[2px_2px_0_0_rgba(0,0,0,1)]'
+                  : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700'
+              }`}
+            >
+              Random shuffle
+            </button>
+          </div>
         </div>
 
         {/* Permanent Clickable Tags Toolbar */}
@@ -702,8 +843,9 @@ export default function LearnMode({ vocab, savedPhrases = [], onExit }: Props) {
         {/* Results summary / Active filter banner */}
         <div className="flex items-center justify-between gap-2 mb-3">
           <p className="text-sm font-bold text-slate-500">
-            Showing {visibleVocabulary.length} of {totalVocabCount} dictionary forms and expressions
-            {selectedTag ? ` in ${selectedTag === 'latest' ? `Latest (${latestDate})` : `#${selectedTag}`}` : ''}.
+            Showing {sortedVocabulary.length} of {totalVocabCount} dictionary forms and expressions
+            {selectedTag ? ` in ${selectedTag === 'latest' ? `Latest (${latestDate})` : `#${selectedTag}`}` : ''}
+            {` • Sorted by ${vocabSort === 'newest' ? 'Newest first' : vocabSort === 'oldest' ? 'Oldest first' : vocabSort === 'alphabetical' ? '가나다 Alphabetical' : 'Random'}`}.
           </p>
           {isFiltered && (
             <button
@@ -718,7 +860,7 @@ export default function LearnMode({ vocab, savedPhrases = [], onExit }: Props) {
 
         {/* Vocabulary Items Grid */}
         <div className="grid sm:grid-cols-2 gap-3 max-h-[58vh] overflow-y-auto pr-1">
-          {visibleVocabulary.map((item) => (
+          {sortedVocabulary.map((item) => (
             <div key={item.id} className="p-4 border-2 border-black bg-slate-50 dark:bg-slate-900 flex flex-col justify-between">
               <div>
                 <div className="flex items-start justify-between gap-3">
@@ -748,7 +890,7 @@ export default function LearnMode({ vocab, savedPhrases = [], onExit }: Props) {
               {item.sensitive && <p className="mt-2 text-xs font-black text-rose-600">Strong profanity</p>}
             </div>
           ))}
-          {!visibleVocabulary.length && (
+          {!sortedVocabulary.length && (
             <div className="sm:col-span-2 p-8 text-center border-2 border-dashed border-slate-300">
               <p className="font-bold text-slate-500">No matching entries found.</p>
               <button
