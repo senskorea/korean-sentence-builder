@@ -320,6 +320,15 @@ const entries: PersonalVocabEntry[] = [
   ["유월", "June (6월: irregular month)", ["number", "calendar", "classwork", "sogang1a"], "2026.10.21"],
   ["시월", "October (10월: irregular month)", ["number", "calendar", "classwork", "sogang1a"], "2026.10.21"],
   ["얼마예요?", "how much is it?", ["expression", "shopping", "questions", "classwork", "sogang1a"], "2026.10.21"],
+  ["인도", "India", ["noun", "country", "classwork", "sogang1a"], "2026.10.25"],
+  ["인도 사람", "Indian person", ["noun", "people", "country", "classwork", "sogang1a"], "2026.10.25"],
+  ["일본 사람", "Japanese person", ["noun", "people", "country", "classwork", "sogang1a"], "2026.10.25"],
+  ["독일 사람", "German person", ["noun", "people", "country", "classwork", "sogang1a"], "2026.10.25"],
+  ["태국 사람", "Thai person", ["noun", "people", "country", "classwork", "sogang1a"], "2026.10.25"],
+  ["직업", "job / occupation", ["noun", "occupation", "classwork", "sogang1a"], "2026.10.25"],
+  ["탁자", "table", ["noun", "objects", "furniture", "classwork", "sogang1a"], "2026.10.25"],
+  ["이분", "this person (polite)", ["pronoun", "people", "courtesy", "classwork", "sogang1a"], "2026.10.25"],
+  ["뭐예요?", "what is it?", ["expression", "questions", "classwork", "sogang1a"], "2026.10.25"],
 ];
 
 export const PERSONAL_VOCABULARY: PersonalVocabItem[] = entries.map(([korean, english, tags, dateAdded]) => ({

@@ -173,19 +173,52 @@ export default function SmartphoneMode() {
     return result;
   }, [masterPool, selectedTag]);
 
-  // Active review queue state
-  const [queue, setQueue] = useState<StudyWord[]>(() => {
-    return [...filteredDeck].sort(() => Math.random() - 0.5);
+  // Card Order setting: 'newest' | 'random' | 'alphabetical'
+  const [cardOrder, setCardOrder] = useState<'newest' | 'random' | 'alphabetical'>(() => {
+    try {
+      return (localStorage.getItem('korean_smartphone_order_v2') as any) || 'newest';
+    } catch {
+      return 'newest';
+    }
   });
 
-  // When filteredDeck changes, reset queue
+  const sortCards = useCallback((cards: StudyWord[], order: 'newest' | 'random' | 'alphabetical') => {
+    const list = [...cards];
+    if (order === 'newest') {
+      return list.sort((a, b) => {
+        const dateCmp = (b.dateAdded || '').localeCompare(a.dateAdded || '');
+        if (dateCmp !== 0) return dateCmp;
+        return a.korean.localeCompare(b.korean, 'ko');
+      });
+    }
+    if (order === 'alphabetical') {
+      return list.sort((a, b) => a.korean.localeCompare(b.korean, 'ko'));
+    }
+    return list.sort(() => Math.random() - 0.5);
+  }, []);
+
+  const handleOrderChange = (order: 'newest' | 'random' | 'alphabetical') => {
+    setCardOrder(order);
+    try {
+      localStorage.setItem('korean_smartphone_order_v2', order);
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  // Active review queue state
+  const [queue, setQueue] = useState<StudyWord[]>(() => {
+    return sortCards(filteredDeck, cardOrder);
+  });
+
+  // When filteredDeck or cardOrder changes, reset queue
   useEffect(() => {
-    setQueue([...filteredDeck].sort(() => Math.random() - 0.5));
+    setQueue(sortCards(filteredDeck, cardOrder));
     setCurrentIndex(0);
     setIsRevealed(false);
     setKnownCount(0);
     setUnknownCount(0);
-  }, [filteredDeck]);
+  }, [filteredDeck, cardOrder, sortCards]);
 
   // Persist settings
   const handleOpacityChange = (val: number) => {
@@ -583,6 +616,50 @@ export default function SmartphoneMode() {
                       </button>
                     );
                   })}
+                </div>
+              </div>
+
+              {/* 3. Card Order */}
+              <div className="mb-5">
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="font-black text-xs uppercase tracking-wide text-slate-700 dark:text-slate-300">
+                    Card Order
+                  </label>
+                  <span className="text-[10px] font-bold text-slate-400">
+                    Default: Newest First
+                  </span>
+                </div>
+                <div className="grid grid-cols-3 gap-1.5">
+                  <button
+                    onClick={() => handleOrderChange('newest')}
+                    className={`py-2 px-2 text-center border-2 border-black rounded-lg font-black text-xs transition-transform active:translate-y-0.5 ${
+                      cardOrder === 'newest'
+                        ? 'bg-purple-600 text-white shadow-[2px_2px_0_0_rgba(0,0,0,1)]'
+                        : 'bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-100'
+                    }`}
+                  >
+                    ⚡ Newest
+                  </button>
+                  <button
+                    onClick={() => handleOrderChange('random')}
+                    className={`py-2 px-2 text-center border-2 border-black rounded-lg font-black text-xs transition-transform active:translate-y-0.5 ${
+                      cardOrder === 'random'
+                        ? 'bg-purple-600 text-white shadow-[2px_2px_0_0_rgba(0,0,0,1)]'
+                        : 'bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-100'
+                    }`}
+                  >
+                    Shuffle
+                  </button>
+                  <button
+                    onClick={() => handleOrderChange('alphabetical')}
+                    className={`py-2 px-2 text-center border-2 border-black rounded-lg font-black text-xs transition-transform active:translate-y-0.5 ${
+                      cardOrder === 'alphabetical'
+                        ? 'bg-purple-600 text-white shadow-[2px_2px_0_0_rgba(0,0,0,1)]'
+                        : 'bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-100'
+                    }`}
+                  >
+                    가나다
+                  </button>
                 </div>
               </div>
 
