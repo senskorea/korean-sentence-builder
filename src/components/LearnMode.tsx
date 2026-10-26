@@ -437,6 +437,53 @@ export default function LearnMode({ vocab, savedPhrases = [], onExit }: Props) {
     return PERSONAL_VOCABULARY.filter((i) => showSensitive || !i.sensitive).length;
   }, [showSensitive]);
 
+  const visibleVocabulary = useMemo(() => {
+    const query = search.trim().toLowerCase();
+    return PERSONAL_VOCABULARY.filter((item) => {
+      if (!showSensitive && item.sensitive) return false;
+      if (selectedTag) {
+        if (selectedTag === "latest") {
+          if (item.dateAdded !== latestDate) return false;
+        } else if (!item.tags.includes(selectedTag)) {
+          return false;
+        }
+      }
+      if (query) {
+        const clean = query.replace(/^#/, "");
+        const matchesKorean = item.korean.includes(query);
+        const matchesEnglish = item.english.toLowerCase().includes(query);
+        const matchesTag = item.tags.some((t) => t.toLowerCase().includes(clean));
+        const matchesDate = item.dateAdded ? item.dateAdded.includes(query) : false;
+        return matchesKorean || matchesEnglish || matchesTag || matchesDate;
+      }
+      return true;
+    });
+  }, [search, showSensitive, selectedTag, latestDate]);
+
+  const sortedVocabulary = useMemo(() => {
+    const list = [...visibleVocabulary];
+    if (vocabSort === "newest") {
+      return list.sort((a, b) => {
+        const dateDiff = (b.dateAdded || "").localeCompare(a.dateAdded || "");
+        if (dateDiff !== 0) return dateDiff;
+        return a.korean.localeCompare(b.korean, "ko");
+      });
+    }
+    if (vocabSort === "oldest") {
+      return list.sort((a, b) => {
+        const dateDiff = (a.dateAdded || "").localeCompare(b.dateAdded || "");
+        if (dateDiff !== 0) return dateDiff;
+        return a.korean.localeCompare(b.korean, "ko");
+      });
+    }
+    if (vocabSort === "alphabetical") {
+      return list.sort((a, b) => a.korean.localeCompare(b.korean, "ko"));
+    }
+    return list;
+  }, [visibleVocabulary, vocabSort]);
+
+  const isFiltered = Boolean(selectedTag || search.trim());
+
   const startFilteredSession = (filteredPool: PersonalVocabItem[]) => {
     if (!filteredPool.length) return;
     let ordered: PersonalVocabItem[];
@@ -615,51 +662,6 @@ export default function LearnMode({ vocab, savedPhrases = [], onExit }: Props) {
 
 
   if (screen === 'vocabulary') {
-    const query = search.trim().toLowerCase();
-    const visibleVocabulary = PERSONAL_VOCABULARY.filter((item) => {
-      if (!showSensitive && item.sensitive) return false;
-      if (selectedTag) {
-        if (selectedTag === 'latest') {
-          if (item.dateAdded !== latestDate) return false;
-        } else if (!item.tags.includes(selectedTag)) {
-          return false;
-        }
-      }
-      if (query) {
-        const clean = query.replace(/^#/, '');
-        const matchesKorean = item.korean.includes(query);
-        const matchesEnglish = item.english.toLowerCase().includes(query);
-        const matchesTag = item.tags.some((t) => t.toLowerCase().includes(clean));
-        const matchesDate = item.dateAdded ? item.dateAdded.includes(query) : false;
-        return matchesKorean || matchesEnglish || matchesTag || matchesDate;
-      }
-      return true;
-    });
-
-    const isFiltered = Boolean(selectedTag || query);
-
-    const sortedVocabulary = useMemo(() => {
-      const list = [...visibleVocabulary];
-      if (vocabSort === 'newest') {
-        return list.sort((a, b) => {
-          const dateDiff = (b.dateAdded || '').localeCompare(a.dateAdded || '');
-          if (dateDiff !== 0) return dateDiff;
-          return a.korean.localeCompare(b.korean, 'ko');
-        });
-      }
-      if (vocabSort === 'oldest') {
-        return list.sort((a, b) => {
-          const dateDiff = (a.dateAdded || '').localeCompare(b.dateAdded || '');
-          if (dateDiff !== 0) return dateDiff;
-          return a.korean.localeCompare(b.korean, 'ko');
-        });
-      }
-      if (vocabSort === 'alphabetical') {
-        return list.sort((a, b) => a.korean.localeCompare(b.korean, 'ko'));
-      }
-      return list;
-    }, [visibleVocabulary, vocabSort]);
-
     return (
       <div className="w-full max-w-5xl mx-auto bg-white dark:bg-slate-950 border-[3px] border-black shadow-[5px_5px_0_0_rgba(0,0,0,1)] p-5 sm:p-8">
         <div className="flex items-center justify-between gap-4">
@@ -923,6 +925,19 @@ export default function LearnMode({ vocab, savedPhrases = [], onExit }: Props) {
   }
 
   const item = items[index];
+  if (!item) {
+    return (
+      <div className="w-full max-w-xl mx-auto p-8 text-center bg-white dark:bg-slate-950 border-[3px] border-black">
+        <p className="font-bold text-slate-500 mb-4">No cards in this session.</p>
+        <button
+          onClick={() => setScreen('vocabulary')}
+          className="min-h-12 px-5 bg-indigo-600 text-white border-2 border-black font-black"
+        >
+          Return to Vocabulary
+        </button>
+      </div>
+    );
+  }
   const isWord = 'type' in item;
   const isPersonal = 'tags' in item;
   const korean = item.korean;
