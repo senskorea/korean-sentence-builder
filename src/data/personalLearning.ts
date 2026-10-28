@@ -329,6 +329,16 @@ const entries: PersonalVocabEntry[] = [
   ["탁자", "table", ["noun", "objects", "furniture", "classwork", "sogang1a"], "2026.10.25"],
   ["이분", "this person (polite)", ["pronoun", "people", "courtesy", "classwork", "sogang1a"], "2026.10.25"],
   ["뭐예요?", "what is it?", ["expression", "questions", "classwork", "sogang1a"], "2026.10.25"],
+  ["백화점", "department store", ["places", "unit2", "classwork", "sogang1a"], "2026.10.28"],
+  ["약국", "pharmacy", ["places", "unit2", "classwork", "sogang1a"], "2026.10.28"],
+  ["세수하다", "to wash one's face", ["verbs", "unit2", "classwork", "sogang1a"], "2026.10.28"],
+  ["조용하다", "to be quiet", ["adjectives", "unit2", "classwork", "sogang1a"], "2026.10.28"],
+  ["보통", "usually, normally", ["adverbs", "unit2", "classwork", "sogang1a"], "2026.10.28"],
+  ["일하다", "to work", ["verbs", "unit2", "classwork", "sogang1a"], "2026.10.28"],
+  ["운동하다", "to exercise", ["verbs", "unit2", "classwork", "sogang1a"], "2026.10.28"],
+  ["쇼핑하다", "to shop", ["verbs", "unit2", "classwork", "sogang1a"], "2026.10.28"],
+  ["숙제하다", "to do homework", ["verbs", "unit2", "classwork", "sogang1a"], "2026.10.28"],
+  ["식사하다", "to have a meal / dine", ["verbs", "unit2", "classwork", "sogang1a"], "2026.10.28"],
 ];
 
 export const PERSONAL_VOCABULARY: PersonalVocabItem[] = entries.map(([korean, english, tags, dateAdded]) => ({
