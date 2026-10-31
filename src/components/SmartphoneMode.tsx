@@ -307,9 +307,9 @@ export default function SmartphoneMode() {
   const isCompleted = currentIndex >= queue.length && queue.length > 0;
 
   return (
-    <div className="w-full flex justify-center py-2 sm:py-6 px-2">
-      {/* Smartphone Portrait Container */}
-      <div className="w-full max-w-sm sm:max-w-md bg-white dark:bg-slate-900 border-[3px] border-black shadow-[6px_6px_0_0_rgba(0,0,0,1)] rounded-3xl flex flex-col min-h-[580px] sm:min-h-[640px] overflow-hidden relative select-none">
+    <div className="w-full flex justify-center py-2 sm:py-6 px-2 safe-bottom">
+      {/* Smartphone Portrait Container: Optimized for tall 19.5:9 flagship mobile screens (S24 Ultra) */}
+      <div className="w-full max-w-sm sm:max-w-md md:max-w-lg bg-white dark:bg-slate-900 border-[3px] border-black shadow-[6px_6px_0_0_rgba(0,0,0,1)] rounded-3xl flex flex-col min-h-[640px] sm:min-h-[720px] overflow-hidden relative select-none">
         
         {/* Top Header Bar */}
         <div className="bg-slate-50 dark:bg-slate-800 border-b-2 border-black px-4 py-3 flex items-center justify-between">

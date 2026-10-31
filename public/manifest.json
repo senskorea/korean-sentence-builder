@@ -3,19 +3,22 @@
   "short_name": "K-Builder",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#fdf9f0",
-  "theme_color": "#cc3311",
-  "description": "A neo-brutalist Korean sentence builder and language learning app.",
+  "orientation": "any",
+  "background_color": "#ffffff",
+  "theme_color": "#0f172a",
+  "description": "Neo-brutalist Korean sentence builder and vocabulary trainer optimized for S Pen and Galaxy S24 Ultra.",
   "icons": [
     {
       "src": "/icon-192x192.png",
       "sizes": "192x192",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any maskable"
     },
     {
       "src": "/icon-512x512.png",
       "sizes": "512x512",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any maskable"
     }
   ]
 }

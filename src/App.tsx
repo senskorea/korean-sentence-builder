@@ -39,8 +39,8 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-brand-bg-light dark:bg-brand-bg-dark text-slate-800 dark:text-slate-100 flex flex-col font-sans">
-      {/* Top Persistent Navigation Bar */}
-      <header className="sticky top-0 z-30 bg-white dark:bg-slate-900 border-b-[3px] border-black px-3 sm:px-4 py-2 sm:py-2.5 shadow-[0_3px_0_0_rgba(0,0,0,1)]">
+      {/* Top Persistent Navigation Bar with safe-top padding for camera notch/cutout */}
+      <header className="sticky top-0 z-30 bg-white dark:bg-slate-900 border-b-[3px] border-black px-3 sm:px-4 py-2 sm:py-2.5 shadow-[0_3px_0_0_rgba(0,0,0,1)] safe-top">
         <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-2.5">
           {/* Logo / Branding */}
           <div className="flex items-center gap-2.5 self-start md:self-auto">

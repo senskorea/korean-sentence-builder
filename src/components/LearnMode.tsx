@@ -303,9 +303,9 @@ export default function LearnMode({ vocab, savedPhrases = [], onExit }: Props) {
       return;
     }
 
-    // PALM REJECTION & PEN PREEMPTION:
-    // If a touch was active (resting palm), but now Apple Pencil touches down,
-    // Apple Pencil takes absolute priority and overrides the palm touch!
+    // PALM REJECTION & PEN PREEMPTION (S Pen & Apple Pencil):
+    // If a touch was active (e.g. resting palm), but now a pen touches down,
+    // the stylus immediately takes absolute priority and overrides the palm contact.
     if (event.pointerType === 'pen' && activePointerType.current === 'touch') {
       currentLine.current = null;
       activePointerId.current = null;
@@ -316,8 +316,8 @@ export default function LearnMode({ vocab, savedPhrases = [], onExit }: Props) {
       return;
     }
 
-    // Reject broad palm contacts in hybrid mode
-    if (event.pointerType === 'touch' && (event.width > 24 || event.height > 24)) {
+    // Reject broad palm contacts in hybrid mode (broad touch contact patch)
+    if (event.pointerType === 'touch' && (event.width > 22 || event.height > 22)) {
       return;
     }
 

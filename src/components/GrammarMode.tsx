@@ -253,8 +253,8 @@ export default function GrammarMode({ onBackToVocab }: Props) {
       return;
     }
 
-    // Reject broad palm contacts
-    if (event.pointerType === 'touch' && (event.width > 24 || event.height > 24)) {
+    // Reject broad palm contacts (broad touch surface)
+    if (event.pointerType === 'touch' && (event.width > 22 || event.height > 22)) {
       return;
     }
 
