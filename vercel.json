@@ -1,8 +1,8 @@
 {
   "rewrites": [
     {
-      "source": "/api/nim/(.*)",
-      "destination": "https://integrate.api.nvidia.com/v1/$1"
+      "source": "/(.*)",
+      "destination": "/"
     }
   ]
 }
