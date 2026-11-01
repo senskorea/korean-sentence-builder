@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
-import { ArrowLeft, ArrowUpDown, Award, BookOpen, Brain, Check, Clock3, Eraser, EyeOff, Grid2X2, PenTool, RotateCcw, Search, Sparkles, StickyNote, Tag, X } from 'lucide-react';
+import { ArrowLeft, ArrowUpDown, Award, BookOpen, Brain, Check, Clock3, Eraser, Eye, EyeOff, Grid2X2, PenTool, RotateCcw, Search, Sparkles, StickyNote, Tag, X } from 'lucide-react';
 import { motion } from 'motion/react';
 import { getStroke } from 'perfect-freehand';
 import { SavedSentence, Word } from '../types';
@@ -9,6 +9,7 @@ interface Props {
   vocab: { subjects: Word[]; objects: Word[]; verbs: Word[] };
   savedPhrases?: SavedSentence[];
   onExit?: () => void;
+  onSessionActiveChange?: (active: boolean) => void;
 }
 
 interface Stats {
@@ -63,7 +64,7 @@ function formatDuration(totalSeconds: number) {
     : `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
 }
 
-export default function LearnMode({ vocab, savedPhrases = [], onExit }: Props) {
+export default function LearnMode({ vocab, savedPhrases = [], onExit, onSessionActiveChange }: Props) {
   const words = [...vocab.subjects, ...vocab.objects, ...vocab.verbs];
   const sentences = savedPhrases;
   const [screen, setScreen] = useState<'vocabulary' | 'session' | 'summary'>('vocabulary');
@@ -74,6 +75,7 @@ export default function LearnMode({ vocab, savedPhrases = [], onExit }: Props) {
   const [index, setIndex] = useState(0);
   const [ratings, setRatings] = useState<Rating[]>([]);
   const [revealed, setRevealed] = useState(false);
+  const [showOverlayGuide, setShowOverlayGuide] = useState(true);
   const [wordStats, setWordStats] = useState<Record<string, Stats>>({});
   const [sentenceStats, setSentenceStats] = useState<Record<string, Stats>>({});
   const [search, setSearch] = useState('');
@@ -158,6 +160,15 @@ export default function LearnMode({ vocab, savedPhrases = [], onExit }: Props) {
     return () => window.clearInterval(timer);
   }, [screen]);
 
+  // Inform parent App when an immersive session is active
+  useEffect(() => {
+    const isSession = screen === 'session';
+    onSessionActiveChange?.(isSession);
+    return () => {
+      onSessionActiveChange?.(false);
+    };
+  }, [screen, onSessionActiveChange]);
+
   const renderCanvas = useCallback(() => {
     const canvas = canvasRef.current;
     const context = canvas?.getContext('2d', { desynchronized: true });
@@ -167,7 +178,11 @@ export default function LearnMode({ vocab, savedPhrases = [], onExit }: Props) {
     context.setTransform(1, 0, 0, 1, 0, 0);
     context.clearRect(0, 0, canvas.width, canvas.height);
     context.scale(canvas.width / rect.width, canvas.height / rect.height);
-    context.fillStyle = '#4f46e5';
+    
+    // Vibrant purple/indigo ink adapted for dark & light AMOLED backgrounds
+    const isDark = document.documentElement.classList.contains('dark') || 
+      (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
+    context.fillStyle = isDark ? '#a5b4fc' : '#4f46e5';
 
     const visibleLines = currentLine.current?.length ? [...lines.current, currentLine.current] : lines.current;
     visibleLines.forEach((line) => {
@@ -944,38 +959,211 @@ export default function LearnMode({ vocab, savedPhrases = [], onExit }: Props) {
   const english = item.english;
   const emoji = isWord ? (item as Word).emoji : isPersonal ? '✍️' : (item as SavedSentence).emojis;
   return (
-    <div className="w-full h-[calc(100dvh-5.5rem)] max-h-[calc(100dvh-5.5rem)] md:h-[calc(100dvh-6.5rem)] md:max-h-[calc(100dvh-6.5rem)] bg-white flex flex-col overflow-hidden select-none">
-      <header className="flex items-center gap-3 px-2 py-1.5 border-b border-slate-200"><button onClick={() => setScreen('vocabulary')} className="w-9 h-9 shrink-0 grid place-items-center border-2 border-black" aria-label="Exit session"><X className="w-4 h-4" /></button><div className="flex-1 h-2 bg-slate-200 overflow-hidden"><div className="h-full bg-indigo-600" style={{ width: `${((index + 1) / items.length) * 100}%` }} /></div><div className="flex items-center gap-2 shrink-0 text-xs font-black tabular-nums"><strong>{index + 1}/{items.length}</strong><span className="h-5 border-l border-slate-300" /><span className="flex items-center gap-1 text-slate-500" aria-label={`Session time ${formatDuration(elapsedSeconds)}`}><Clock3 className="w-3.5 h-3.5" />{formatDuration(elapsedSeconds)}</span></div></header>
-      <main className="flex-1 min-h-0 max-h-[90dvh] flex flex-col p-1.5 sm:p-2 gap-1.5 sm:gap-2 max-w-5xl mx-auto w-full overflow-hidden">
-        <div className="flex items-center justify-between gap-3 px-1"><span className="text-[10px] sm:text-xs font-black uppercase tracking-wider text-indigo-600">{writingCard ? (revealed ? 'Trace the answer' : 'Write in Korean') : 'Recall the Korean'}</span><div className="min-w-0 text-right"><h2 className={`${learnType === 'sentences' ? 'text-lg sm:text-2xl' : 'text-2xl sm:text-3xl'} font-black truncate`}>{english}</h2>{isPersonal && <TagList tags={(item as PersonalVocabItem).tags} align="right" />}</div></div>
+    <div className="w-full h-dvh max-h-dvh bg-slate-50 dark:bg-slate-950 flex flex-col overflow-hidden select-none">
+      {/* Session Top Bar with Discrete Back Button */}
+      <header className="flex items-center gap-2.5 px-3 py-2 border-b-2 border-black bg-white dark:bg-slate-900 safe-top shrink-0 select-none shadow-sm">
+        <button
+          type="button"
+          onClick={() => setScreen('vocabulary')}
+          className="h-8 px-2.5 rounded-none border-2 border-black bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 font-black text-xs shadow-[2px_2px_0_0_rgba(0,0,0,1)] active:translate-y-0.5 flex items-center gap-1.5 hover:bg-slate-100 dark:hover:bg-slate-700 shrink-0"
+          aria-label="Exit session"
+          title="Exit session and return to Vocabulary"
+        >
+          <ArrowLeft className="w-3.5 h-3.5" />
+          <span>Back</span>
+        </button>
+        <div className="flex-1 h-2.5 bg-slate-200 dark:bg-slate-800 border border-black overflow-hidden rounded-full">
+          <div className="h-full bg-indigo-600 transition-all duration-300" style={{ width: `${((index + 1) / items.length) * 100}%` }} />
+        </div>
+        <div className="flex items-center gap-2 shrink-0 text-xs font-black tabular-nums text-slate-800 dark:text-slate-200">
+          <strong>{index + 1}/{items.length}</strong>
+          <span className="h-4 border-l border-slate-300 dark:border-slate-700" />
+          <span className="flex items-center gap-1 text-slate-500 dark:text-slate-400" aria-label={`Session time ${formatDuration(elapsedSeconds)}`}>
+            <Clock3 className="w-3.5 h-3.5" />
+            {formatDuration(elapsedSeconds)}
+          </span>
+        </div>
+      </header>
+
+      {/* Main Flashcard Stage */}
+      <main className="flex-1 min-h-0 flex flex-col p-2 sm:p-3 gap-2 max-w-4xl mx-auto w-full overflow-hidden">
+        {/* Prompt Header */}
+        <div className="flex items-center justify-between gap-3 px-1 shrink-0">
+          <div className="flex items-center gap-2 min-w-0">
+            <span className="text-[10px] sm:text-xs font-black uppercase tracking-wider text-indigo-600 dark:text-indigo-400">
+              {writingCard ? (revealed ? 'Compare & Trace' : 'Write in Korean') : 'Recall the Korean'}
+            </span>
+            {revealed && (
+              <span className="px-1.5 py-0.5 text-[10px] font-black uppercase tracking-wider bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 border border-emerald-600 dark:border-emerald-500 flex items-center gap-1 shrink-0">
+                <Check className="w-3 h-3" />
+                Revealed
+              </span>
+            )}
+          </div>
+          <div className="min-w-0 text-right">
+            <h2 className={`${learnType === 'sentences' ? 'text-base sm:text-xl' : 'text-xl sm:text-2xl'} font-black truncate text-slate-900 dark:text-white`}>
+              {english}
+            </h2>
+            {isPersonal && <TagList tags={(item as PersonalVocabItem).tags} align="right" />}
+          </div>
+        </div>
+
+        {/* High-Contrast Ground Truth Correction Banner (Crystal clear on reveal) */}
+        {revealed && (
+          <div className="bg-emerald-50 dark:bg-emerald-950/80 border-[3px] border-emerald-600 dark:border-emerald-500 px-3 py-2 shadow-[2px_2px_0_0_rgba(0,0,0,1)] shrink-0 flex items-center justify-between gap-2.5">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <span className="px-2 py-0.5 rounded bg-emerald-600 text-white font-black text-xs shrink-0 tracking-wider">
+                정답
+              </span>
+              <div className="flex items-baseline gap-2 min-w-0">
+                <span className="text-xl sm:text-2xl font-black text-emerald-950 dark:text-emerald-100 tracking-tight truncate">
+                  {korean}
+                </span>
+                <span className="text-xs sm:text-sm font-bold text-slate-600 dark:text-slate-300 truncate">
+                  ({english})
+                </span>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <span className="text-lg">{emoji}</span>
+              <button
+                type="button"
+                onClick={() => setShowOverlayGuide((prev) => !prev)}
+                className="px-2 py-1 text-[11px] font-black border-2 border-black bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 flex items-center gap-1 shadow-[1px_1px_0_0_rgba(0,0,0,1)] active:translate-y-0.5"
+                title="Toggle ghost watermark on canvas"
+              >
+                {showOverlayGuide ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
+                <span className="hidden xs:inline">{showOverlayGuide ? 'Hide Ghost' : 'Show Ghost'}</span>
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Drawing Canvas or Recall Card */}
         {writingCard ? (
-          <div ref={canvasBoxRef} className="relative flex-1 min-h-0 bg-white border-[3px] border-black overflow-hidden">
-            <div className="absolute inset-0 grid place-items-center pointer-events-none text-slate-200 dark:text-slate-800"><PenTool className="w-24 h-24" /></div>
-            {revealed && <Answer korean={korean} emoji={emoji} sentence={learnType === 'sentences'} overlay />}
+          <div ref={canvasBoxRef} className="relative flex-1 min-h-0 bg-white dark:bg-slate-900 border-[3px] border-black overflow-hidden shadow-[3px_3px_0_0_rgba(0,0,0,1)]">
+            <div className="absolute inset-0 grid place-items-center pointer-events-none text-slate-200 dark:text-slate-800 select-none">
+              <PenTool className="w-20 h-20 opacity-30" />
+            </div>
+            {revealed && showOverlayGuide && (
+              <Answer korean={korean} emoji={emoji} sentence={learnType === 'sentences'} overlay />
+            )}
             <canvas ref={canvasRef} className="absolute inset-0 z-10 w-full h-full touch-none cursor-crosshair" />
-            <div className="absolute z-20 top-3 right-3 flex flex-wrap justify-end gap-2 pl-3">
-              {!revealed && <button onClick={() => setRevealed(true)} className="h-12 min-w-36 px-5 bg-indigo-600 text-white border-2 border-black font-black text-sm shadow-[3px_3px_0_0_rgba(0,0,0,1)]">Reveal answer</button>}
+
+            {/* Canvas Toolbar */}
+            <div className="absolute z-20 top-2.5 right-2.5 flex flex-wrap justify-end gap-1.5 pl-3">
               <button
                 type="button"
                 onClick={toggleStylusOnly}
-                className={`h-12 px-3 border-2 border-black flex items-center gap-1.5 font-black text-xs transition-all shadow-[2px_2px_0_0_rgba(0,0,0,1)] ${
+                className={`h-9 px-2.5 border-2 border-black flex items-center gap-1.5 font-black text-xs transition-all shadow-[2px_2px_0_0_rgba(0,0,0,1)] active:translate-y-0.5 ${
                   stylusOnly
                     ? 'bg-emerald-600 text-white'
-                    : 'bg-white dark:bg-slate-950 text-slate-700 dark:text-slate-300'
+                    : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200'
                 }`}
                 title={stylusOnly ? 'Stylus only mode is ON. Resting palms and touch inputs are completely ignored.' : 'Stylus only mode is OFF. Both touch and stylus inputs are accepted.'}
               >
-                <PenTool className="w-4 h-4" />
-                <span>{stylusOnly ? 'Stylus only: ON' : 'Stylus only: OFF'}</span>
+                <PenTool className="w-3.5 h-3.5" />
+                <span>{stylusOnly ? 'Stylus: ON' : 'Touch/Pen'}</span>
               </button>
-              <button onClick={undoStroke} className="h-12 px-3 bg-white dark:bg-slate-950 border-2 border-black flex items-center gap-2 font-black text-xs"><RotateCcw className="w-4 h-4" />Undo</button>
-              <button onClick={clearCanvas} className="h-12 px-3 bg-white dark:bg-slate-950 border-2 border-black flex items-center gap-2 font-black text-xs"><Eraser className="w-4 h-4" />Clear</button>
-              <button onClick={() => { setNoteDraft(notes[item.id] || ''); setNoteOpen(true); }} className={`h-12 px-3 border-2 border-black flex items-center gap-2 font-black text-xs ${notes[item.id] ? 'bg-amber-200 text-black' : 'bg-white dark:bg-slate-950'}`}><StickyNote className="w-4 h-4" />Note</button>
+              <button
+                type="button"
+                onClick={undoStroke}
+                className="h-9 px-2.5 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 border-2 border-black flex items-center gap-1.5 font-black text-xs shadow-[2px_2px_0_0_rgba(0,0,0,1)] active:translate-y-0.5 hover:bg-slate-50 dark:hover:bg-slate-700"
+              >
+                <RotateCcw className="w-3.5 h-3.5" />
+                <span className="hidden xs:inline">Undo</span>
+              </button>
+              <button
+                type="button"
+                onClick={clearCanvas}
+                className="h-9 px-2.5 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 border-2 border-black flex items-center gap-1.5 font-black text-xs shadow-[2px_2px_0_0_rgba(0,0,0,1)] active:translate-y-0.5 hover:bg-slate-50 dark:hover:bg-slate-700"
+              >
+                <Eraser className="w-3.5 h-3.5" />
+                <span className="hidden xs:inline">Clear</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => { setNoteDraft(notes[item.id] || ''); setNoteOpen(true); }}
+                className={`h-9 px-2.5 border-2 border-black flex items-center gap-1.5 font-black text-xs shadow-[2px_2px_0_0_rgba(0,0,0,1)] active:translate-y-0.5 ${notes[item.id] ? 'bg-amber-300 text-black' : 'bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700'}`}
+              >
+                <StickyNote className="w-3.5 h-3.5" />
+                <span className="hidden xs:inline">Note</span>
+              </button>
             </div>
-            {noteOpen && <div className="absolute inset-0 z-30 bg-slate-900/45 p-3 grid place-items-center" onPointerDown={(event) => event.stopPropagation()}><div className="w-full max-w-lg bg-white text-black border-[3px] border-black p-4 shadow-[5px_5px_0_0_rgba(0,0,0,1)]"><div className="flex items-center justify-between gap-3"><div><p className="text-[10px] font-black uppercase tracking-wider text-amber-700">Flashcard note</p><h3 className="text-xl font-black">{korean}</h3></div><button onClick={() => setNoteOpen(false)} className="w-10 h-10 grid place-items-center border-2 border-black" aria-label="Close note"><X className="w-4 h-4" /></button></div><textarea autoFocus value={noteDraft} onChange={(event) => setNoteDraft(event.target.value)} placeholder="What should you remember about this card?" className="w-full min-h-32 mt-4 p-3 border-2 border-black resize-y outline-none focus:ring-2 focus:ring-amber-400 font-semibold" /><div className="grid grid-cols-2 gap-2 mt-3"><button onClick={() => setNoteOpen(false)} className="h-12 border-2 border-black font-black">Cancel</button><button onClick={() => { const next = { ...notes }; const value = noteDraft.trim(); if (value) next[item.id] = value; else delete next[item.id]; setNotes(next); localStorage.setItem('korean_flashcard_notes', JSON.stringify(next)); setNoteOpen(false); }} className="h-12 bg-amber-300 border-2 border-black font-black">Save note</button></div></div></div>}
+
+            {noteOpen && (
+              <div className="absolute inset-0 z-30 bg-slate-900/45 p-3 grid place-items-center" onPointerDown={(event) => event.stopPropagation()}>
+                <div className="w-full max-w-lg bg-white text-black border-[3px] border-black p-4 shadow-[5px_5px_0_0_rgba(0,0,0,1)]">
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <p className="text-[10px] font-black uppercase tracking-wider text-amber-700">Flashcard note</p>
+                      <h3 className="text-xl font-black">{korean}</h3>
+                    </div>
+                    <button onClick={() => setNoteOpen(false)} className="w-10 h-10 grid place-items-center border-2 border-black" aria-label="Close note">
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                  <textarea
+                    autoFocus
+                    value={noteDraft}
+                    onChange={(event) => setNoteDraft(event.target.value)}
+                    placeholder="What should you remember about this card?"
+                    className="w-full min-h-32 mt-4 p-3 border-2 border-black resize-y outline-none focus:ring-2 focus:ring-amber-400 font-semibold"
+                  />
+                  <div className="grid grid-cols-2 gap-2 mt-3">
+                    <button onClick={() => setNoteOpen(false)} className="h-12 border-2 border-black font-black">
+                      Cancel
+                    </button>
+                    <button
+                      onClick={() => {
+                        const next = { ...notes };
+                        const value = noteDraft.trim();
+                        if (value) next[item.id] = value;
+                        else delete next[item.id];
+                        setNotes(next);
+                        localStorage.setItem('korean_flashcard_notes', JSON.stringify(next));
+                        setNoteOpen(false);
+                      }}
+                      className="h-12 bg-amber-300 border-2 border-black font-black"
+                    >
+                      Save note
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
-        ) : <div className="flex-1 min-h-64 grid place-items-center bg-slate-50 dark:bg-slate-900 border-[3px] border-black p-6 text-center">{revealed ? <motion.div initial={{ opacity: 0, scale: .95 }} animate={{ opacity: 1, scale: 1 }}><Answer korean={korean} emoji={emoji} sentence={learnType === 'sentences'} /></motion.div> : <span className="text-slate-400 font-bold">Think of the answer, then reveal it.</span>}</div>}
-        {!revealed ? (!writingCard && <button onClick={() => setRevealed(true)} className="w-full min-h-14 bg-indigo-600 text-white border-[3px] border-black font-black text-lg">Reveal answer</button>) : <div className="grid grid-cols-3 gap-2"><RatingButton label="Again" hint="Later today" color="bg-rose-100" onClick={() => rate(0)} /><RatingButton label="Hard" hint="Tomorrow" color="bg-amber-100" onClick={() => rate(1)} /><RatingButton label="Good" hint="Several days" color="bg-emerald-100" onClick={() => rate(2)} /></div>}
+        ) : (
+          <div className="flex-1 min-h-64 grid place-items-center bg-white dark:bg-slate-900 border-[3px] border-black p-6 text-center shadow-[3px_3px_0_0_rgba(0,0,0,1)]">
+            {revealed ? (
+              <motion.div initial={{ opacity: 0, scale: .95 }} animate={{ opacity: 1, scale: 1 }}>
+                <Answer korean={korean} emoji={emoji} sentence={learnType === 'sentences'} />
+              </motion.div>
+            ) : (
+              <span className="text-slate-400 font-bold">Think of the answer, then reveal it.</span>
+            )}
+          </div>
+        )}
+
+        {/* Bottom Primary Controls (Reveal or Ratings with safe-bottom clearance) */}
+        <div className="shrink-0 safe-bottom pt-1 pb-1">
+          {!revealed ? (
+            <button
+              type="button"
+              onClick={() => setRevealed(true)}
+              className="w-full min-h-12 sm:min-h-14 bg-indigo-600 hover:bg-indigo-700 active:translate-y-0.5 text-white border-[3px] border-black font-black text-base sm:text-lg shadow-[3px_3px_0_0_rgba(0,0,0,1)] transition-all flex items-center justify-center gap-2"
+            >
+              <Eye className="w-5 h-5" />
+              <span>Reveal Answer / 정답 보기</span>
+            </button>
+          ) : (
+            <div className="grid grid-cols-3 gap-2">
+              <RatingButton label="Again" hint="다시 연습" color="bg-rose-200 dark:bg-rose-900/60 dark:text-rose-100" onClick={() => rate(0)} />
+              <RatingButton label="Hard" hint="어려움" color="bg-amber-200 dark:bg-amber-900/60 dark:text-amber-100" onClick={() => rate(1)} />
+              <RatingButton label="Good" hint="마스터" color="bg-emerald-200 dark:bg-emerald-900/60 dark:text-emerald-100" onClick={() => rate(2)} />
+            </div>
+          )}
+        </div>
       </main>
     </div>
   );
@@ -986,8 +1174,46 @@ function OptionGroup({ label, values, selected, onSelect }: { label: string; val
 }
 function Stat({ value, label }: { value: number; label: string }) { return <div className="p-3"><strong className="block text-2xl">{value}</strong><span className="text-xs font-bold text-slate-500">{label}</span></div>; }
 function Result({ value, label, color }: { value: number; label: string; color: string }) { return <div className={`p-5 ${color} text-black border-2 border-black`}><strong className="text-3xl block">{value}</strong><span className="text-xs font-black">{label}</span></div>; }
-function Answer({ korean, emoji, sentence, overlay = false }: { korean: string; emoji: string; sentence: boolean; overlay?: boolean }) { return <div className={`${overlay ? 'absolute inset-0 z-0 pointer-events-none bg-white/95 text-slate-300 dark:bg-slate-950/95 dark:text-slate-700' : ''} grid place-items-center p-6 text-center`}><div><div className={`${sentence ? 'text-4xl sm:text-6xl' : 'text-7xl sm:text-9xl'} font-black break-words`}>{korean}</div><div className={`text-4xl mt-5 ${overlay ? 'opacity-45' : ''}`}>{emoji}</div></div></div>; }
-function RatingButton({ label, hint, color, onClick }: { label: string; hint: string; color: string; onClick: () => void }) { return <button onClick={onClick} className={`min-h-11 sm:min-h-12 py-1 px-1.5 ${color} text-black border-[3px] border-black font-black flex flex-col justify-center items-center leading-tight`}><span className="block text-sm sm:text-lg">{label}</span><small className="text-[9px] sm:text-xs">{hint}</small></button>; }
+
+function Answer({ korean, emoji, sentence, overlay = false }: { korean: string; emoji: string; sentence: boolean; overlay?: boolean }) {
+  if (overlay) {
+    return (
+      <div className="absolute inset-0 z-0 pointer-events-none grid place-items-center p-4 text-center select-none">
+        <div className="flex flex-col items-center justify-center">
+          <div className={`${sentence ? 'text-3xl sm:text-5xl md:text-6xl' : 'text-5xl sm:text-7xl md:text-8xl'} font-black break-words text-indigo-500/35 dark:text-indigo-300/40 select-none tracking-tight`}>
+            {korean}
+          </div>
+          <div className="text-3xl sm:text-4xl mt-2 opacity-25 select-none">
+            {emoji}
+          </div>
+        </div>
+      </div>
+    );
+  }
+  return (
+    <div className="grid place-items-center p-6 text-center select-none">
+      <div>
+        <div className={`${sentence ? 'text-4xl sm:text-6xl' : 'text-7xl sm:text-9xl'} font-black break-words text-slate-900 dark:text-white`}>
+          {korean}
+        </div>
+        <div className="text-4xl mt-5">{emoji}</div>
+      </div>
+    </div>
+  );
+}
+
+function RatingButton({ label, hint, color, onClick }: { label: string; hint: string; color: string; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`min-h-12 sm:min-h-14 py-1.5 px-2 ${color} text-slate-900 dark:text-slate-100 border-[3px] border-black font-black flex flex-col justify-center items-center leading-tight shadow-[2px_2px_0_0_rgba(0,0,0,1)] active:translate-y-0.5 transition-all`}
+    >
+      <span className="block text-sm sm:text-base font-black">{label}</span>
+      <small className="text-[10px] sm:text-xs font-bold opacity-80">{hint}</small>
+    </button>
+  );
+}
 function TagList({
   tags,
   align = 'left',
