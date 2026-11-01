@@ -1,12 +1,61 @@
 import React, { useState, useMemo } from 'react';
-import { Hash, Phone, Building2, ShoppingBag, Calendar, Eye, EyeOff, Shuffle, Check, X } from 'lucide-react';
+import { Hash, Phone, Building2, ShoppingBag, Calendar, Clock, Eye, EyeOff, Shuffle, Check, X } from 'lucide-react';
 
-type SubTab = 'high_numbers' | 'phone' | 'floors' | 'prices' | 'calendar';
+type SubTab = 'high_numbers' | 'phone' | 'floors' | 'prices' | 'calendar' | 'time';
 
 interface PracticeStats {
   right: number;
   wrong: number;
   streak: number;
+}
+
+const hourData: Record<number, { word: string; note: string; trap?: boolean }> = {
+  1: { word: '한 시', note: 'Trap: 하나 → 한', trap: true },
+  2: { word: '두 시', note: 'Trap: 둘 → 두', trap: true },
+  3: { word: '세 시', note: 'Trap: 셋 → 세', trap: true },
+  4: { word: '네 시', note: 'Trap: 넷 → 네', trap: true },
+  5: { word: '다섯 시', note: 'Regular' },
+  6: { word: '여섯 시', note: 'Regular' },
+  7: { word: '일곱 시', note: 'Regular' },
+  8: { word: '여덟 시', note: 'Pronounced [여덜 시]' },
+  9: { word: '아홉 시', note: 'Regular' },
+  10: { word: '열 시', note: 'Regular' },
+  11: { word: '열한 시', note: 'Trap: 열하나 → 열한', trap: true },
+  12: { word: '열두 시', note: 'Trap: 열둘 → 열두', trap: true },
+};
+
+function formatMinuteSino(m: number): string {
+  if (m === 0) return '';
+  return numberToSinoKoreanSub10k(m) + ' 분';
+}
+
+function getPhoneticTime(period: string, h: number, m: number): { fullSpoken: string; altSpoken?: string; pronunciation: string } {
+  const hWord = hourData[h]?.word || `${h}시`;
+  const pWord = period ? period + ' ' : '';
+  
+  if (m === 0) {
+    const full = `${pWord}${hWord}예요`;
+    const pron = `[${pWord}${hWord}예요]`;
+    return { fullSpoken: full, pronunciation: pron };
+  }
+  
+  const mWord = formatMinuteSino(m);
+  const full = `${pWord}${hWord} ${mWord}이에요`;
+  
+  let mPron = mWord;
+  if (m === 15) mPron = '시보 분';
+  else if (m === 30) mPron = '삼십 뿐';
+  else if (m === 50) mPron = '오십 뿐';
+  
+  const pron = `[${pWord}${hWord} ${mPron}이에요]`.replace('분이에요', '부니에요');
+  
+  if (m === 30) {
+    const alt = `${pWord}${hWord} 반이에요`;
+    const altPron = `[${pWord}${hWord} 바니에요]`;
+    return { fullSpoken: full, altSpoken: alt, pronunciation: `${pron} 또는 ${altPron}` };
+  }
+  
+  return { fullSpoken: full, pronunciation: pron };
 }
 
 // Number to Sino Korean converter helper
@@ -388,6 +437,35 @@ export default function NumbersLab() {
     setRevealedMonth(false);
   };
 
+  // Sub Module 6: Clock & Time Drill State
+  const [selectedHour, setSelectedHour] = useState<number>(2);
+  const [selectedMinute, setSelectedMinute] = useState<number>(30);
+  const [selectedPeriod, setSelectedPeriod] = useState<'오전' | '오후'>('오후');
+  const [revealedTime, setRevealedTime] = useState<boolean>(false);
+  const timeStats = usePracticeStats('korean_numbers_time_stats');
+
+  const handleRandomTime = () => {
+    const hours = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
+    const minutes = [0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55];
+    const nextH = hours[Math.floor(Math.random() * hours.length)];
+    const nextM = minutes[Math.floor(Math.random() * minutes.length)];
+    const nextP: '오전' | '오후' = Math.random() > 0.4 ? '오후' : '오전';
+    setSelectedHour(nextH);
+    setSelectedMinute(nextM);
+    setSelectedPeriod(nextP);
+    setRevealedTime(false);
+  };
+
+  const handleHourSelect = (h: number) => {
+    setSelectedHour(h);
+    setRevealedTime(false);
+  };
+
+  const handleMinuteSelect = (m: number) => {
+    setSelectedMinute(m);
+    setRevealedTime(false);
+  };
+
   return (
     <div className="w-full max-w-4xl mx-auto flex flex-col gap-4 select-none">
       {/* Header bar */}
@@ -445,6 +523,14 @@ export default function NumbersLab() {
             }`}
           >
             <Calendar className="w-3.5 h-3.5" /> Calendar Traps
+          </button>
+          <button
+            onClick={() => setActiveTab('time')}
+            className={`px-3 py-1 text-xs font-black border-2 border-black flex items-center gap-1.5 ${
+              activeTab === 'time' ? 'bg-black text-white shadow-[2px_2px_0_0_rgba(0,0,0,1)]' : 'bg-white dark:bg-slate-800'
+            }`}
+          >
+            <Clock className="w-3.5 h-3.5" /> Clock & Time (시·분)
           </button>
         </div>
       </div>
@@ -799,6 +885,231 @@ export default function NumbersLab() {
           </div>
         </div>
       )}
+
+      {/* SUB MODULE 6: CLOCK & TIME (시·분) */}
+      {activeTab === 'time' && (() => {
+        const timeInfo = getPhoneticTime(selectedPeriod, selectedHour, selectedMinute);
+        const formattedDigital = `${selectedPeriod} ${String(selectedHour).padStart(2, '0')}:${String(selectedMinute).padStart(2, '0')}`;
+        const currentHourInfo = hourData[selectedHour] || { word: `${selectedHour}시`, note: 'Regular' };
+        
+        return (
+          <div className="bg-white dark:bg-slate-900 border-[3px] border-black p-6 shadow-[4px_4px_0_0_rgba(0,0,0,1)] flex flex-col gap-6">
+            <div>
+              <span className="text-xs font-black uppercase text-indigo-600 bg-indigo-50 dark:bg-indigo-950 px-2.5 py-1 border border-black">
+                Dual Number Clock Architecture
+              </span>
+              <h3 className="text-2xl font-black mt-2">Hours: Native (시) • Minutes: Sino (분)</h3>
+              <p className="text-xs text-slate-500 mt-1">
+                Say the full time in Korean for "지금 몇 시예요?". Reveal the result to verify Native Korean hour contractions and Sino Korean minutes.
+              </p>
+            </div>
+
+            {/* Main Interactive Clock Display Card */}
+            <div className="bg-slate-900 text-white border-[3px] border-black p-6 flex flex-col items-center text-center">
+              <ScoreHeaderBar
+                title="Target Clock Time"
+                stats={timeStats.stats}
+                onReset={timeStats.resetStats}
+              />
+
+              <div className="mt-3 flex items-center justify-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => { setSelectedPeriod(p => p === '오전' ? '오후' : '오전'); setRevealedTime(false); }}
+                  className="px-3 py-1 bg-amber-400 hover:bg-amber-300 text-black text-xs font-black border-2 border-black tracking-wider uppercase active:translate-y-0.5"
+                >
+                  {selectedPeriod} ({selectedPeriod === '오전' ? 'AM' : 'PM'}) ⇄
+                </button>
+                <span className="text-xs uppercase tracking-widest text-slate-400 font-bold">
+                  지금 몇 시예요?
+                </span>
+              </div>
+
+              {/* Digital Clock Display */}
+              <div className="text-4xl sm:text-6xl font-black tracking-widest font-mono text-emerald-400 my-4 drop-shadow-[0_2px_10px_rgba(52,211,153,0.3)]">
+                {formattedDigital}
+              </div>
+
+              {/* Revealed Answer Box */}
+              {revealedTime && (
+                <div className="mt-4 p-5 bg-slate-800 border-2 border-emerald-400 w-full max-w-xl text-left flex flex-col gap-3">
+                  <div>
+                    <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">
+                      Primary Spoken Korean
+                    </span>
+                    <div className="text-xl sm:text-2xl font-black text-white mt-0.5">
+                      {timeInfo.fullSpoken}
+                    </div>
+                  </div>
+
+                  {timeInfo.altSpoken && (
+                    <div className="pt-2 border-t border-slate-700">
+                      <span className="text-[10px] font-black uppercase tracking-wider text-amber-300">
+                        Casual Half-Past Shortcut (반)
+                      </span>
+                      <div className="text-lg font-black text-amber-200 mt-0.5">
+                        {timeInfo.altSpoken}
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="pt-2 border-t border-slate-700">
+                    <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">
+                      Phonetic Liaison (연음 발음)
+                    </span>
+                    <div className="text-sm font-bold text-emerald-300 mt-0.5">
+                      {timeInfo.pronunciation}
+                    </div>
+                  </div>
+
+                  {/* Component Breakdown Badges */}
+                  <div className="pt-2 border-t border-slate-700 flex flex-wrap gap-1.5 text-xs">
+                    <span className="px-2 py-0.5 bg-slate-700 text-slate-200 border border-slate-600 rounded">
+                      구분: <strong>{selectedPeriod}</strong>
+                    </span>
+                    <span className="px-2 py-0.5 bg-indigo-900 text-indigo-200 border border-indigo-700 rounded">
+                      시 (고유어): <strong>{currentHourInfo.word}</strong> ({currentHourInfo.note})
+                    </span>
+                    {selectedMinute > 0 && (
+                      <span className="px-2 py-0.5 bg-emerald-900 text-emerald-200 border border-emerald-700 rounded">
+                        분 (한자어): <strong>{formatMinuteSino(selectedMinute)}</strong>
+                      </span>
+                    )}
+                    <span className="px-2 py-0.5 bg-amber-900 text-amber-200 border border-amber-700 rounded">
+                      서술격 조사: <strong>{selectedMinute > 0 ? '이에요 (받침 ㄴ)' : '예요 (모음 ㅣ)'}</strong>
+                    </span>
+                  </div>
+                </div>
+              )}
+
+              <PracticeActionBar
+                randomLabel="Random Time"
+                revealed={revealedTime}
+                onRandom={handleRandomTime}
+                onToggleReveal={() => setRevealedTime(!revealedTime)}
+                onWrong={() => timeStats.markWrong(() => setRevealedTime(true))}
+                onRight={() => timeStats.markRight(handleRandomTime)}
+              />
+            </div>
+
+            {/* Quick Interactive Selectors */}
+            <div className="flex flex-col gap-4">
+              {/* Hours Grid (1 to 12) */}
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-xs font-black uppercase tracking-wider text-slate-700 dark:text-slate-300">
+                    1. Hours (고유어 수사 축약형 + 시)
+                  </span>
+                  <span className="text-[11px] text-slate-400 font-bold">
+                    Trap: 1, 2, 3, 4, 11, 12 drop final consonant
+                  </span>
+                </div>
+                <div className="grid grid-cols-4 sm:grid-cols-6 gap-2">
+                  {Array.from({ length: 12 }, (_, i) => i + 1).map((h) => {
+                    const isSelected = selectedHour === h;
+                    const info = hourData[h];
+                    return (
+                      <button
+                        key={h}
+                        type="button"
+                        onClick={() => handleHourSelect(h)}
+                        className={`p-2.5 border-2 border-black flex flex-col items-center justify-center transition-transform active:translate-y-0.5 ${
+                          isSelected
+                            ? 'bg-black text-white shadow-[2px_2px_0_0_rgba(0,0,0,1)]'
+                            : 'bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700'
+                        }`}
+                      >
+                        <span className="text-base font-black">{h}시</span>
+                        <span className={`text-[11px] font-bold ${info.trap ? 'text-amber-500 font-black' : 'text-slate-400'}`}>
+                          {info.word}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Minutes Quick Buttons */}
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-xs font-black uppercase tracking-wider text-slate-700 dark:text-slate-300">
+                    2. Minutes (한자어 수사 + 분)
+                  </span>
+                  <span className="text-[11px] text-slate-400 font-bold">
+                    30분 = 삼십 분 (또는 반)
+                  </span>
+                </div>
+                <div className="grid grid-cols-4 sm:grid-cols-6 gap-2">
+                  {[0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55].map((m) => {
+                    const isSelected = selectedMinute === m;
+                    return (
+                      <button
+                        key={m}
+                        type="button"
+                        onClick={() => handleMinuteSelect(m)}
+                        className={`p-2 border-2 border-black flex flex-col items-center justify-center transition-transform active:translate-y-0.5 ${
+                          isSelected
+                            ? 'bg-indigo-600 text-white shadow-[2px_2px_0_0_rgba(0,0,0,1)]'
+                            : 'bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700'
+                        }`}
+                      >
+                        <span className="text-sm font-black">{String(m).padStart(2, '0')}분</span>
+                        <span className="text-[10px] text-slate-400">
+                          {m === 0 ? '정각' : m === 30 ? '반 / 삼십분' : `${formatMinuteSino(m)}`}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* Minute Slider for custom minutes */}
+                <div className="mt-3 flex items-center gap-3 bg-slate-50 dark:bg-slate-800/60 p-3 border-2 border-black">
+                  <span className="text-xs font-black text-slate-700 dark:text-slate-300 whitespace-nowrap">
+                    Exact Minute ({selectedMinute}분):
+                  </span>
+                  <input
+                    type="range"
+                    min="0"
+                    max="59"
+                    step="1"
+                    value={selectedMinute}
+                    onChange={(e) => handleMinuteSelect(Number(e.target.value))}
+                    className="w-full h-2 bg-slate-200 border-2 border-black accent-indigo-600 cursor-pointer"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Core Architectural Rules Box */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
+              <div className="p-3.5 bg-indigo-50 dark:bg-indigo-950/40 border-2 border-black flex flex-col gap-1">
+                <strong className="text-indigo-950 dark:text-indigo-200">1. 시 = Native Korean</strong>
+                <p className="text-slate-600 dark:text-slate-400">
+                  Hours use Native numbers in modified form: <strong>한, 두, 세, 네, 열한, 열두</strong>. Never say 일 시 or 이 시!
+                </p>
+              </div>
+              <div className="p-3.5 bg-emerald-50 dark:bg-emerald-950/40 border-2 border-black flex flex-col gap-1">
+                <strong className="text-emerald-950 dark:text-emerald-200">2. 분 = Sino Korean</strong>
+                <p className="text-slate-600 dark:text-slate-400">
+                  Minutes use regular Sino numbers: <strong>일 분, 오 분, 십 분, 십오 분, 사십 분</strong>.
+                </p>
+              </div>
+              <div className="p-3.5 bg-amber-50 dark:bg-amber-950/40 border-2 border-black flex flex-col gap-1">
+                <strong className="text-amber-950 dark:text-amber-200">3. Half Past = 반</strong>
+                <p className="text-slate-600 dark:text-slate-400">
+                  30 minutes can always be shortened to <strong>반</strong>: 두 시 삼십 분 = <strong>두 시 반</strong>.
+                </p>
+              </div>
+              <div className="p-3.5 bg-rose-50 dark:bg-rose-950/40 border-2 border-black flex flex-col gap-1">
+                <strong className="text-rose-950 dark:text-rose-200">4. 이에요 vs 예요 Copula</strong>
+                <p className="text-slate-600 dark:text-slate-400">
+                  Minutes ending in <strong>분/반</strong> (consonant ㄴ) take <strong>이에요</strong>. On-the-hour <strong>시</strong> (vowel) takes <strong>예요</strong>.
+                </p>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }
