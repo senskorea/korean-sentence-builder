@@ -1008,88 +1008,48 @@ export default function LearnMode({ vocab, savedPhrases = [], onExit, onSessionA
           </div>
         </div>
 
-        {/* High-Contrast Ground Truth Correction Banner (Crystal clear on reveal) */}
-        {revealed && (
-          <div className="bg-emerald-50 dark:bg-emerald-950/80 border-[3px] border-emerald-600 dark:border-emerald-500 px-3 py-2 shadow-[2px_2px_0_0_rgba(0,0,0,1)] shrink-0 flex items-center justify-between gap-2.5">
-            <div className="flex items-center gap-2.5 min-w-0">
-              <span className="px-2 py-0.5 rounded bg-emerald-600 text-white font-black text-xs shrink-0 tracking-wider">
-                정답
-              </span>
-              <div className="flex items-baseline gap-2 min-w-0">
-                <span className="text-xl sm:text-2xl font-black text-emerald-950 dark:text-emerald-100 tracking-tight truncate">
-                  {korean}
-                </span>
-                <span className="text-xs sm:text-sm font-bold text-slate-600 dark:text-slate-300 truncate">
-                  ({english})
-                </span>
-              </div>
-            </div>
-            <div className="flex items-center gap-2 shrink-0">
-              <span className="text-lg">{emoji}</span>
-              <button
-                type="button"
-                onClick={() => setShowOverlayGuide((prev) => !prev)}
-                className="px-2 py-1 text-[11px] font-black border-2 border-black bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 flex items-center gap-1 shadow-[1px_1px_0_0_rgba(0,0,0,1)] active:translate-y-0.5"
-                title="Toggle ghost watermark on canvas"
-              >
-                {showOverlayGuide ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
-                <span className="hidden xs:inline">{showOverlayGuide ? 'Hide Ghost' : 'Show Ghost'}</span>
-              </button>
-            </div>
-          </div>
-        )}
-
         {/* Drawing Canvas or Recall Card */}
         {writingCard ? (
           <div ref={canvasBoxRef} className="relative flex-1 min-h-0 bg-white dark:bg-slate-900 border-[3px] border-black overflow-hidden shadow-[3px_3px_0_0_rgba(0,0,0,1)]">
             <div className="absolute inset-0 grid place-items-center pointer-events-none text-slate-200 dark:text-slate-800 select-none">
               <PenTool className="w-20 h-20 opacity-30" />
             </div>
+
+            {/* Floating Ground Truth Answer Overlay (Zero layout shift on reveal) */}
+            {revealed && (
+              <div className="absolute top-2 left-2 right-2 z-20 bg-emerald-50/95 dark:bg-emerald-950/95 border-[3px] border-emerald-600 dark:border-emerald-500 px-3 py-2 shadow-[2px_2px_0_0_rgba(0,0,0,1)] flex items-center justify-between gap-2.5 backdrop-blur-sm pointer-events-auto">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <span className="px-2 py-0.5 rounded bg-emerald-600 text-white font-black text-xs shrink-0 tracking-wider">
+                    정답
+                  </span>
+                  <div className="flex items-baseline gap-2 min-w-0">
+                    <span className="text-xl sm:text-2xl font-black text-emerald-950 dark:text-emerald-100 tracking-tight truncate">
+                      {korean}
+                    </span>
+                    <span className="text-xs sm:text-sm font-bold text-slate-600 dark:text-slate-300 truncate">
+                      ({english})
+                    </span>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <span className="text-lg">{emoji}</span>
+                  <button
+                    type="button"
+                    onClick={() => setShowOverlayGuide((prev) => !prev)}
+                    className="px-2 py-1 text-[11px] font-black border-2 border-black bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 flex items-center gap-1 shadow-[1px_1px_0_0_rgba(0,0,0,1)] active:translate-y-0.5"
+                    title="Toggle ghost watermark on canvas"
+                  >
+                    {showOverlayGuide ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
+                    <span className="hidden xs:inline">{showOverlayGuide ? 'Hide Ghost' : 'Show Ghost'}</span>
+                  </button>
+                </div>
+              </div>
+            )}
+
             {revealed && showOverlayGuide && (
               <Answer korean={korean} emoji={emoji} sentence={learnType === 'sentences'} overlay />
             )}
             <canvas ref={canvasRef} className="absolute inset-0 z-10 w-full h-full touch-none cursor-crosshair" />
-
-            {/* Canvas Toolbar */}
-            <div className="absolute z-20 top-2.5 right-2.5 flex flex-wrap justify-end gap-1.5 pl-3">
-              <button
-                type="button"
-                onClick={toggleStylusOnly}
-                className={`h-9 px-2.5 border-2 border-black flex items-center gap-1.5 font-black text-xs transition-all shadow-[2px_2px_0_0_rgba(0,0,0,1)] active:translate-y-0.5 ${
-                  stylusOnly
-                    ? 'bg-emerald-600 text-white'
-                    : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200'
-                }`}
-                title={stylusOnly ? 'Stylus only mode is ON. Resting palms and touch inputs are completely ignored.' : 'Stylus only mode is OFF. Both touch and stylus inputs are accepted.'}
-              >
-                <PenTool className="w-3.5 h-3.5" />
-                <span>{stylusOnly ? 'Stylus: ON' : 'Touch/Pen'}</span>
-              </button>
-              <button
-                type="button"
-                onClick={undoStroke}
-                className="h-9 px-2.5 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 border-2 border-black flex items-center gap-1.5 font-black text-xs shadow-[2px_2px_0_0_rgba(0,0,0,1)] active:translate-y-0.5 hover:bg-slate-50 dark:hover:bg-slate-700"
-              >
-                <RotateCcw className="w-3.5 h-3.5" />
-                <span className="hidden xs:inline">Undo</span>
-              </button>
-              <button
-                type="button"
-                onClick={clearCanvas}
-                className="h-9 px-2.5 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 border-2 border-black flex items-center gap-1.5 font-black text-xs shadow-[2px_2px_0_0_rgba(0,0,0,1)] active:translate-y-0.5 hover:bg-slate-50 dark:hover:bg-slate-700"
-              >
-                <Eraser className="w-3.5 h-3.5" />
-                <span className="hidden xs:inline">Clear</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => { setNoteDraft(notes[item.id] || ''); setNoteOpen(true); }}
-                className={`h-9 px-2.5 border-2 border-black flex items-center gap-1.5 font-black text-xs shadow-[2px_2px_0_0_rgba(0,0,0,1)] active:translate-y-0.5 ${notes[item.id] ? 'bg-amber-300 text-black' : 'bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700'}`}
-              >
-                <StickyNote className="w-3.5 h-3.5" />
-                <span className="hidden xs:inline">Note</span>
-              </button>
-            </div>
 
             {noteOpen && (
               <div className="absolute inset-0 z-30 bg-slate-900/45 p-3 grid place-items-center" onPointerDown={(event) => event.stopPropagation()}>
@@ -1147,21 +1107,89 @@ export default function LearnMode({ vocab, savedPhrases = [], onExit, onSessionA
 
         {/* Bottom Primary Controls (Reveal or Ratings with safe-bottom clearance) */}
         <div className="shrink-0 safe-bottom pt-1 pb-1">
-          {!revealed ? (
-            <button
-              type="button"
-              onClick={() => setRevealed(true)}
-              className="w-full min-h-12 sm:min-h-14 bg-indigo-600 hover:bg-indigo-700 active:translate-y-0.5 text-white border-[3px] border-black font-black text-base sm:text-lg shadow-[3px_3px_0_0_rgba(0,0,0,1)] transition-all flex items-center justify-center gap-2"
-            >
-              <Eye className="w-5 h-5" />
-              <span>Reveal Answer / 정답 보기</span>
-            </button>
-          ) : (
-            <div className="grid grid-cols-3 gap-2">
-              <RatingButton label="Again" hint="다시 연습" color="bg-rose-200 dark:bg-rose-900/60 dark:text-rose-100" onClick={() => rate(0)} />
-              <RatingButton label="Hard" hint="어려움" color="bg-amber-200 dark:bg-amber-900/60 dark:text-amber-100" onClick={() => rate(1)} />
-              <RatingButton label="Good" hint="마스터" color="bg-emerald-200 dark:bg-emerald-900/60 dark:text-emerald-100" onClick={() => rate(2)} />
+          {writingCard ? (
+            <div className="flex items-stretch gap-1.5 w-full">
+              {/* Canvas Tools on the same line */}
+              <div className="flex items-center gap-1 shrink-0">
+                <button
+                  type="button"
+                  onClick={toggleStylusOnly}
+                  className={`h-11 sm:h-12 px-2 sm:px-2.5 border-2 border-black flex items-center gap-1 font-black text-xs transition-all shadow-[2px_2px_0_0_rgba(0,0,0,1)] active:translate-y-0.5 ${
+                    stylusOnly
+                      ? 'bg-emerald-600 text-white'
+                      : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200'
+                  }`}
+                  title={stylusOnly ? 'Stylus only mode is ON. Resting palms and touch inputs are completely ignored.' : 'Stylus only mode is OFF. Both touch and stylus inputs are accepted.'}
+                >
+                  <PenTool className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">{stylusOnly ? 'Stylus: ON' : 'Touch/Pen'}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={undoStroke}
+                  className="h-11 sm:h-12 px-2 sm:px-2.5 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 border-2 border-black flex items-center gap-1 font-black text-xs shadow-[2px_2px_0_0_rgba(0,0,0,1)] active:translate-y-0.5 hover:bg-slate-50 dark:hover:bg-slate-700"
+                  title="Undo stroke"
+                >
+                  <RotateCcw className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">Undo</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={clearCanvas}
+                  className="h-11 sm:h-12 px-2 sm:px-2.5 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 border-2 border-black flex items-center gap-1 font-black text-xs shadow-[2px_2px_0_0_rgba(0,0,0,1)] active:translate-y-0.5 hover:bg-slate-50 dark:hover:bg-slate-700"
+                  title="Clear canvas"
+                >
+                  <Eraser className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">Clear</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setNoteDraft(notes[item.id] || ''); setNoteOpen(true); }}
+                  className={`h-11 sm:h-12 px-2 sm:px-2.5 border-2 border-black flex items-center gap-1 font-black text-xs shadow-[2px_2px_0_0_rgba(0,0,0,1)] active:translate-y-0.5 ${notes[item.id] ? 'bg-amber-300 text-black' : 'bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700'}`}
+                  title="Card note"
+                >
+                  <StickyNote className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">Note</span>
+                </button>
+              </div>
+
+              {/* Reveal or Ratings on the exact same line */}
+              <div className="flex-1 min-w-0">
+                {!revealed ? (
+                  <button
+                    type="button"
+                    onClick={() => setRevealed(true)}
+                    className="w-full h-11 sm:h-12 bg-indigo-600 hover:bg-indigo-700 active:translate-y-0.5 text-white border-[3px] border-black font-black text-sm sm:text-base shadow-[2px_2px_0_0_rgba(0,0,0,1)] transition-all flex items-center justify-center gap-2"
+                  >
+                    <Eye className="w-4 h-4" />
+                    <span className="truncate">Reveal Answer / 정답 보기</span>
+                  </button>
+                ) : (
+                  <div className="grid grid-cols-3 gap-1.5 h-11 sm:h-12">
+                    <RatingButton label="Again" hint="다시" color="bg-rose-200 dark:bg-rose-900/60 dark:text-rose-100" onClick={() => rate(0)} compact />
+                    <RatingButton label="Hard" hint="어려움" color="bg-amber-200 dark:bg-amber-900/60 dark:text-amber-100" onClick={() => rate(1)} compact />
+                    <RatingButton label="Good" hint="마스터" color="bg-emerald-200 dark:bg-emerald-900/60 dark:text-emerald-100" onClick={() => rate(2)} compact />
+                  </div>
+                )}
+              </div>
             </div>
+          ) : (
+            !revealed ? (
+              <button
+                type="button"
+                onClick={() => setRevealed(true)}
+                className="w-full min-h-12 sm:min-h-14 bg-indigo-600 hover:bg-indigo-700 active:translate-y-0.5 text-white border-[3px] border-black font-black text-base sm:text-lg shadow-[3px_3px_0_0_rgba(0,0,0,1)] transition-all flex items-center justify-center gap-2"
+              >
+                <Eye className="w-5 h-5" />
+                <span>Reveal Answer / 정답 보기</span>
+              </button>
+            ) : (
+              <div className="grid grid-cols-3 gap-2">
+                <RatingButton label="Again" hint="다시 연습" color="bg-rose-200 dark:bg-rose-900/60 dark:text-rose-100" onClick={() => rate(0)} />
+                <RatingButton label="Hard" hint="어려움" color="bg-amber-200 dark:bg-amber-900/60 dark:text-amber-100" onClick={() => rate(1)} />
+                <RatingButton label="Good" hint="마스터" color="bg-emerald-200 dark:bg-emerald-900/60 dark:text-emerald-100" onClick={() => rate(2)} />
+              </div>
+            )
           )}
         </div>
       </main>
@@ -1202,15 +1230,15 @@ function Answer({ korean, emoji, sentence, overlay = false }: { korean: string; 
   );
 }
 
-function RatingButton({ label, hint, color, onClick }: { label: string; hint: string; color: string; onClick: () => void }) {
+function RatingButton({ label, hint, color, onClick, compact }: { label: string; hint: string; color: string; onClick: () => void; compact?: boolean }) {
   return (
     <button
       type="button"
       onClick={onClick}
-      className={`min-h-12 sm:min-h-14 py-1.5 px-2 ${color} text-slate-900 dark:text-slate-100 border-[3px] border-black font-black flex flex-col justify-center items-center leading-tight shadow-[2px_2px_0_0_rgba(0,0,0,1)] active:translate-y-0.5 transition-all`}
+      className={`${compact ? 'h-full min-h-11 py-1 px-1 sm:px-2 border-2 sm:border-[3px]' : 'min-h-12 sm:min-h-14 py-1.5 px-2 border-[3px]'} ${color} text-slate-900 dark:text-slate-100 border-black font-black flex flex-col justify-center items-center leading-tight shadow-[2px_2px_0_0_rgba(0,0,0,1)] active:translate-y-0.5 transition-all`}
     >
-      <span className="block text-sm sm:text-base font-black">{label}</span>
-      <small className="text-[10px] sm:text-xs font-bold opacity-80">{hint}</small>
+      <span className={`block ${compact ? 'text-xs sm:text-sm' : 'text-sm sm:text-base'} font-black`}>{label}</span>
+      <small className={`text-[9px] sm:text-[10px] font-bold opacity-80 ${compact ? 'leading-none' : ''}`}>{hint}</small>
     </button>
   );
 }
