@@ -75,7 +75,6 @@ export default function LearnMode({ vocab, savedPhrases = [], onExit, onSessionA
   const [index, setIndex] = useState(0);
   const [ratings, setRatings] = useState<Rating[]>([]);
   const [revealed, setRevealed] = useState(false);
-  const [showOverlayGuide, setShowOverlayGuide] = useState(true);
   const [wordStats, setWordStats] = useState<Record<string, Stats>>({});
   const [sentenceStats, setSentenceStats] = useState<Record<string, Stats>>({});
   const [search, setSearch] = useState('');
@@ -1015,38 +1014,8 @@ export default function LearnMode({ vocab, savedPhrases = [], onExit, onSessionA
               <PenTool className="w-20 h-20 opacity-30" />
             </div>
 
-            {/* Floating Ground Truth Answer Overlay (Zero layout shift on reveal) */}
+            {/* Answer watermark in writing space */}
             {revealed && (
-              <div className="absolute top-2 left-2 right-2 z-20 bg-emerald-50/95 dark:bg-emerald-950/95 border-[3px] border-emerald-600 dark:border-emerald-500 px-3 py-2 shadow-[2px_2px_0_0_rgba(0,0,0,1)] flex items-center justify-between gap-2.5 backdrop-blur-sm pointer-events-auto">
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <span className="px-2 py-0.5 rounded bg-emerald-600 text-white font-black text-xs shrink-0 tracking-wider">
-                    정답
-                  </span>
-                  <div className="flex items-baseline gap-2 min-w-0">
-                    <span className="text-xl sm:text-2xl font-black text-emerald-950 dark:text-emerald-100 tracking-tight truncate">
-                      {korean}
-                    </span>
-                    <span className="text-xs sm:text-sm font-bold text-slate-600 dark:text-slate-300 truncate">
-                      ({english})
-                    </span>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2 shrink-0">
-                  <span className="text-lg">{emoji}</span>
-                  <button
-                    type="button"
-                    onClick={() => setShowOverlayGuide((prev) => !prev)}
-                    className="px-2 py-1 text-[11px] font-black border-2 border-black bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 flex items-center gap-1 shadow-[1px_1px_0_0_rgba(0,0,0,1)] active:translate-y-0.5"
-                    title="Toggle ghost watermark on canvas"
-                  >
-                    {showOverlayGuide ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
-                    <span className="hidden xs:inline">{showOverlayGuide ? 'Hide Ghost' : 'Show Ghost'}</span>
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {revealed && showOverlayGuide && (
               <Answer korean={korean} emoji={emoji} sentence={learnType === 'sentences'} overlay />
             )}
             <canvas ref={canvasRef} className="absolute inset-0 z-10 w-full h-full touch-none cursor-crosshair" />
@@ -1206,7 +1175,7 @@ function Result({ value, label, color }: { value: number; label: string; color: 
 function Answer({ korean, emoji, sentence, overlay = false }: { korean: string; emoji: string; sentence: boolean; overlay?: boolean }) {
   if (overlay) {
     return (
-      <div className="absolute inset-x-0 top-0 z-0 pointer-events-none flex flex-col items-center justify-start pt-14 sm:pt-16 p-4 text-center select-none">
+      <div className="absolute inset-x-0 top-0 z-0 pointer-events-none flex flex-col items-center justify-start pt-6 sm:pt-8 p-4 text-center select-none">
         <div className="flex flex-col items-center justify-start">
           <div className={`${sentence ? 'text-3xl sm:text-5xl md:text-6xl' : 'text-5xl sm:text-7xl md:text-8xl'} font-black break-words text-indigo-500/35 dark:text-indigo-300/40 select-none tracking-tight`}>
             {korean}
