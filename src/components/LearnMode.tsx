@@ -989,7 +989,7 @@ export default function LearnMode({ vocab, savedPhrases = [], onExit, onSessionA
         {/* Prompt Header */}
         <div className="flex items-center justify-between gap-3 px-1 shrink-0">
           <div className="flex items-center gap-2 min-w-0">
-            <span className="text-[10px] sm:text-xs font-black uppercase tracking-wider text-indigo-600 dark:text-indigo-400">
+            <span className={`text-[10px] sm:text-xs font-black uppercase tracking-wider ${revealed ? 'text-emerald-600 dark:text-emerald-400' : 'text-indigo-600 dark:text-indigo-400'}`}>
               {writingCard ? (revealed ? 'Compare & Trace' : 'Write in Korean') : 'Recall the Korean'}
             </span>
             {revealed && (
@@ -1009,7 +1009,14 @@ export default function LearnMode({ vocab, savedPhrases = [], onExit, onSessionA
 
         {/* Drawing Canvas or Recall Card */}
         {writingCard ? (
-          <div ref={canvasBoxRef} className="relative flex-1 min-h-0 bg-white dark:bg-slate-900 border-[3px] border-black overflow-hidden shadow-[3px_3px_0_0_rgba(0,0,0,1)]">
+          <div
+            ref={canvasBoxRef}
+            className={`relative flex-1 min-h-0 ${
+              revealed
+                ? 'bg-emerald-50/20 dark:bg-emerald-950/25 border-emerald-600 dark:border-emerald-500'
+                : 'bg-white dark:bg-slate-900 border-black'
+            } border-[3px] overflow-hidden shadow-[3px_3px_0_0_rgba(0,0,0,1)] transition-colors`}
+          >
             <div className="absolute inset-0 grid place-items-center pointer-events-none text-slate-200 dark:text-slate-800 select-none">
               <PenTool className="w-20 h-20 opacity-30" />
             </div>
@@ -1175,12 +1182,12 @@ function Result({ value, label, color }: { value: number; label: string; color: 
 function Answer({ korean, emoji, sentence, overlay = false }: { korean: string; emoji: string; sentence: boolean; overlay?: boolean }) {
   if (overlay) {
     return (
-      <div className="absolute inset-x-0 top-0 z-0 pointer-events-none flex flex-col items-center justify-start pt-6 sm:pt-8 p-4 text-center select-none">
+      <div className="absolute inset-x-0 top-0 z-20 pointer-events-none flex flex-col items-center justify-start pt-4 sm:pt-6 p-4 text-center select-none">
         <div className="flex flex-col items-center justify-start">
-          <div className={`${sentence ? 'text-3xl sm:text-5xl md:text-6xl' : 'text-5xl sm:text-7xl md:text-8xl'} font-black break-words text-indigo-500/35 dark:text-indigo-300/40 select-none tracking-tight`}>
+          <div className={`${sentence ? 'text-3xl sm:text-5xl md:text-6xl' : 'text-5xl sm:text-7xl md:text-8xl'} font-black break-words text-emerald-600 dark:text-emerald-400 select-none tracking-tight drop-shadow-sm`}>
             {korean}
           </div>
-          <div className="text-3xl sm:text-4xl mt-1 opacity-25 select-none">
+          <div className="text-3xl sm:text-4xl mt-1 select-none">
             {emoji}
           </div>
         </div>
