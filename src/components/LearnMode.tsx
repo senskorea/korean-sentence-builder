@@ -1206,12 +1206,12 @@ function Result({ value, label, color }: { value: number; label: string; color: 
 function Answer({ korean, emoji, sentence, overlay = false }: { korean: string; emoji: string; sentence: boolean; overlay?: boolean }) {
   if (overlay) {
     return (
-      <div className="absolute inset-0 z-0 pointer-events-none grid place-items-center p-4 text-center select-none">
-        <div className="flex flex-col items-center justify-center">
+      <div className="absolute inset-x-0 top-0 z-0 pointer-events-none flex flex-col items-center justify-start pt-14 sm:pt-16 p-4 text-center select-none">
+        <div className="flex flex-col items-center justify-start">
           <div className={`${sentence ? 'text-3xl sm:text-5xl md:text-6xl' : 'text-5xl sm:text-7xl md:text-8xl'} font-black break-words text-indigo-500/35 dark:text-indigo-300/40 select-none tracking-tight`}>
             {korean}
           </div>
-          <div className="text-3xl sm:text-4xl mt-2 opacity-25 select-none">
+          <div className="text-3xl sm:text-4xl mt-1 opacity-25 select-none">
             {emoji}
           </div>
         </div>
