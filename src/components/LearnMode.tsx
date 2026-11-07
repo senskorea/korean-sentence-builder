@@ -122,6 +122,7 @@ export default function LearnMode({ vocab, savedPhrases = [], onExit, onSessionA
   });
   const [noteOpen, setNoteOpen] = useState(false);
   const [noteDraft, setNoteDraft] = useState('');
+  const [showFullEnglish, setShowFullEnglish] = useState(false);
   const [personalMastery, setPersonalMastery] = useState<PersonalMasteryState>(() => {
     try {
       const saved = JSON.parse(localStorage.getItem('korean_personal_mastery') || '{}');
@@ -167,6 +168,10 @@ export default function LearnMode({ vocab, savedPhrases = [], onExit, onSessionA
       onSessionActiveChange?.(false);
     };
   }, [screen, onSessionActiveChange]);
+
+  useEffect(() => {
+    setShowFullEnglish(false);
+  }, [index, screen]);
 
   const renderCanvas = useCallback(() => {
     const canvas = canvasRef.current;
@@ -1000,7 +1005,11 @@ export default function LearnMode({ vocab, savedPhrases = [], onExit, onSessionA
             )}
           </div>
           <div className="min-w-0 text-right">
-            <h2 className={`${learnType === 'sentences' ? 'text-base sm:text-xl' : 'text-xl sm:text-2xl'} font-black truncate text-slate-900 dark:text-white`}>
+            <h2
+              onClick={() => setShowFullEnglish(true)}
+              className={`${learnType === 'sentences' ? 'text-base sm:text-xl' : 'text-xl sm:text-2xl'} font-black truncate text-slate-900 dark:text-white cursor-pointer hover:opacity-80 active:opacity-60 transition-opacity`}
+              title="Tap to view full English prompt"
+            >
               {english}
             </h2>
             {isPersonal && <TagList tags={(item as PersonalVocabItem).tags} align="right" />}
@@ -1169,6 +1178,43 @@ export default function LearnMode({ vocab, savedPhrases = [], onExit, onSessionA
           )}
         </div>
       </main>
+
+      {/* Full English Prompt Overlay */}
+      {showFullEnglish && (
+        <div
+          className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm p-4 grid place-items-center"
+          onClick={() => setShowFullEnglish(false)}
+        >
+          <div
+            className="w-full max-w-md bg-white dark:bg-slate-900 text-slate-900 dark:text-white border-[3px] border-black dark:border-white p-5 shadow-[5px_5px_0_0_rgba(0,0,0,1)] flex flex-col gap-3"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-[10px] font-black uppercase tracking-wider text-indigo-600 dark:text-indigo-400">
+                English Prompt
+              </span>
+              <button
+                type="button"
+                onClick={() => setShowFullEnglish(false)}
+                className="w-8 h-8 grid place-items-center border-2 border-black dark:border-white text-slate-900 dark:text-white font-bold hover:bg-slate-100 dark:hover:bg-slate-800"
+                aria-label="Close"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <p className="text-lg sm:text-xl font-bold leading-relaxed break-words">
+              {english}
+            </p>
+            <button
+              type="button"
+              onClick={() => setShowFullEnglish(false)}
+              className="w-full mt-2 py-2.5 bg-black text-white dark:bg-indigo-600 dark:text-white font-black border-2 border-black dark:border-white text-xs uppercase tracking-wider active:translate-y-0.5"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
