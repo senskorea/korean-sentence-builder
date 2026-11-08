@@ -1,7 +1,19 @@
-import React, { useState, useMemo } from 'react';
-import { Hash, Phone, Building2, ShoppingBag, Calendar, Clock, Eye, EyeOff, Shuffle, Check, X } from 'lucide-react';
+import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
+import { Hash, Phone, Building2, ShoppingBag, Calendar, Clock, Eye, EyeOff, Shuffle, Check, X, Sparkles, RotateCcw, Eraser, PenTool } from 'lucide-react';
+import { getStroke } from 'perfect-freehand';
 
-type SubTab = 'high_numbers' | 'phone' | 'floors' | 'prices' | 'calendar' | 'time';
+type SubTab = 'high_numbers' | 'phone' | 'floors' | 'prices' | 'calendar' | 'time' | 'hangul_decoder';
+
+function pathFromStroke(stroke: number[][]) {
+  if (!stroke.length) return '';
+  const path = stroke.reduce<(string | number)[]>((result, [x0, y0], index, points) => {
+    const [x1, y1] = points[(index + 1) % points.length];
+    result.push(x0, y0, (x0 + x1) / 2, (y0 + y1) / 2);
+    return result;
+  }, ['M', ...stroke[0], 'Q']);
+  path.push('Z');
+  return path.join(' ');
+}
 
 interface PracticeStats {
   right: number;
@@ -270,6 +282,642 @@ function PracticeActionBar({
   );
 }
 
+const floorDirectory: Record<number, { name: string; korean: string }> = {
+  8: { name: 'Sky Lounge & Cafe (스카이라운지 카페)', korean: '팔 층' },
+  7: { name: 'Bookstore (서점)', korean: '칠 층' },
+  6: { name: 'Cinema (영화관)', korean: '육 층' },
+  5: { name: 'Bag Store (가방 가게)', korean: '오 층' },
+  4: { name: 'Restaurant (식당)', korean: '사 층' },
+  3: { name: 'Shoe Store (신발 가게)', korean: '삼 층' },
+  2: { name: 'Clothing Store (옷 가게)', korean: '이 층' },
+  1: { name: 'Lobby & Boutique (로비 / 매장)', korean: '일 층' },
+  [-1]: { name: 'Food Court & Supermarket (푸드코트)', korean: '지하 일 층' },
+  [-2]: { name: 'Underground Parking (지하 주차장)', korean: '지하 이 층' },
+};
+
+const floorKeys = [-2, -1, 1, 2, 3, 4, 5, 6, 7, 8];
+
+const priceItems = [
+  { name: '바지 (Pants)', price: 76000, korean: '칠만 육천 원이에요', particle: '가' },
+  { name: '모자 (Hat)', price: 9000, korean: '구천 원이에요', particle: '가' },
+  { name: '가방 (Bag)', price: 35000, korean: '삼만 오천 원이에요', particle: '이' },
+  { name: '안경 (Glasses)', price: 110000, korean: '십일만 원이에요', particle: '이' },
+  { name: '구두 (Shoes)', price: 28000, korean: '이만 팔천 원이에요', particle: '가' },
+  { name: '컴퓨터 (Computer)', price: 1150000, korean: '백십오만 원이에요', particle: '가' },
+  { name: '책 (Book)', price: 21000, korean: '이만 천 원이에요', particle: '이' },
+  { name: '지갑 (Wallet)', price: 49500, korean: '사만 구천오백 원이에요', particle: '이' },
+  { name: '커피 (Coffee)', price: 4500, korean: '사천오백 원이에요', particle: '가' },
+  { name: '사과 (Apple)', price: 3000, korean: '삼천 원이에요', particle: '가' },
+  { name: '콜라 (Cola)', price: 2000, korean: '이천 원이에요', particle: '가' },
+  { name: '맥주 (Beer)', price: 5000, korean: '오천 원이에요', particle: '가' },
+  { name: '우산 (Umbrella)', price: 12000, korean: '만 이천 원이에요', particle: '이' },
+  { name: '시계 (Watch)', price: 250000, korean: '이십오만 원이에요', particle: '가' },
+  { name: '김밥 (Kimbap)', price: 4000, korean: '사천 원이에요', particle: '이' },
+  { name: '스마트폰 (Smartphone)', price: 1350000, korean: '백삼십오만 원이에요', particle: '이' },
+];
+
+const calendarIrregulars: Record<number, { display: string; note: string; isTrap?: boolean }> = {
+  1: { display: '일월 [이뤌]', note: 'Regular liaison' },
+  2: { display: '이월 [이월]', note: 'Regular' },
+  3: { display: '삼월 [사뭘]', note: 'Regular liaison' },
+  4: { display: '사월 [사월]', note: 'Regular' },
+  5: { display: '오월 [오월]', note: 'Regular' },
+  6: { display: '유월 [유월] ⚠️', note: 'Phonetic Trap: drops final consonant ㄱ (never 육월!)', isTrap: true },
+  7: { display: '칠월 [치뤌]', note: 'Regular liaison' },
+  8: { display: '팔월 [파뤌]', note: 'Regular liaison' },
+  9: { display: '구월 [구월]', note: 'Regular' },
+  10: { display: '시월 [시월] ⚠️', note: 'Phonetic Trap: drops final consonant ㅂ (never 십월!)', isTrap: true },
+  11: { display: '십일월 [시비뤌]', note: 'Regular liaison' },
+  12: { display: '십이월 [시비월]', note: 'Regular liaison' },
+};
+
+function RatingButton({
+  label,
+  hint,
+  color,
+  onClick,
+}: {
+  label: string;
+  hint: string;
+  color: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`min-h-12 sm:min-h-14 py-1.5 px-2 border-[3px] border-black ${color} text-slate-900 dark:text-slate-100 font-black flex flex-col justify-center items-center leading-tight shadow-[2px_2px_0_0_rgba(0,0,0,1)] active:translate-y-0.5 transition-all`}
+    >
+      <span className="block text-sm sm:text-base font-black">{label}</span>
+      <small className="text-[10px] sm:text-[11px] font-bold opacity-80">{hint}</small>
+    </button>
+  );
+}
+
+type DecoderCategory = 'all' | 'prices' | 'time' | 'calendar' | 'high_numbers' | 'floors';
+
+interface DecoderItem {
+  id: string;
+  category: DecoderCategory;
+  categoryLabel: string;
+  hangulPrompt: string;
+  subPrompt?: string;
+  answerNumeral: string;
+  breakdown: string;
+  badgeColor: string;
+}
+
+function generateDecoderItem(category: DecoderCategory): DecoderItem {
+  let chosenCategory = category;
+  if (chosenCategory === 'all') {
+    const categories: DecoderCategory[] = ['prices', 'time', 'calendar', 'high_numbers', 'floors'];
+    chosenCategory = categories[Math.floor(Math.random() * categories.length)];
+  }
+
+  if (chosenCategory === 'prices') {
+    const it = priceItems[Math.floor(Math.random() * priceItems.length)];
+    return {
+      id: `price_${Date.now()}_${Math.random()}`,
+      category: 'prices',
+      categoryLabel: 'Prices (가격)',
+      hangulPrompt: `${it.name.split(' ')[0]}${it.particle} ${it.korean}`,
+      subPrompt: it.name,
+      answerNumeral: `${it.price.toLocaleString()}원`,
+      breakdown: `${it.name}: ${numberToSinoKorean(it.price)}원 (${it.price.toLocaleString()}원)`,
+      badgeColor: 'bg-emerald-100 text-emerald-900 border-emerald-600 dark:bg-emerald-950 dark:text-emerald-200',
+    };
+  }
+
+  if (chosenCategory === 'time') {
+    const period = Math.random() > 0.5 ? '오후' : '오전';
+    const h = Math.floor(Math.random() * 12) + 1;
+    const minutesPool = [0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55];
+    const m = minutesPool[Math.floor(Math.random() * minutesPool.length)];
+    const timeInfo = getPhoneticTime(period, h, m);
+    const promptText = (m === 30 && Math.random() > 0.5 && timeInfo.altSpoken) ? timeInfo.altSpoken : timeInfo.fullSpoken;
+    const digital = `${period} ${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+    return {
+      id: `time_${Date.now()}_${Math.random()}`,
+      category: 'time',
+      categoryLabel: 'Clock & Time (시간)',
+      hangulPrompt: promptText,
+      subPrompt: '지금 몇 시예요?',
+      answerNumeral: digital,
+      breakdown: `${hourData[h]?.word} (Native ${h}시) + ${m > 0 ? formatMinuteSino(m) + ' (Sino ' + m + '분)' : '정각'}`,
+      badgeColor: 'bg-indigo-100 text-indigo-900 border-indigo-600 dark:bg-indigo-950 dark:text-indigo-200',
+    };
+  }
+
+  if (chosenCategory === 'calendar') {
+    const m = Math.floor(Math.random() * 12) + 1;
+    const info = calendarIrregulars[m];
+    const rawMonth = info.display.split(' ')[0];
+    return {
+      id: `cal_${Date.now()}_${Math.random()}`,
+      category: 'calendar',
+      categoryLabel: 'Calendar (달력)',
+      hangulPrompt: `${rawMonth}이에요`,
+      subPrompt: '몇 월이에요?',
+      answerNumeral: `${m}월`,
+      breakdown: info.note,
+      badgeColor: 'bg-rose-100 text-rose-900 border-rose-600 dark:bg-rose-950 dark:text-rose-200',
+    };
+  }
+
+  if (chosenCategory === 'floors') {
+    const fl = floorKeys[Math.floor(Math.random() * floorKeys.length)];
+    const it = floorDirectory[fl];
+    const promptText = fl < 0 ? `지하 ${numberToSinoKorean(Math.abs(fl))} 층에 있어요` : `${numberToSinoKorean(fl)} 층에 있어요`;
+    const numDisplay = fl < 0 ? `지하 ${Math.abs(fl)}층 (B${Math.abs(fl)})` : `${fl}층`;
+    return {
+      id: `floor_${Date.now()}_${Math.random()}`,
+      category: 'floors',
+      categoryLabel: 'Floors (층)',
+      hangulPrompt: promptText,
+      subPrompt: it.name,
+      answerNumeral: numDisplay,
+      breakdown: `${numberToSinoKorean(Math.abs(fl))}층 = ${numDisplay} (${it.name})`,
+      badgeColor: 'bg-amber-100 text-amber-900 border-amber-600 dark:bg-amber-950 dark:text-amber-200',
+    };
+  }
+
+  const num = generateRandomHighNumber();
+  const sino = numberToSinoKorean(num);
+  return {
+    id: `high_${Date.now()}_${Math.random()}`,
+    category: 'high_numbers',
+    categoryLabel: 'High Numbers (큰 수)',
+    hangulPrompt: `${sino} 원이에요`,
+    subPrompt: '얼마예요?',
+    answerNumeral: `${num.toLocaleString()}원`,
+    breakdown: `Sino-Korean 4-digit grouping: ${sino}원 = ${num.toLocaleString()}원`,
+    badgeColor: 'bg-purple-100 text-purple-900 border-purple-600 dark:bg-purple-950 dark:text-purple-200',
+  };
+}
+
+function HangulDecoderStage() {
+  const [activeCategory, setActiveCategory] = useState<DecoderCategory>('all');
+  const [item, setItem] = useState<DecoderItem>(() => generateDecoderItem('all'));
+  const decoderStats = usePracticeStats('korean_numbers_decoder_stats');
+
+  const [revealed, setRevealed] = useState(false);
+  const [typedInput, setTypedInput] = useState('');
+  const [showKeypad, setShowKeypad] = useState(false);
+  const [showFullPrompt, setShowFullPrompt] = useState(false);
+
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const canvasBoxRef = useRef<HTMLDivElement>(null);
+  const drawing = useRef(false);
+  const activePointerId = useRef<number | null>(null);
+  const renderFrame = useRef<number | null>(null);
+  const lines = useRef<number[][][]>([]);
+  const currentLine = useRef<number[][] | null>(null);
+
+  const renderCanvas = useCallback(() => {
+    const canvas = canvasRef.current;
+    const context = canvas?.getContext('2d', { desynchronized: true });
+    if (!canvas || !context) return;
+    const rect = canvas.getBoundingClientRect();
+    if (!rect.width || !rect.height) return;
+    context.setTransform(1, 0, 0, 1, 0, 0);
+    context.clearRect(0, 0, canvas.width, canvas.height);
+    context.scale(canvas.width / rect.width, canvas.height / rect.height);
+
+    const isDark = document.documentElement.classList.contains('dark') || 
+      (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
+    context.fillStyle = isDark ? '#a5b4fc' : '#4f46e5';
+
+    const visibleLines = currentLine.current?.length ? [...lines.current, currentLine.current] : lines.current;
+    visibleLines.forEach((line) => {
+      if (!line.length) return;
+      if (line.length === 1 || (line.length === 2 && Math.hypot(line[0][0] - line[1][0], line[0][1] - line[1][1]) < 2.5)) {
+        const [x, y] = line[0];
+        const pressure = line[0][2] || 0.5;
+        const radius = Math.max(4, pressure * 7);
+        context.beginPath();
+        context.arc(x, y, radius, 0, Math.PI * 2);
+        context.fill();
+        return;
+      }
+
+      const stroke = getStroke(line, {
+        size: 11,
+        thinning: 0.25,
+        smoothing: 0.35,
+        streamline: 0.10,
+        simulatePressure: false,
+        start: { cap: true, taper: 0 },
+        end: { cap: true, taper: 0 },
+      });
+
+      if (stroke.length) {
+        context.fill(new Path2D(pathFromStroke(stroke)));
+      } else {
+        const [x, y] = line[0];
+        context.beginPath();
+        context.arc(x, y, 4.5, 0, Math.PI * 2);
+        context.fill();
+      }
+    });
+  }, []);
+
+  const syncCanvasSize = useCallback(() => {
+    const canvas = canvasRef.current;
+    const box = canvasBoxRef.current;
+    if (!canvas || !box || drawing.current) return;
+    const rect = box.getBoundingClientRect();
+    if (!rect.width || !rect.height) return;
+    const ratio = Math.min(window.devicePixelRatio || 1, 3);
+    const width = Math.round(rect.width * ratio);
+    const height = Math.round(rect.height * ratio);
+    if (canvas.width !== width || canvas.height !== height) {
+      canvas.width = width;
+      canvas.height = height;
+    }
+    renderCanvas();
+  }, [renderCanvas]);
+
+  const requestCanvasRender = useCallback(() => {
+    if (renderFrame.current !== null) return;
+    renderFrame.current = window.requestAnimationFrame(() => {
+      renderFrame.current = null;
+      renderCanvas();
+    });
+  }, [renderCanvas]);
+
+  const clearCanvas = useCallback(() => {
+    lines.current = [];
+    currentLine.current = null;
+    renderCanvas();
+  }, [renderCanvas]);
+
+  const undoStroke = () => {
+    lines.current = lines.current.slice(0, -1);
+    renderCanvas();
+  };
+
+  useEffect(() => {
+    syncCanvasSize();
+    window.addEventListener('resize', syncCanvasSize);
+    return () => window.removeEventListener('resize', syncCanvasSize);
+  }, [syncCanvasSize]);
+
+  const nextCard = useCallback((cat: DecoderCategory) => {
+    setRevealed(false);
+    setTypedInput('');
+    clearCanvas();
+    setItem(generateDecoderItem(cat));
+  }, [clearCanvas]);
+
+  const handleCategorySelect = (cat: DecoderCategory) => {
+    setActiveCategory(cat);
+    nextCard(cat);
+  };
+
+  const handleRate = (rating: 0 | 1 | 2) => {
+    if (rating === 0) {
+      decoderStats.markWrong(() => {});
+    } else {
+      decoderStats.markRight(() => {});
+    }
+    nextCard(activeCategory);
+  };
+
+  const beginStroke = useCallback((event: PointerEvent) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    event.preventDefault();
+    canvas.setPointerCapture?.(event.pointerId);
+    activePointerId.current = event.pointerId;
+    const rect = canvas.getBoundingClientRect();
+    const pressure = event.pointerType === 'pen' && event.pressure > 0 ? event.pressure : 0.5;
+    currentLine.current = [[event.clientX - rect.left, event.clientY - rect.top, pressure]];
+    drawing.current = true;
+    requestCanvasRender();
+  }, [requestCanvasRender]);
+
+  const continueStroke = useCallback((event: PointerEvent) => {
+    if (!drawing.current || !currentLine.current || activePointerId.current !== event.pointerId) return;
+    event.preventDefault();
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const rect = canvas.getBoundingClientRect();
+    const pressure = event.pointerType === 'pen' && event.pressure > 0 ? event.pressure : 0.5;
+    currentLine.current.push([event.clientX - rect.left, event.clientY - rect.top, pressure]);
+    requestCanvasRender();
+  }, [requestCanvasRender]);
+
+  const endStroke = useCallback((event: PointerEvent) => {
+    if (!drawing.current || activePointerId.current !== event.pointerId) return;
+    event.preventDefault();
+    drawing.current = false;
+    activePointerId.current = null;
+    if (currentLine.current?.length) {
+      lines.current.push([...currentLine.current]);
+    }
+    currentLine.current = null;
+    if (renderFrame.current !== null) {
+      window.cancelAnimationFrame(renderFrame.current);
+      renderFrame.current = null;
+    }
+    renderCanvas();
+  }, [renderCanvas]);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const onPointerDown = (e: PointerEvent) => beginStroke(e);
+    const onPointerMove = (e: PointerEvent) => continueStroke(e);
+    const onPointerUp = (e: PointerEvent) => endStroke(e);
+    const onPointerCancel = (e: PointerEvent) => endStroke(e);
+
+    canvas.addEventListener('pointerdown', onPointerDown, { passive: false });
+    window.addEventListener('pointermove', onPointerMove, { passive: false });
+    window.addEventListener('pointerup', onPointerUp, { passive: false });
+    window.addEventListener('pointercancel', onPointerCancel, { passive: false });
+
+    return () => {
+      canvas.removeEventListener('pointerdown', onPointerDown);
+      window.removeEventListener('pointermove', onPointerMove);
+      window.removeEventListener('pointerup', onPointerUp);
+      window.removeEventListener('pointercancel', onPointerCancel);
+    };
+  }, [beginStroke, continueStroke, endStroke]);
+
+  const handleKeypadPress = (val: string) => {
+    if (val === 'CLEAR') {
+      setTypedInput('');
+    } else if (val === 'BACK') {
+      setTypedInput((prev) => prev.slice(0, -1));
+    } else {
+      setTypedInput((prev) => prev + val);
+    }
+  };
+
+  const categoryChips: { id: DecoderCategory; label: string }[] = [
+    { id: 'all', label: 'All Numbers / 종합' },
+    { id: 'prices', label: 'Prices (가격)' },
+    { id: 'time', label: 'Clock & Time (시간)' },
+    { id: 'calendar', label: 'Calendar (달력)' },
+    { id: 'high_numbers', label: 'High Numbers (큰 수)' },
+    { id: 'floors', label: 'Floors (층)' },
+  ];
+
+  return (
+    <div className="bg-white dark:bg-slate-900 border-[3px] border-black p-4 sm:p-6 shadow-[4px_4px_0_0_rgba(0,0,0,1)] flex flex-col gap-5">
+      <div>
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-black uppercase text-indigo-600 bg-indigo-50 dark:bg-indigo-950 px-2.5 py-1 border border-black flex items-center gap-1.5">
+            <Sparkles className="w-3.5 h-3.5" /> Hangul Decoding Flashcard Mode
+          </span>
+        </div>
+        <h3 className="text-2xl font-black mt-2">Hangul to Numeral Recall</h3>
+        <p className="text-xs text-slate-500 mt-1">
+          Read the Korean text prompt, handwrite the numeral in the canvas box, then reveal and rate your recall.
+        </p>
+      </div>
+
+      {/* Category Filter Chips Toolbar */}
+      <div className="p-3 bg-slate-50 dark:bg-slate-800/60 border-2 border-black flex flex-col gap-2">
+        <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">
+          Filter by Number Category:
+        </span>
+        <div className="flex flex-wrap gap-1.5">
+          {categoryChips.map((chip) => {
+            const isSelected = activeCategory === chip.id;
+            return (
+              <button
+                key={chip.id}
+                type="button"
+                onClick={() => handleCategorySelect(chip.id)}
+                className={`px-2.5 py-1 text-xs font-black border-2 border-black transition-all ${
+                  isSelected
+                    ? 'bg-black text-white dark:bg-indigo-600 dark:text-white shadow-[2px_2px_0_0_rgba(0,0,0,1)]'
+                    : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700'
+                }`}
+              >
+                {chip.label}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Score Header Bar */}
+      <ScoreHeaderBar
+        title={`Hangul Decoder • ${item.categoryLabel}`}
+        stats={decoderStats.stats}
+        onReset={decoderStats.resetStats}
+      />
+
+      {/* Main Flashcard Stage */}
+      <div className="p-4 sm:p-6 bg-slate-50 dark:bg-slate-800 border-[3px] border-black flex flex-col">
+        {/* Flashcard Prompt Header */}
+        <div className="p-3 sm:p-4 bg-white dark:bg-slate-900 border-2 border-black flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex flex-col">
+            <span className={`text-[10px] font-black uppercase tracking-wider px-2 py-0.5 border border-black inline-block w-fit ${item.badgeColor}`}>
+              {item.categoryLabel}
+            </span>
+            {item.subPrompt && (
+              <span className="text-xs font-bold text-slate-500 dark:text-slate-400 mt-1">
+                {item.subPrompt}
+              </span>
+            )}
+          </div>
+
+          <div
+            onClick={() => setShowFullPrompt(true)}
+            className="text-2xl sm:text-3xl md:text-4xl font-black text-slate-900 dark:text-white cursor-pointer hover:opacity-80 active:opacity-60 text-left sm:text-right transition-opacity"
+            title="Tap to see full Hangul text"
+          >
+            {item.hangulPrompt}
+          </div>
+        </div>
+
+        {/* Handwriting Canvas Box */}
+        <div
+          ref={canvasBoxRef}
+          className="relative min-h-[260px] sm:min-h-[300px] bg-white dark:bg-slate-900 border-2 border-black overflow-hidden my-3 shadow-inner"
+        >
+          <div className="absolute inset-0 grid place-items-center pointer-events-none text-slate-200 dark:text-slate-800 select-none">
+            <PenTool className="w-16 h-16 opacity-20" />
+          </div>
+
+          {!revealed && (
+            <div className="absolute top-2 left-2 pointer-events-none text-[11px] font-black uppercase tracking-wider text-slate-300 dark:text-slate-600 select-none">
+              Handwrite numeral here
+            </div>
+          )}
+
+          {/* Floating Canvas Controls */}
+          <div className="absolute top-2 right-2 z-30 flex items-center gap-1.5">
+            {typedInput && (
+              <div className="px-2 py-0.5 bg-black text-white text-xs font-mono font-black border border-white">
+                {typedInput}
+              </div>
+            )}
+            <button
+              type="button"
+              onClick={() => setShowKeypad(!showKeypad)}
+              className={`h-8 px-2 text-xs font-black border-2 border-black flex items-center gap-1 active:translate-y-0.5 ${
+                showKeypad ? 'bg-indigo-600 text-white' : 'bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200'
+              }`}
+              title="Toggle on-screen numeric keypad"
+            >
+              <Hash className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Pad</span>
+            </button>
+            <button
+              type="button"
+              onClick={undoStroke}
+              className="h-8 px-2 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 border-2 border-black text-xs font-black flex items-center gap-1 active:translate-y-0.5"
+              title="Undo last stroke"
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+            </button>
+            <button
+              type="button"
+              onClick={clearCanvas}
+              className="h-8 px-2 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 border-2 border-black text-xs font-black flex items-center gap-1 active:translate-y-0.5"
+              title="Clear canvas"
+            >
+              <Eraser className="w-3.5 h-3.5" />
+            </button>
+          </div>
+
+          <canvas ref={canvasRef} className="absolute inset-0 z-10 w-full h-full touch-none cursor-crosshair" />
+
+          {/* On-screen numeric keypad overlay */}
+          {showKeypad && !revealed && (
+            <div className="absolute bottom-2 right-2 z-30 bg-white/95 dark:bg-slate-900/95 p-2.5 border-2 border-black shadow-[3px_3px_0_0_rgba(0,0,0,1)] flex flex-col gap-1.5">
+              <div className="text-[10px] font-black uppercase text-slate-400 flex justify-between">
+                <span>Keypad</span>
+                <span>{typedInput || '—'}</span>
+              </div>
+              <div className="grid grid-cols-3 gap-1">
+                {['1', '2', '3', '4', '5', '6', '7', '8', '9', 'C', '0', '⌫'].map((k) => (
+                  <button
+                    key={k}
+                    type="button"
+                    onClick={() => handleKeypadPress(k === 'C' ? 'CLEAR' : k === '⌫' ? 'BACK' : k)}
+                    className="w-9 h-9 border border-black font-black text-sm bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 active:translate-y-0.5 flex items-center justify-center"
+                  >
+                    {k}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Answer revealed watermark overlay */}
+          {revealed && (
+            <div className="absolute inset-0 z-20 pointer-events-none flex flex-col items-center justify-center p-4 bg-white/95 dark:bg-slate-900/95 text-center animate-in fade-in">
+              <span className="text-xs font-black uppercase text-slate-400 tracking-wider">Target Numeral</span>
+              <div className="text-4xl sm:text-6xl font-black text-emerald-600 dark:text-emerald-400 font-mono my-2 drop-shadow-sm">
+                {item.answerNumeral}
+              </div>
+              <div className="text-xs sm:text-sm font-bold text-slate-700 dark:text-slate-200 max-w-md bg-emerald-50 dark:bg-emerald-950/60 p-2.5 border-2 border-emerald-600 mt-2">
+                {item.breakdown}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Bottom Actions Area */}
+        {!revealed ? (
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => setRevealed(true)}
+              className="flex-1 min-h-12 sm:min-h-14 bg-indigo-600 hover:bg-indigo-700 active:translate-y-0.5 text-white border-[3px] border-black font-black text-base sm:text-lg shadow-[3px_3px_0_0_rgba(0,0,0,1)] flex items-center justify-center gap-2"
+            >
+              <Eye className="w-5 h-5" />
+              <span>Reveal Answer / 정답 보기</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => nextCard(activeCategory)}
+              className="h-12 sm:h-14 px-4 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 border-[3px] border-black font-black text-sm shadow-[2px_2px_0_0_rgba(0,0,0,1)] active:translate-y-0.5 flex items-center gap-1.5"
+              title="Skip to next random card"
+            >
+              <Shuffle className="w-4 h-4" />
+              <span className="hidden sm:inline">Skip</span>
+            </button>
+          </div>
+        ) : (
+          <div className="flex flex-col gap-2">
+            <div className="text-center text-xs font-black uppercase text-slate-400">
+              How did you do? Rate to proceed:
+            </div>
+            <div className="grid grid-cols-3 gap-2">
+              <RatingButton
+                label="Again"
+                hint="다시 연습"
+                color="bg-rose-200 dark:bg-rose-900/60 dark:text-rose-100"
+                onClick={() => handleRate(0)}
+              />
+              <RatingButton
+                label="Hard"
+                hint="어려움"
+                color="bg-amber-200 dark:bg-amber-900/60 dark:text-amber-100"
+                onClick={() => handleRate(1)}
+              />
+              <RatingButton
+                label="Good"
+                hint="마스터"
+                color="bg-emerald-200 dark:bg-emerald-900/60 dark:text-emerald-100"
+                onClick={() => handleRate(2)}
+              />
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Expanded Prompt Modal */}
+      {showFullPrompt && (
+        <div
+          className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm p-4 grid place-items-center"
+          onClick={() => setShowFullPrompt(false)}
+        >
+          <div
+            className="w-full max-w-md bg-white dark:bg-slate-900 text-slate-900 dark:text-white border-[3px] border-black dark:border-white p-5 shadow-[5px_5px_0_0_rgba(0,0,0,1)] flex flex-col gap-3"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-[10px] font-black uppercase tracking-wider text-indigo-600 dark:text-indigo-400">
+                {item.categoryLabel}
+              </span>
+              <button
+                type="button"
+                onClick={() => setShowFullPrompt(false)}
+                className="w-8 h-8 grid place-items-center border-2 border-black dark:border-white text-slate-900 dark:text-white font-bold"
+                aria-label="Close"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <p className="text-2xl sm:text-3xl font-black leading-snug break-words">
+              {item.hangulPrompt}
+            </p>
+            {item.subPrompt && (
+              <p className="text-sm font-bold text-slate-500">
+                {item.subPrompt}
+              </p>
+            )}
+            <button
+              type="button"
+              onClick={() => setShowFullPrompt(false)}
+              className="w-full mt-2 py-2.5 bg-black text-white dark:bg-indigo-600 dark:text-white font-black border-2 border-black dark:border-white text-xs uppercase tracking-wider active:translate-y-0.5"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function NumbersLab() {
   const [activeTab, setActiveTab] = useState<SubTab>('high_numbers');
 
@@ -324,21 +972,6 @@ export default function NumbersLab() {
   const [revealedFloor, setRevealedFloor] = useState(false);
   const floorStats = usePracticeStats('korean_numbers_floors_stats');
 
-  const floorDirectory: Record<number, { name: string; korean: string }> = {
-    8: { name: 'Sky Lounge & Cafe (스카이라운지 카페)', korean: '팔 층' },
-    7: { name: 'Bookstore (서점)', korean: '칠 층' },
-    6: { name: 'Cinema (영화관)', korean: '육 층' },
-    5: { name: 'Bag Store (가방 가게)', korean: '오 층' },
-    4: { name: 'Restaurant (식당)', korean: '사 층' },
-    3: { name: 'Shoe Store (신발 가게)', korean: '삼 층' },
-    2: { name: 'Clothing Store (옷 가게)', korean: '이 층' },
-    1: { name: 'Lobby & Boutique (로비 / 매장)', korean: '일 층' },
-    [-1]: { name: 'Food Court & Supermarket (푸드코트)', korean: '지하 일 층' },
-    [-2]: { name: 'Underground Parking (지하 주차장)', korean: '지하 이 층' },
-  };
-
-  const floorKeys = [-2, -1, 1, 2, 3, 4, 5, 6, 7, 8];
-
   const handleRandomFloor = () => {
     setSelectedFloor((prev) => {
       let next: number;
@@ -354,25 +987,6 @@ export default function NumbersLab() {
   const [priceItemIdx, setPriceItemIdx] = useState(0);
   const [revealedPrice, setRevealedPrice] = useState(false);
   const priceStats = usePracticeStats('korean_numbers_prices_stats');
-
-  const priceItems = useMemo(() => [
-    { name: '바지 (Pants)', price: 76000, korean: '칠만 육천 원이에요', particle: '가' },
-    { name: '모자 (Hat)', price: 9000, korean: '구천 원이에요', particle: '가' },
-    { name: '가방 (Bag)', price: 35000, korean: '삼만 오천 원이에요', particle: '이' },
-    { name: '안경 (Glasses)', price: 110000, korean: '십일만 원이에요', particle: '이' },
-    { name: '구두 (Shoes)', price: 28000, korean: '이만 팔천 원이에요', particle: '가' },
-    { name: '컴퓨터 (Computer)', price: 1150000, korean: '백십오만 원이에요', particle: '가' },
-    { name: '책 (Book)', price: 21000, korean: '이만 천 원이에요', particle: '이' },
-    { name: '지갑 (Wallet)', price: 49500, korean: '사만 구천오백 원이에요', particle: '이' },
-    { name: '커피 (Coffee)', price: 4500, korean: '사천오백 원이에요', particle: '가' },
-    { name: '사과 (Apple)', price: 3000, korean: '삼천 원이에요', particle: '가' },
-    { name: '콜라 (Cola)', price: 2000, korean: '이천 원이에요', particle: '가' },
-    { name: '맥주 (Beer)', price: 5000, korean: '오천 원이에요', particle: '가' },
-    { name: '우산 (Umbrella)', price: 12000, korean: '만 이천 원이에요', particle: '이' },
-    { name: '시계 (Watch)', price: 250000, korean: '이십오만 원이에요', particle: '가' },
-    { name: '김밥 (Kimbap)', price: 4000, korean: '사천 원이에요', particle: '이' },
-    { name: '스마트폰 (Smartphone)', price: 1350000, korean: '백삼십오만 원이에요', particle: '이' },
-  ], []);
 
   const currentPriceItem = priceItems[priceItemIdx % priceItems.length];
 
@@ -391,21 +1005,6 @@ export default function NumbersLab() {
   const [selectedMonth, setSelectedMonth] = useState<number>(6);
   const [revealedMonth, setRevealedMonth] = useState(false);
   const calendarStats = usePracticeStats('korean_numbers_calendar_stats');
-
-  const calendarIrregulars: Record<number, { display: string; note: string; isTrap?: boolean }> = {
-    1: { display: '일월 [이뤌]', note: 'Regular liaison' },
-    2: { display: '이월 [이월]', note: 'Regular' },
-    3: { display: '삼월 [사뭘]', note: 'Regular liaison' },
-    4: { display: '사월 [사월]', note: 'Regular' },
-    5: { display: '오월 [오월]', note: 'Regular' },
-    6: { display: '유월 [유월] ⚠️', note: 'Phonetic Trap: drops final consonant ㄱ (never 육월!)', isTrap: true },
-    7: { display: '칠월 [치뤌]', note: 'Regular liaison' },
-    8: { display: '팔월 [파뤌]', note: 'Regular liaison' },
-    9: { display: '구월 [구월]', note: 'Regular' },
-    10: { display: '시월 [시월] ⚠️', note: 'Phonetic Trap: drops final consonant ㅂ (never 십월!)', isTrap: true },
-    11: { display: '십일월 [시비뤌]', note: 'Regular liaison' },
-    12: { display: '십이월 [시비월]', note: 'Regular liaison' },
-  };
 
   const handleRandomMonth = () => {
     setSelectedMonth((prev) => {
@@ -531,6 +1130,16 @@ export default function NumbersLab() {
             }`}
           >
             <Clock className="w-3.5 h-3.5" /> Clock & Time (시·분)
+          </button>
+          <button
+            onClick={() => setActiveTab('hangul_decoder')}
+            className={`px-3 py-1 text-xs font-black border-2 border-black flex items-center gap-1.5 transition-all ${
+              activeTab === 'hangul_decoder'
+                ? 'bg-indigo-600 text-white shadow-[2px_2px_0_0_rgba(0,0,0,1)]'
+                : 'bg-white dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 font-bold hover:bg-indigo-50 dark:hover:bg-slate-700'
+            }`}
+          >
+            <Sparkles className="w-3.5 h-3.5" /> ⚡ Hangul Decoder
           </button>
         </div>
       </div>
@@ -1110,6 +1719,11 @@ export default function NumbersLab() {
           </div>
         );
       })()}
+
+      {/* SUB MODULE 7: HANGUL DECODER FLASHCARDS */}
+      {activeTab === 'hangul_decoder' && (
+        <HangulDecoderStage />
+      )}
     </div>
   );
 }
