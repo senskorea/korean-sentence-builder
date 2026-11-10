@@ -2,6 +2,96 @@ import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import { Zap, BookOpen, RotateCcw, Trophy, Flame, CheckCircle2, XCircle, ArrowRight, Target, Clock, ShieldAlert, Sparkles, Layers } from 'lucide-react';
 
 // ==========================================
+// TRACK 0 DATA: CONSONANT VS VOWEL (자음 vs 모음)
+// ==========================================
+export interface JamoItem {
+  prompt: string;
+  english: string;
+  type: 'consonant' | 'vowel';
+  category: 'basic' | 'compound' | 'syllable';
+  koreanName?: string;
+  soundGuide?: string;
+  decomposition?: {
+    initial: string;
+    medial: string;
+    final?: string;
+  };
+  explanation: string;
+}
+
+export const JAMO_ITEMS: JamoItem[] = [
+  // 1. Basic Consonants (14 기본 자음)
+  { prompt: 'ㄱ', english: 'Giyeok', type: 'consonant', category: 'basic', koreanName: '기역', soundGuide: 'g / k', explanation: 'ㄱ is a basic consonant (자음) shaped like the root of the tongue blocking the throat.' },
+  { prompt: 'ㄴ', english: 'Nieun', type: 'consonant', category: 'basic', koreanName: '니은', soundGuide: 'n', explanation: 'ㄴ is a basic consonant (자음) shaped like the tip of the tongue touching the upper gums.' },
+  { prompt: 'ㄷ', english: 'Digeut', type: 'consonant', category: 'basic', koreanName: '디귿', soundGuide: 'd / t', explanation: 'ㄷ is a basic consonant (자음) derived from ㄴ with an added top stroke.' },
+  { prompt: 'ㄹ', english: 'Rieul', type: 'consonant', category: 'basic', koreanName: '리을', soundGuide: 'r / l', explanation: 'ㄹ is a basic consonant (자음) representing a flap or lateral tongue sound.' },
+  { prompt: 'ㅁ', english: 'Mieum', type: 'consonant', category: 'basic', koreanName: '미음', soundGuide: 'm', explanation: 'ㅁ is a basic consonant (자음) shaped like closed lips.' },
+  { prompt: 'ㅂ', english: 'Bieup', type: 'consonant', category: 'basic', koreanName: '비읍', soundGuide: 'b / p', explanation: 'ㅂ is a basic consonant (자음) derived from ㅁ with two vertical strokes.' },
+  { prompt: 'ㅅ', english: 'Siot', type: 'consonant', category: 'basic', koreanName: '시옷', soundGuide: 's', explanation: 'ㅅ is a basic consonant (자음) shaped like a front tooth.' },
+  { prompt: 'ㅇ', english: 'Ieung', type: 'consonant', category: 'basic', koreanName: '이응', soundGuide: 'silent initially, ng as final', explanation: 'ㅇ is a basic consonant (자음) shaped like the round throat opening.' },
+  { prompt: 'ㅈ', english: 'Jieut', type: 'consonant', category: 'basic', koreanName: '지읒', soundGuide: 'j / ch', explanation: 'ㅈ is a basic consonant (자음) derived from ㅅ with an added roof stroke.' },
+  { prompt: 'ㅊ', english: 'Chieut', type: 'consonant', category: 'basic', koreanName: '치읓', soundGuide: 'ch', explanation: 'ㅊ is an aspirated consonant (자음) with a burst of air.' },
+  { prompt: 'ㅋ', english: 'Kieuk', type: 'consonant', category: 'basic', koreanName: '키읔', soundGuide: 'k', explanation: 'ㅋ is an aspirated consonant (자음) derived from ㄱ with an extra stroke.' },
+  { prompt: 'ㅌ', english: 'Tieut', type: 'consonant', category: 'basic', koreanName: '티읕', soundGuide: 't', explanation: 'ㅌ is an aspirated consonant (자음) derived from ㄷ with an extra stroke.' },
+  { prompt: 'ㅍ', english: 'Pieup', type: 'consonant', category: 'basic', koreanName: '피읖', soundGuide: 'p', explanation: 'ㅍ is an aspirated consonant (자음) derived from ㅂ with open mouth strokes.' },
+  { prompt: 'ㅎ', english: 'Hieut', type: 'consonant', category: 'basic', koreanName: '히읗', soundGuide: 'h', explanation: 'ㅎ is an aspirated consonant (자음) shaped like the throat with breath strokes.' },
+
+  // 2. Double Consonants (5 쌍자음)
+  { prompt: 'ㄲ', english: 'Ssang-giyeok', type: 'consonant', category: 'compound', koreanName: '쌍기역', soundGuide: 'tense kk', explanation: 'ㄲ is a tense double consonant (쌍자음) produced with glottal tension.' },
+  { prompt: 'ㄸ', english: 'Ssang-digeut', type: 'consonant', category: 'compound', koreanName: '쌍디귿', soundGuide: 'tense tt', explanation: 'ㄸ is a tense double consonant (쌍자음) produced with glottal tension.' },
+  { prompt: 'ㅃ', english: 'Ssang-bieup', type: 'consonant', category: 'compound', koreanName: '쌍비읍', soundGuide: 'tense pp', explanation: 'ㅃ is a tense double consonant (쌍자음) produced with glottal tension.' },
+  { prompt: 'ㅆ', english: 'Ssang-siot', type: 'consonant', category: 'compound', koreanName: '쌍시옷', soundGuide: 'tense ss', explanation: 'ㅆ is a tense double consonant (쌍자음) produced with strong friction.' },
+  { prompt: 'ㅉ', english: 'Ssang-jieut', type: 'consonant', category: 'compound', koreanName: '쌍지읒', soundGuide: 'tense jj', explanation: 'ㅉ is a tense double consonant (쌍자음) produced with glottal tension.' },
+
+  // 3. Basic Vowels (10 기본 모음)
+  { prompt: 'ㅏ', english: 'A', type: 'vowel', category: 'basic', koreanName: '아', soundGuide: 'a (father)', explanation: 'ㅏ is a basic bright vowel (모음) with the stroke pointing right (outside toward heaven).' },
+  { prompt: 'ㅑ', english: 'YA', type: 'vowel', category: 'basic', koreanName: '야', soundGuide: 'ya (yard)', explanation: 'ㅑ is a basic vowel (모음) with double strokes creating the Y glide.' },
+  { prompt: 'ㅓ', english: 'EO', type: 'vowel', category: 'basic', koreanName: '어', soundGuide: 'eo (cup / law)', explanation: 'ㅓ is a basic dark vowel (모음) with the stroke pointing left (inside toward earth).' },
+  { prompt: 'ㅕ', english: 'YEO', type: 'vowel', category: 'basic', koreanName: '여', soundGuide: 'yeo (young)', explanation: 'ㅕ is a basic vowel (모음) with double strokes pointing left.' },
+  { prompt: 'ㅗ', english: 'O', type: 'vowel', category: 'basic', koreanName: '오', soundGuide: 'o (open)', explanation: 'ㅗ is a basic bright vowel (모음) with the vertical stroke pointing up.' },
+  { prompt: 'ㅛ', english: 'YO', type: 'vowel', category: 'basic', koreanName: '요', soundGuide: 'yo (yoga)', explanation: 'ㅛ is a basic vowel (모음) with two strokes pointing up.' },
+  { prompt: 'ㅜ', english: 'U', type: 'vowel', category: 'basic', koreanName: '우', soundGuide: 'u (flute)', explanation: 'ㅜ is a basic dark vowel (모음) with the vertical stroke pointing down.' },
+  { prompt: 'ㅠ', english: 'YU', type: 'vowel', category: 'basic', koreanName: '유', soundGuide: 'yu (you)', explanation: 'ㅠ is a basic vowel (모음) with two strokes pointing down.' },
+  { prompt: 'ㅡ', english: 'EU', type: 'vowel', category: 'basic', koreanName: '으', soundGuide: 'eu (brook without rounding)', explanation: 'ㅡ is a foundational horizontal vowel (모음) representing the flat earth.' },
+  { prompt: 'ㅣ', english: 'I', type: 'vowel', category: 'basic', koreanName: '이', soundGuide: 'i (tree)', explanation: 'ㅣ is a foundational vertical vowel (모음) representing the standing person.' },
+
+  // 4. Compound Vowels (11 복합 모음)
+  { prompt: 'ㅐ', english: 'AE', type: 'vowel', category: 'compound', koreanName: '애', soundGuide: 'ae (cat)', explanation: 'ㅐ is a compound vowel (모음) combining ㅏ and ㅣ.' },
+  { prompt: 'ㅒ', english: 'YAE', type: 'vowel', category: 'compound', koreanName: '얘', soundGuide: 'yae (yankee)', explanation: 'ㅒ is a compound vowel (모음) combining ㅑ and ㅣ.' },
+  { prompt: 'ㅔ', english: 'E', type: 'vowel', category: 'compound', koreanName: '에', soundGuide: 'e (bed)', explanation: 'ㅔ is a compound vowel (모음) combining ㅓ and ㅣ.' },
+  { prompt: 'ㅖ', english: 'YE', type: 'vowel', category: 'compound', koreanName: '예', soundGuide: 'ye (yes)', explanation: 'ㅖ is a compound vowel (모음) combining ㅕ and ㅣ.' },
+  { prompt: 'ㅘ', english: 'WA', type: 'vowel', category: 'compound', koreanName: '와', soundGuide: 'wa (water)', explanation: 'ㅘ is a compound vowel (모음) combining ㅗ and ㅏ.' },
+  { prompt: 'ㅙ', english: 'WAE', type: 'vowel', category: 'compound', koreanName: '왜', soundGuide: 'wae (wet)', explanation: 'ㅙ is a compound vowel (모음) combining ㅗ and ㅐ.' },
+  { prompt: 'ㅚ', english: 'OE', type: 'vowel', category: 'compound', koreanName: '외', soundGuide: 'oe (wait)', explanation: 'ㅚ is a compound vowel (모음) combining ㅗ and ㅣ.' },
+  { prompt: 'ㅝ', english: 'WO', type: 'vowel', category: 'compound', koreanName: '워', soundGuide: 'wo (wonder)', explanation: 'ㅝ is a compound vowel (모음) combining ㅜ and ㅓ.' },
+  { prompt: 'ㅞ', english: 'WE', type: 'vowel', category: 'compound', koreanName: '웨', soundGuide: 'we (wedding)', explanation: 'ㅞ is a compound vowel (모음) combining ㅜ and ㅔ.' },
+  { prompt: 'ㅟ', english: 'WI', type: 'vowel', category: 'compound', koreanName: '위', soundGuide: 'wi (we)', explanation: 'ㅟ is a compound vowel (모음) combining ㅜ and ㅣ.' },
+  { prompt: 'ㅢ', english: 'UI', type: 'vowel', category: 'compound', koreanName: '의', soundGuide: 'ui / eui', explanation: 'ㅢ is a compound vowel (모음) combining ㅡ and ㅣ.' },
+
+  // 5. Syllable Blocks (20+ 음절 / 받침 판별)
+  { prompt: '책', english: 'Book', type: 'consonant', category: 'syllable', decomposition: { initial: 'ㅊ', medial: 'ㅐ', final: 'ㄱ' }, explanation: '책 ends in bottom consonant 받침 ㄱ (Consonant Ending) → takes 이 / 은 / 을 / 이에요.' },
+  { prompt: '차', english: 'Car / Tea', type: 'vowel', category: 'syllable', decomposition: { initial: 'ㅊ', medial: 'ㅏ' }, explanation: '차 has no bottom 받침 and ends in vowel ㅏ (Vowel Ending) → takes 가 / 는 / 를 / 예요.' },
+  { prompt: '물', english: 'Water', type: 'consonant', category: 'syllable', decomposition: { initial: 'ㅁ', medial: 'ㅜ', final: 'ㄹ' }, explanation: '물 ends in bottom consonant 받침 ㄹ (Consonant Ending) → takes 이 / 은 / 을 / 이에요.' },
+  { prompt: '시', english: 'Hour / City', type: 'vowel', category: 'syllable', decomposition: { initial: 'ㅅ', medial: 'ㅣ' }, explanation: '시 has no bottom 받침 and ends in vowel ㅣ (Vowel Ending) → takes 가 / 는 / 를 / 예요.' },
+  { prompt: '돈', english: 'Money', type: 'consonant', category: 'syllable', decomposition: { initial: 'ㄷ', medial: 'ㅗ', final: 'ㄴ' }, explanation: '돈 ends in bottom consonant 받침 ㄴ (Consonant Ending) → takes 이 / 은 / 을 / 이에요.' },
+  { prompt: '커', english: 'Coffee (first syllable)', type: 'vowel', category: 'syllable', decomposition: { initial: 'ㅋ', medial: 'ㅓ' }, explanation: '커 has no bottom 받침 and ends in vowel ㅓ (Vowel Ending) → takes 가 / 는 / 를 / 예요.' },
+  { prompt: '밥', english: 'Rice / Meal', type: 'consonant', category: 'syllable', decomposition: { initial: 'ㅂ', medial: 'ㅏ', final: 'ㅂ' }, explanation: '밥 ends in bottom consonant 받침 ㅂ (Consonant Ending) → takes 이 / 은 / 을 / 이에요.' },
+  { prompt: '사', english: 'Buy / Four', type: 'vowel', category: 'syllable', decomposition: { initial: 'ㅅ', medial: 'ㅏ' }, explanation: '사 has no bottom 받침 and ends in vowel ㅏ (Vowel Ending) → takes 가 / 는 / 를 / 예요.' },
+  { prompt: '방', english: 'Room', type: 'consonant', category: 'syllable', decomposition: { initial: 'ㅂ', medial: 'ㅏ', final: 'ㅇ' }, explanation: '방 ends in bottom consonant 받침 ㅇ (Consonant Ending) → takes 이 / 은 / 을 / 이에요.' },
+  { prompt: '모', english: 'Hat (first syllable)', type: 'vowel', category: 'syllable', decomposition: { initial: 'ㅁ', medial: 'ㅗ' }, explanation: '모 has no bottom 받침 and ends in vowel ㅗ (Vowel Ending) → takes 가 / 는 / 를 / 예요.' },
+  { prompt: '집', english: 'House', type: 'consonant', category: 'syllable', decomposition: { initial: 'ㅈ', medial: 'ㅣ', final: 'ㅂ' }, explanation: '집 ends in bottom consonant 받침 ㅂ (Consonant Ending) → takes 이 / 은 / 을 / 이에요.' },
+  { prompt: '가', english: 'Go', type: 'vowel', category: 'syllable', decomposition: { initial: 'ㄱ', medial: 'ㅏ' }, explanation: '가 has no bottom 받침 and ends in vowel ㅏ (Vowel Ending) → takes 가 / 는 / 를 / 예요.' },
+  { prompt: '옷', english: 'Clothes', type: 'consonant', category: 'syllable', decomposition: { initial: 'ㅇ', medial: 'ㅗ', final: 'ㅅ' }, explanation: '옷 ends in bottom consonant 받침 ㅅ (Consonant Ending) → takes 이 / 은 / 을 / 이에요.' },
+  { prompt: '누', english: 'Older sister (first syllable)', type: 'vowel', category: 'syllable', decomposition: { initial: 'ㄴ', medial: 'ㅜ' }, explanation: '누 has no bottom 받침 and ends in vowel ㅜ (Vowel Ending) → takes 가 / 는 / 를 / 예요.' },
+  { prompt: '문', english: 'Door', type: 'consonant', category: 'syllable', decomposition: { initial: 'ㅁ', medial: 'ㅜ', final: 'ㄴ' }, explanation: '문 ends in bottom consonant 받침 ㄴ (Consonant Ending) → takes 이 / 은 / 을 / 이에요.' },
+  { prompt: '배', english: 'Boat / Pear / Stomach', type: 'vowel', category: 'syllable', decomposition: { initial: 'ㅂ', medial: 'ㅐ' }, explanation: '배 has no bottom 받침 and ends in vowel ㅐ (Vowel Ending) → takes 가 / 는 / 를 / 예요.' },
+  { prompt: '눈', english: 'Eye / Snow', type: 'consonant', category: 'syllable', decomposition: { initial: 'ㄴ', medial: 'ㅜ', final: 'ㄴ' }, explanation: '눈 ends in bottom consonant 받침 ㄴ (Consonant Ending) → takes 이 / 은 / 을 / 이에요.' },
+  { prompt: '개', english: 'Dog / Counter', type: 'vowel', category: 'syllable', decomposition: { initial: 'ㄱ', medial: 'ㅐ' }, explanation: '개 has no bottom 받침 and ends in vowel ㅐ (Vowel Ending) → takes 가 / 는 / 를 / 예요.' },
+  { prompt: '빵', english: 'Bread', type: 'consonant', category: 'syllable', decomposition: { initial: 'ㅃ', medial: 'ㅏ', final: 'ㅇ' }, explanation: '빵 ends in bottom consonant 받침 ㅇ (Consonant Ending) → takes 이 / 은 / 을 / 이에요.' },
+  { prompt: '해', english: 'Sun / Year / Do', type: 'vowel', category: 'syllable', decomposition: { initial: 'ㅎ', medial: 'ㅐ' }, explanation: '해 has no bottom 받침 and ends in vowel ㅐ (Vowel Ending) → takes 가 / 는 / 를 / 예요.' }
+];
+
+// ==========================================
 // TRACK 1 DATA: PHONETIC RAPID REFLEX (받침)
 // ==========================================
 interface RapidReflexItem {
@@ -251,7 +341,62 @@ const CONTEXT_ITEMS: ContextFlowItem[] = [
 ];
 
 export default function ParticleTrainer() {
-  const [activeTrack, setActiveTrack] = useState<'reflex' | 'context'>('reflex');
+  const [activeTrack, setActiveTrack] = useState<'jamo' | 'reflex' | 'context'>('jamo');
+
+  // ===============================
+  // TRACK 0 STATE (CONSONANT VS VOWEL)
+  // ===============================
+  const [jamoFilter, setJamoFilter] = useState<'all' | 'basic' | 'compound' | 'syllable'>('all');
+  const [jamoIdx, setJamoIdx] = useState(0);
+  const [jamoStreak, setJamoStreak] = useState(0);
+  const [jamoMaxStreak, setJamoMaxStreak] = useState(() => {
+    try {
+      return parseInt(localStorage.getItem('korean_jamo_max_streak') || '0', 10);
+    } catch {
+      return 0;
+    }
+  });
+  const [jamoFeedback, setJamoFeedback] = useState<{
+    status: 'idle' | 'correct' | 'wrong';
+    chosen: 'consonant' | 'vowel' | null;
+    item: JamoItem | null;
+  }>({ status: 'idle', chosen: null, item: null });
+
+  const filteredJamoList = useMemo(() => {
+    if (jamoFilter === 'all') return JAMO_ITEMS;
+    return JAMO_ITEMS.filter((i) => i.category === jamoFilter);
+  }, [jamoFilter]);
+
+  const currentJamo = filteredJamoList[jamoIdx % filteredJamoList.length];
+
+  const handleJamoTap = useCallback((choice: 'consonant' | 'vowel') => {
+    if (!currentJamo) return;
+    const isCorrect = choice === currentJamo.type;
+
+    if (isCorrect) {
+      const nextStreak = jamoStreak + 1;
+      setJamoStreak(nextStreak);
+      if (nextStreak > jamoMaxStreak) {
+        setJamoMaxStreak(nextStreak);
+        try {
+          localStorage.setItem('korean_jamo_max_streak', nextStreak.toString());
+        } catch {}
+      }
+      setJamoFeedback({ status: 'correct', chosen: choice, item: currentJamo });
+      setTimeout(() => {
+        setJamoFeedback({ status: 'idle', chosen: null, item: null });
+        setJamoIdx((prev) => prev + 1);
+      }, 400);
+    } else {
+      setJamoStreak(0);
+      setJamoFeedback({ status: 'wrong', chosen: choice, item: currentJamo });
+    }
+  }, [currentJamo, jamoStreak, jamoMaxStreak]);
+
+  const nextJamoQuestion = useCallback(() => {
+    setJamoFeedback({ status: 'idle', chosen: null, item: null });
+    setJamoIdx((prev) => prev + 1);
+  }, []);
 
   // ===============================
   // TRACK 1 STATE (RAPID REFLEX)
@@ -409,7 +554,19 @@ export default function ParticleTrainer() {
   // Keyboard navigation support (A / Left Arrow, D / Right Arrow, Space)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (activeTrack === 'reflex') {
+      if (activeTrack === 'jamo') {
+        if (jamoFeedback.status === 'wrong') {
+          if (e.key === ' ' || e.key === 'Enter') {
+            nextJamoQuestion();
+          }
+        } else {
+          if (e.key === 'ArrowLeft' || e.key.toLowerCase() === 'a') {
+            handleJamoTap('consonant');
+          } else if (e.key === 'ArrowRight' || e.key.toLowerCase() === 'd') {
+            handleJamoTap('vowel');
+          }
+        }
+      } else if (activeTrack === 'reflex') {
         if (e.key === 'ArrowLeft' || e.key.toLowerCase() === 'a') {
           handleReflexTap(currentReflex.leftOption);
         } else if (e.key === 'ArrowRight' || e.key.toLowerCase() === 'd') {
@@ -429,7 +586,7 @@ export default function ParticleTrainer() {
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [activeTrack, currentReflex, currentContext, handleReflexTap, selectedAnswer]);
+  }, [activeTrack, currentJamo, handleJamoTap, jamoFeedback.status, nextJamoQuestion, currentReflex, currentContext, handleReflexTap, selectedAnswer]);
 
   return (
     <div className="w-full flex flex-col gap-3 max-w-5xl mx-auto pb-6 select-none">
@@ -450,7 +607,18 @@ export default function ParticleTrainer() {
         </div>
 
         {/* Track Toggle */}
-        <div className="flex items-center gap-1.5 bg-slate-100 dark:bg-slate-800 p-1 border-2 border-black">
+        <div className="flex items-center gap-1.5 bg-slate-100 dark:bg-slate-800 p-1 border-2 border-black flex-wrap">
+          <button
+            onClick={() => setActiveTrack('jamo')}
+            className={`px-3 py-1.5 font-black text-xs flex items-center gap-1.5 transition-all ${
+              activeTrack === 'jamo'
+                ? 'bg-sky-500 text-white shadow-[2px_2px_0_0_rgba(0,0,0,1)] border border-black'
+                : 'text-slate-700 dark:text-slate-300 hover:text-black'
+            }`}
+          >
+            <Layers className="w-3.5 h-3.5" />
+            <span>Track 0: 자음/모음 Consonant vs Vowel</span>
+          </button>
           <button
             onClick={() => setActiveTrack('reflex')}
             className={`px-3 py-1.5 font-black text-xs flex items-center gap-1.5 transition-all ${
@@ -475,6 +643,226 @@ export default function ParticleTrainer() {
           </button>
         </div>
       </div>
+
+      {/* ========================================================= */}
+      {/* TRACK 0 VIEW: CONSONANT VS VOWEL DUAL DUEL               */}
+      {/* ========================================================= */}
+      {activeTrack === 'jamo' && currentJamo && (
+        <div className="flex flex-col gap-3">
+          {/* Controls & Filter Bar */}
+          <div className="bg-white dark:bg-slate-900 border-2 border-black p-2 shadow-[3px_3px_0_0_rgba(0,0,0,1)] flex flex-wrap items-center justify-between gap-2 text-xs">
+            {/* Category Filter */}
+            <div className="flex items-center gap-1 overflow-x-auto pb-1 sm:pb-0">
+              {[
+                { key: 'all', label: '전체 (All)' },
+                { key: 'basic', label: '기본 자모 (Basic)' },
+                { key: 'compound', label: '쌍자음/복합 (Double/Compound)' },
+                { key: 'syllable', label: '단어 음절 (Syllable Endings)' },
+              ].map((btn) => (
+                <button
+                  key={btn.key}
+                  onClick={() => {
+                    setJamoFilter(btn.key as any);
+                    setJamoIdx(0);
+                    setJamoFeedback({ status: 'idle', chosen: null, item: null });
+                  }}
+                  className={`px-2.5 py-1 font-black text-[11px] border border-black whitespace-nowrap transition-all ${
+                    jamoFilter === btn.key
+                      ? 'bg-sky-500 text-white shadow-[1px_1px_0_0_rgba(0,0,0,1)]'
+                      : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200'
+                  }`}
+                >
+                  {btn.label}
+                </button>
+              ))}
+            </div>
+
+            {/* Streak & Skip Button */}
+            <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1 px-2.5 py-1 bg-amber-100 dark:bg-amber-950/40 border border-black font-black text-[11px] text-amber-900 dark:text-amber-200">
+                <Flame className="w-3.5 h-3.5 text-amber-500 fill-amber-500" />
+                <span>연속 Streak: {jamoStreak}</span>
+                <span className="text-slate-400 dark:text-slate-500 font-bold ml-1">
+                  (최고 Best: {jamoMaxStreak})
+                </span>
+              </div>
+              <button
+                onClick={() => {
+                  setJamoIdx((prev) => prev + 1);
+                  setJamoFeedback({ status: 'idle', chosen: null, item: null });
+                }}
+                className="p-1 border border-black bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300"
+                title="건너뛰기 Skip"
+              >
+                <RotateCcw className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          </div>
+
+          {/* Active Split Screen Arena */}
+          <div className="relative grid grid-cols-1 md:grid-cols-12 gap-3 min-h-[300px] sm:min-h-[340px]">
+            {/* LEFT TOUCH TARGET: CONSONANT (자음) */}
+            <button
+              onClick={() => handleJamoTap('consonant')}
+              onPointerEnter={handlePointerEnterChoice('consonant', (opt) => handleJamoTap(opt as 'consonant' | 'vowel'))}
+              onPointerLeave={handlePointerLeaveChoice}
+              onPointerDown={handlePointerDownChoice('consonant', (opt) => handleJamoTap(opt as 'consonant' | 'vowel'))}
+              className={`md:col-span-3 min-h-[120px] md:min-h-full border-[3px] border-black font-black flex flex-col items-center justify-center gap-1.5 transition-all active:scale-[0.98] cursor-pointer ${
+                hoveredChoice === 'consonant'
+                  ? 'ring-4 ring-sky-500 ring-offset-2 scale-[1.02] shadow-[0_0_20px_rgba(14,165,233,0.6)]'
+                  : ''
+              } ${
+                jamoFeedback.status === 'correct' && jamoFeedback.chosen === 'consonant'
+                  ? 'bg-emerald-500 text-white border-black shadow-[inset_0_0_20px_rgba(0,0,0,0.2)]'
+                  : jamoFeedback.status === 'wrong' && jamoFeedback.chosen === 'consonant'
+                  ? 'bg-rose-500 text-white border-black animate-shake'
+                  : 'bg-sky-50 dark:bg-sky-950/40 text-sky-900 dark:text-sky-100 shadow-[4px_4px_0_0_rgba(0,0,0,1)] hover:bg-sky-100 dark:hover:bg-sky-900/60'
+              }`}
+            >
+              <span className="text-3xl sm:text-4xl">
+                {currentJamo.category === 'syllable' ? '자음 받침' : '자음'}
+              </span>
+              <span className="text-sm sm:text-base font-bold text-sky-700 dark:text-sky-300 uppercase tracking-wide">
+                {currentJamo.category === 'syllable' ? 'Consonant Ending' : 'Consonant'}
+              </span>
+              <span className="text-[10px] sm:text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mt-1">
+                Left (A / ←)
+              </span>
+            </button>
+
+            {/* CENTER PROMPT CARD */}
+            <div
+              className={`md:col-span-6 bg-white dark:bg-slate-900 border-[3px] border-black p-4 sm:p-6 shadow-[5px_5px_0_0_rgba(0,0,0,1)] flex flex-col items-center justify-between text-center relative transition-colors ${
+                jamoFeedback.status === 'correct'
+                  ? 'border-emerald-500 bg-emerald-50/50 dark:bg-emerald-950/20'
+                  : jamoFeedback.status === 'wrong'
+                  ? 'border-rose-500 bg-rose-50/50 dark:bg-rose-950/20'
+                  : ''
+              }`}
+            >
+              {/* Question Banner */}
+              <div className="flex items-center gap-2">
+                <span className="px-2.5 py-0.5 bg-slate-100 dark:bg-slate-800 border border-black font-black text-[11px] uppercase tracking-wider">
+                  {currentJamo.category === 'syllable' ? 'SYLLABLE ENDING TEST' : 'LETTER IDENTIFICATION'}
+                </span>
+                <span className={`px-2 py-0.5 border border-black font-black text-[10px] ${
+                  currentJamo.category === 'syllable'
+                    ? 'bg-purple-100 text-purple-900 dark:bg-purple-950 dark:text-purple-200'
+                    : currentJamo.category === 'compound'
+                    ? 'bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-200'
+                    : 'bg-blue-100 text-blue-900 dark:bg-blue-950 dark:text-blue-200'
+                }`}>
+                  {currentJamo.category === 'syllable' ? '음절 단어' : currentJamo.category === 'compound' ? '쌍자음 / 복합' : '기본 자모'}
+                </span>
+              </div>
+
+              {/* Main Core Display */}
+              <div className="my-4 sm:my-6 flex flex-col items-center gap-2">
+                <span className="text-6xl sm:text-7xl font-black tracking-tight text-slate-900 dark:text-white select-text">
+                  {currentJamo.prompt}
+                </span>
+
+                <div className="flex flex-col items-center gap-0.5">
+                  <span className="text-sm sm:text-base font-bold text-slate-600 dark:text-slate-300">
+                    {currentJamo.english} {currentJamo.koreanName ? `(${currentJamo.koreanName})` : ''}
+                  </span>
+                  {currentJamo.soundGuide && (
+                    <span className="text-xs font-semibold text-slate-400 dark:text-slate-400">
+                      소리 Sound: [{currentJamo.soundGuide}]
+                    </span>
+                  )}
+                </div>
+
+                <p className="text-xs sm:text-sm font-black text-slate-700 dark:text-slate-300 mt-2 bg-slate-100 dark:bg-slate-800 px-3 py-1 border border-black">
+                  {currentJamo.category === 'syllable'
+                    ? '이 글자는 자음(받침)으로 끝나나요, 모음으로 끝나나요?'
+                    : '이 글자는 자음인가요, 모음인가요?'}
+                </p>
+              </div>
+
+              {/* Syllable Decomposition (if syllable) */}
+              {currentJamo.decomposition && (
+                <div className="flex items-center gap-2 text-xs font-bold bg-slate-50 dark:bg-slate-800/60 p-2 border border-black w-full justify-center">
+                  <span>초성(Initial): <span className="font-black text-sky-600">{currentJamo.decomposition.initial}</span></span>
+                  <span>+</span>
+                  <span>중성(Vowel): <span className="font-black text-amber-600">{currentJamo.decomposition.medial}</span></span>
+                  {currentJamo.decomposition.final ? (
+                    <>
+                      <span>+</span>
+                      <span>종성(받침): <span className="font-black text-sky-600">{currentJamo.decomposition.final}</span></span>
+                    </>
+                  ) : (
+                    <>
+                      <span>+</span>
+                      <span className="text-slate-400">받침 없음 (No Batchim)</span>
+                    </>
+                  )}
+                </div>
+              )}
+
+              {/* Feedback Overlay */}
+              {jamoFeedback.status === 'correct' && (
+                <div className="absolute inset-x-4 bottom-4 bg-emerald-500 text-white font-black text-sm py-2 px-4 border-2 border-black shadow-[3px_3px_0_0_rgba(0,0,0,1)] flex items-center justify-center gap-2 animate-bounce-short">
+                  <CheckCircle2 className="w-5 h-5" />
+                  <span>정답! {currentJamo.type === 'consonant' ? '자음 (Consonant)' : '모음 (Vowel)'}</span>
+                </div>
+              )}
+
+              {jamoFeedback.status === 'wrong' && (
+                <div className="absolute inset-x-2 sm:inset-x-4 bottom-2 sm:bottom-4 bg-white dark:bg-slate-900 text-slate-900 dark:text-white border-[3px] border-rose-600 p-3 sm:p-4 shadow-[4px_4px_0_0_rgba(0,0,0,1)] flex flex-col gap-2 z-10 text-left">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-rose-600 font-black text-sm sm:text-base flex items-center gap-1.5">
+                      <XCircle className="w-5 h-5" /> 오답!
+                    </span>
+                    <span className="text-xs font-black px-2 py-0.5 bg-black text-white">
+                      정답: {currentJamo.type === 'consonant' ? '자음 (Consonant)' : '모음 (Vowel)'}
+                    </span>
+                  </div>
+                  <p className="text-xs sm:text-sm font-semibold text-slate-700 dark:text-slate-300">
+                    {currentJamo.explanation}
+                  </p>
+                  <button
+                    onClick={nextJamoQuestion}
+                    className="self-end px-4 py-1.5 bg-black text-white font-black text-xs border border-black hover:bg-slate-800 flex items-center gap-1"
+                  >
+                    <span>NEXT (Space / Enter)</span>
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* RIGHT TOUCH TARGET: VOWEL (모음) */}
+            <button
+              onClick={() => handleJamoTap('vowel')}
+              onPointerEnter={handlePointerEnterChoice('vowel', (opt) => handleJamoTap(opt as 'consonant' | 'vowel'))}
+              onPointerLeave={handlePointerLeaveChoice}
+              onPointerDown={handlePointerDownChoice('vowel', (opt) => handleJamoTap(opt as 'consonant' | 'vowel'))}
+              className={`md:col-span-3 min-h-[120px] md:min-h-full border-[3px] border-black font-black flex flex-col items-center justify-center gap-1.5 transition-all active:scale-[0.98] cursor-pointer ${
+                hoveredChoice === 'vowel'
+                  ? 'ring-4 ring-amber-500 ring-offset-2 scale-[1.02] shadow-[0_0_20px_rgba(245,158,11,0.6)]'
+                  : ''
+              } ${
+                jamoFeedback.status === 'correct' && jamoFeedback.chosen === 'vowel'
+                  ? 'bg-emerald-500 text-white border-black shadow-[inset_0_0_20px_rgba(0,0,0,0.2)]'
+                  : jamoFeedback.status === 'wrong' && jamoFeedback.chosen === 'vowel'
+                  ? 'bg-rose-500 text-white border-black animate-shake'
+                  : 'bg-amber-50 dark:bg-amber-950/40 text-amber-900 dark:text-amber-100 shadow-[4px_4px_0_0_rgba(0,0,0,1)] hover:bg-amber-100 dark:hover:bg-amber-900/60'
+              }`}
+            >
+              <span className="text-3xl sm:text-4xl">
+                {currentJamo.category === 'syllable' ? '모음 끝' : '모음'}
+              </span>
+              <span className="text-sm sm:text-base font-bold text-amber-700 dark:text-amber-300 uppercase tracking-wide">
+                {currentJamo.category === 'syllable' ? 'Vowel Ending' : 'Vowel'}
+              </span>
+              <span className="text-[10px] sm:text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mt-1">
+                Right (D / →)
+              </span>
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* ========================================================= */}
       {/* TRACK 1 VIEW: RAPID REFLEX SPLIT TAP                     */}
