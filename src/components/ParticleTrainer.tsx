@@ -341,6 +341,52 @@ export default function ParticleTrainer() {
   const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
   const [contextHistory, setContextHistory] = useState<{ id: number; correct: boolean }[]>([]);
 
+  // S Pen Air View Hover & Dwell Commitment (300ms)
+  const [hoveredChoice, setHoveredChoice] = useState<string | null>(null);
+  const dwellTimerRef = useRef<number | null>(null);
+
+  const clearDwell = useCallback(() => {
+    if (dwellTimerRef.current !== null) {
+      window.clearTimeout(dwellTimerRef.current);
+      dwellTimerRef.current = null;
+    }
+    setHoveredChoice(null);
+  }, []);
+
+  const handlePointerEnterChoice = useCallback((option: string, onCommit: (opt: string) => void) => (e: React.PointerEvent) => {
+    if (e.pointerType === 'pen') {
+      setHoveredChoice(option);
+      if (dwellTimerRef.current !== null) window.clearTimeout(dwellTimerRef.current);
+      dwellTimerRef.current = window.setTimeout(() => {
+        onCommit(option);
+        clearDwell();
+      }, 300);
+    }
+  }, [clearDwell]);
+
+  const handlePointerLeaveChoice = useCallback((e: React.PointerEvent) => {
+    if (e.pointerType === 'pen') {
+      clearDwell();
+    }
+  }, [clearDwell]);
+
+  const handlePointerDownChoice = useCallback((option: string, onCommit: (opt: string) => void) => (e: React.PointerEvent) => {
+    // S Pen stylus barrel / side button click (e.button === 2 or e.buttons === 2)
+    if (e.pointerType === 'pen' && (e.button === 2 || e.buttons === 2)) {
+      e.preventDefault();
+      onCommit(option);
+      clearDwell();
+    }
+  }, [clearDwell]);
+
+  useEffect(() => {
+    return () => {
+      if (dwellTimerRef.current !== null) {
+        window.clearTimeout(dwellTimerRef.current);
+      }
+    };
+  }, []);
+
   const filteredContextList = useMemo(() => {
     if (contextFilter === 'all') return CONTEXT_ITEMS;
     return CONTEXT_ITEMS.filter((i) => i.category === contextFilter);
@@ -523,7 +569,12 @@ export default function ParticleTrainer() {
               {/* LEFT MASSIVE TOUCH TARGET */}
               <button
                 onClick={() => handleReflexTap(currentReflex.leftOption)}
+                onPointerEnter={handlePointerEnterChoice(currentReflex.leftOption, handleReflexTap)}
+                onPointerLeave={handlePointerLeaveChoice}
+                onPointerDown={handlePointerDownChoice(currentReflex.leftOption, handleReflexTap)}
                 className={`md:col-span-3 min-h-[120px] md:min-h-full border-[3px] border-black font-black text-4xl sm:text-5xl flex flex-col items-center justify-center gap-1 transition-all active:scale-[0.98] cursor-pointer ${
+                  hoveredChoice === currentReflex.leftOption ? 'ring-4 ring-indigo-500 ring-offset-2 scale-[1.02] shadow-[0_0_20px_rgba(99,102,241,0.6)]' : ''
+                } ${
                   reflexFeedback.status === 'correct' && reflexFeedback.chosen === currentReflex.leftOption
                     ? 'bg-emerald-500 text-white border-black shadow-[inset_0_0_20px_rgba(0,0,0,0.2)]'
                     : reflexFeedback.status === 'wrong' && reflexFeedback.chosen === currentReflex.leftOption
@@ -597,7 +648,12 @@ export default function ParticleTrainer() {
               {/* RIGHT MASSIVE TOUCH TARGET */}
               <button
                 onClick={() => handleReflexTap(currentReflex.rightOption)}
+                onPointerEnter={handlePointerEnterChoice(currentReflex.rightOption, handleReflexTap)}
+                onPointerLeave={handlePointerLeaveChoice}
+                onPointerDown={handlePointerDownChoice(currentReflex.rightOption, handleReflexTap)}
                 className={`md:col-span-3 min-h-[120px] md:min-h-full border-[3px] border-black font-black text-4xl sm:text-5xl flex flex-col items-center justify-center gap-1 transition-all active:scale-[0.98] cursor-pointer ${
+                  hoveredChoice === currentReflex.rightOption ? 'ring-4 ring-indigo-500 ring-offset-2 scale-[1.02] shadow-[0_0_20px_rgba(99,102,241,0.6)]' : ''
+                } ${
                   reflexFeedback.status === 'correct' && reflexFeedback.chosen === currentReflex.rightOption
                     ? 'bg-emerald-500 text-white border-black shadow-[inset_0_0_20px_rgba(0,0,0,0.2)]'
                     : reflexFeedback.status === 'wrong' && reflexFeedback.chosen === currentReflex.rightOption
@@ -691,6 +747,7 @@ export default function ParticleTrainer() {
               {[currentContext.leftOption, currentContext.rightOption].map((option, idx) => {
                 const isChosen = selectedAnswer === option;
                 const isCorrect = option === currentContext.correctOption;
+                const isHovered = hoveredChoice === option && selectedAnswer === null;
 
                 let btnClass = 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white hover:bg-slate-100 dark:hover:bg-slate-700';
                 if (selectedAnswer !== null) {
@@ -708,7 +765,12 @@ export default function ParticleTrainer() {
                     key={option}
                     disabled={selectedAnswer !== null}
                     onClick={() => handleContextChoose(option)}
-                    className={`py-3.5 px-4 border-[3px] border-black font-black text-2xl sm:text-3xl shadow-[3px_3px_0_0_rgba(0,0,0,1)] active:translate-y-0.5 cursor-pointer transition-all flex flex-col items-center justify-center ${btnClass}`}
+                    onPointerEnter={handlePointerEnterChoice(option, handleContextChoose)}
+                    onPointerLeave={handlePointerLeaveChoice}
+                    onPointerDown={handlePointerDownChoice(option, handleContextChoose)}
+                    className={`py-3.5 px-4 border-[3px] border-black font-black text-2xl sm:text-3xl shadow-[3px_3px_0_0_rgba(0,0,0,1)] active:translate-y-0.5 cursor-pointer transition-all flex flex-col items-center justify-center ${
+                      isHovered ? 'ring-4 ring-indigo-500 ring-offset-2 scale-[1.02] shadow-[0_0_20px_rgba(99,102,241,0.6)]' : ''
+                    } ${btnClass}`}
                   >
                     <span>{option}</span>
                     <span className="text-[10px] font-bold text-slate-400 mt-0.5">

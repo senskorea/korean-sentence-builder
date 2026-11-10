@@ -32,7 +32,7 @@ type LearnType = 'words' | 'sentences' | 'personal';
 type PracticeMode = 'cards' | 'write' | 'mixed';
 type Rating = 0 | 1 | 2;
 type StudyItem = Word | SavedSentence | PersonalVocabItem;
-export type VocabSortOption = 'newest' | 'oldest' | 'alphabetical' | 'random';
+export type VocabSortOption = 'smart' | 'newest' | 'oldest' | 'alphabetical' | 'random';
 
 function pathFromStroke(stroke: number[][]) {
   if (!stroke.length) return '';
@@ -64,6 +64,35 @@ function formatDuration(totalSeconds: number) {
     : `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
 }
 
+function getSmartWeight(item: PersonalVocabItem): number {
+  if (item.sensitive) return -100;
+  let maxWeight = 50;
+  for (const tag of item.tags) {
+    if (tag === 'vulgar') return -100;
+    if (tag === 'slang') maxWeight = Math.max(maxWeight, 10);
+    else if (tag === 'foundation') maxWeight = Math.max(maxWeight, 100);
+    else if (tag === 'classwork') maxWeight = Math.max(maxWeight, 95);
+    else if (tag === 'sogang1a') maxWeight = Math.max(maxWeight, 90);
+    else if (tag === 'pronoun' || tag === 'question') maxWeight = Math.max(maxWeight, 85);
+    else if (tag === 'counter' || tag === 'number') maxWeight = Math.max(maxWeight, 80);
+    else if (['place', 'stationery', 'item', 'beverage', 'clothing', 'country', 'occupation'].includes(tag)) maxWeight = Math.max(maxWeight, 70);
+    else if (['verb', 'adjective'].includes(tag)) maxWeight = Math.max(maxWeight, 65);
+    else if (tag === 'expression') maxWeight = Math.max(maxWeight, 60);
+  }
+  return maxWeight;
+}
+
+function compareSmart(a: PersonalVocabItem, b: PersonalVocabItem): number {
+  const weightA = getSmartWeight(a);
+  const weightB = getSmartWeight(b);
+  if (weightA !== weightB) {
+    return weightB - weightA;
+  }
+  const dateDiff = (b.dateAdded || '').localeCompare(a.dateAdded || '');
+  if (dateDiff !== 0) return dateDiff;
+  return a.korean.localeCompare(b.korean, 'ko');
+}
+
 export default function LearnMode({ vocab, savedPhrases = [], onExit, onSessionActiveChange }: Props) {
   const words = [...vocab.subjects, ...vocab.objects, ...vocab.verbs];
   const sentences = savedPhrases;
@@ -78,13 +107,13 @@ export default function LearnMode({ vocab, savedPhrases = [], onExit, onSessionA
   const [wordStats, setWordStats] = useState<Record<string, Stats>>({});
   const [sentenceStats, setSentenceStats] = useState<Record<string, Stats>>({});
   const [search, setSearch] = useState('');
-  const [selectedTag, setSelectedTag] = useState<string | null>('latest');
+  const [selectedTag, setSelectedTag] = useState<string | null>(null);
   const [vocabSort, setVocabSort] = useState<VocabSortOption>(() => {
     try {
       const saved = localStorage.getItem('korean_vocab_sort') as VocabSortOption;
-      return ['newest', 'oldest', 'alphabetical', 'random'].includes(saved) ? saved : 'newest';
+      return ['smart', 'newest', 'oldest', 'alphabetical', 'random'].includes(saved) ? saved : 'smart';
     } catch {
-      return 'newest';
+      return 'smart';
     }
   });
 
@@ -147,6 +176,11 @@ export default function LearnMode({ vocab, savedPhrases = [], onExit, onSessionA
       const savedSentences = localStorage.getItem('korean_learn_sentence_stats');
       if (savedWords) setWordStats(migrate(JSON.parse(savedWords)));
       if (savedSentences) setSentenceStats(migrate(JSON.parse(savedSentences)));
+      
+      const savedMastery = localStorage.getItem('korean_personal_mastery');
+      if (savedMastery) {
+        localStorage.setItem('korean_personal_mastery_backup', savedMastery);
+      }
     } catch (error) {
       console.error('Failed to load learning progress', error);
     }
@@ -415,7 +449,13 @@ export default function LearnMode({ vocab, savedPhrases = [], onExit, onSessionA
 
   const savePersonalMastery = (next: PersonalMasteryState) => {
     setPersonalMastery(next);
-    localStorage.setItem('korean_personal_mastery', JSON.stringify(next));
+    try {
+      const serialized = JSON.stringify(next);
+      localStorage.setItem('korean_personal_mastery', serialized);
+      localStorage.setItem('korean_personal_mastery_backup', serialized);
+    } catch (e) {
+      console.error('Failed to save personal mastery', e);
+    }
   };
 
   const latestDate = useMemo(() => {
@@ -481,6 +521,9 @@ export default function LearnMode({ vocab, savedPhrases = [], onExit, onSessionA
 
   const sortedVocabulary = useMemo(() => {
     const list = [...visibleVocabulary];
+    if (vocabSort === "smart") {
+      return list.sort(compareSmart);
+    }
     if (vocabSort === "newest") {
       return list.sort((a, b) => {
         const dateDiff = (b.dateAdded || "").localeCompare(a.dateAdded || "");
@@ -506,7 +549,9 @@ export default function LearnMode({ vocab, savedPhrases = [], onExit, onSessionA
   const startFilteredSession = (filteredPool: PersonalVocabItem[]) => {
     if (!filteredPool.length) return;
     let ordered: PersonalVocabItem[];
-    if (vocabSort === 'newest') {
+    if (vocabSort === 'smart') {
+      ordered = [...filteredPool].sort(compareSmart);
+    } else if (vocabSort === 'newest') {
       ordered = [...filteredPool].sort((a, b) => {
         const dateCmp = (b.dateAdded || '').localeCompare(a.dateAdded || '');
         if (dateCmp !== 0) return dateCmp;
@@ -545,6 +590,9 @@ export default function LearnMode({ vocab, savedPhrases = [], onExit, onSessionA
       let activeIds = personalMastery.activeIds.filter((id) => availableIds.has(id) && !learnedIds.includes(id));
       if (!activeIds.length) {
         const prioritized = [...personalPool].sort((a, b) => {
+          if (vocabSort === 'smart') {
+            return compareSmart(a, b);
+          }
           if (vocabSort === 'newest') {
             const dateCmp = (b.dateAdded || '').localeCompare(a.dateAdded || '');
             if (dateCmp !== 0) return dateCmp;
@@ -572,6 +620,9 @@ export default function LearnMode({ vocab, savedPhrases = [], onExit, onSessionA
         .map((id) => personalPool.find((item) => item.id === id))
         .filter((item): item is PersonalVocabItem => Boolean(item))
         .sort((a, b) => {
+          if (vocabSort === 'smart') {
+            return compareSmart(a, b);
+          }
           if (vocabSort === 'newest') {
             return (b.dateAdded || '').localeCompare(a.dateAdded || '');
           }
@@ -725,7 +776,7 @@ export default function LearnMode({ vocab, savedPhrases = [], onExit, onSessionA
           </button>
           <button
             onClick={() => {
-              if (isFiltered || vocabSort === 'newest') {
+              if (isFiltered) {
                 startFilteredSession(sortedVocabulary);
               } else {
                 startSession('personal');
@@ -748,14 +799,25 @@ export default function LearnMode({ vocab, savedPhrases = [], onExit, onSessionA
           <div className="flex flex-wrap items-center gap-1.5">
             <button
               type="button"
-              onClick={() => handleSortChange('newest')}
+              onClick={() => handleSortChange('smart')}
               className={`px-2.5 py-1 text-xs font-black border-2 border-black rounded transition-all flex items-center gap-1 ${
+                vocabSort === 'smart'
+                  ? 'bg-indigo-600 text-white shadow-[2px_2px_0_0_rgba(0,0,0,1)]'
+                  : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700'
+              }`}
+            >
+              <span>✨ Smart frequency (Default)</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => handleSortChange('newest')}
+              className={`px-2.5 py-1 text-xs font-bold border-2 border-black rounded transition-all flex items-center gap-1 ${
                 vocabSort === 'newest'
                   ? 'bg-indigo-600 text-white shadow-[2px_2px_0_0_rgba(0,0,0,1)]'
                   : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700'
               }`}
             >
-              <span>⚡ Newest first (Default)</span>
+              <span>⚡ Newest first</span>
             </button>
             <button
               type="button"
@@ -866,7 +928,7 @@ export default function LearnMode({ vocab, savedPhrases = [], onExit, onSessionA
           <p className="text-sm font-bold text-slate-500">
             Showing {sortedVocabulary.length} of {totalVocabCount} dictionary forms and expressions
             {selectedTag ? ` in ${selectedTag === 'latest' ? `Latest (${latestDate})` : `#${selectedTag}`}` : ''}
-            {` • Sorted by ${vocabSort === 'newest' ? 'Newest first' : vocabSort === 'oldest' ? 'Oldest first' : vocabSort === 'alphabetical' ? '가나다 Alphabetical' : 'Random'}`}.
+            {` • Sorted by ${vocabSort === 'smart' ? 'Smart frequency' : vocabSort === 'newest' ? 'Newest first' : vocabSort === 'oldest' ? 'Oldest first' : vocabSort === 'alphabetical' ? '가나다 Alphabetical' : 'Random'}`}.
           </p>
           {isFiltered && (
             <button
@@ -1007,8 +1069,18 @@ export default function LearnMode({ vocab, savedPhrases = [], onExit, onSessionA
           <div className="min-w-0 text-right">
             <h2
               onClick={() => setShowFullEnglish(true)}
+              onPointerEnter={(e) => {
+                if (e.pointerType === 'pen' || e.pointerType === 'mouse') {
+                  setShowFullEnglish(true);
+                }
+              }}
+              onPointerLeave={(e) => {
+                if (e.pointerType === 'pen' || e.pointerType === 'mouse') {
+                  setShowFullEnglish(false);
+                }
+              }}
               className={`${learnType === 'sentences' ? 'text-base sm:text-xl' : 'text-xl sm:text-2xl'} font-black truncate text-slate-900 dark:text-white cursor-pointer hover:opacity-80 active:opacity-60 transition-opacity`}
-              title="Tap to view full English prompt"
+              title="Hover with S Pen or tap to view full English prompt"
             >
               {english}
             </h2>
@@ -1184,6 +1256,11 @@ export default function LearnMode({ vocab, savedPhrases = [], onExit, onSessionA
         <div
           className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm p-4 grid place-items-center"
           onClick={() => setShowFullEnglish(false)}
+          onPointerLeave={(e) => {
+            if (e.pointerType === 'pen' || e.pointerType === 'mouse') {
+              setShowFullEnglish(false);
+            }
+          }}
         >
           <div
             className="w-full max-w-md bg-white dark:bg-slate-900 text-slate-900 dark:text-white border-[3px] border-black dark:border-white p-5 shadow-[5px_5px_0_0_rgba(0,0,0,1)] flex flex-col gap-3"

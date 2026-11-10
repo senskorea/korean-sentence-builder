@@ -664,43 +664,18 @@ function HangulDecoderStage() {
   ];
 
   return (
-    <div className="bg-white dark:bg-slate-900 border-[3px] border-black p-4 sm:p-6 shadow-[4px_4px_0_0_rgba(0,0,0,1)] flex flex-col gap-5">
+    <div className="bg-white dark:bg-slate-900 border-[3px] border-black p-3 sm:p-5 shadow-[4px_4px_0_0_rgba(0,0,0,1)] flex flex-col gap-3">
+      {/* Streamlined Header & Score */}
       <div>
         <div className="flex items-center gap-2">
           <span className="text-xs font-black uppercase text-indigo-600 bg-indigo-50 dark:bg-indigo-950 px-2.5 py-1 border border-black flex items-center gap-1.5">
             <Sparkles className="w-3.5 h-3.5" /> Hangul Decoding Flashcard Mode
           </span>
         </div>
-        <h3 className="text-2xl font-black mt-2">Hangul to Numeral Recall</h3>
-        <p className="text-xs text-slate-500 mt-1">
+        <h3 className="text-xl sm:text-2xl font-black mt-1.5">Hangul to Numeral Recall</h3>
+        <p className="text-xs text-slate-500 mt-0.5">
           Read the Korean text prompt, handwrite the numeral in the canvas box, then reveal and rate your recall.
         </p>
-      </div>
-
-      {/* Category Filter Chips Toolbar */}
-      <div className="p-3 bg-slate-50 dark:bg-slate-800/60 border-2 border-black flex flex-col gap-2">
-        <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">
-          Filter by Number Category:
-        </span>
-        <div className="flex flex-wrap gap-1.5">
-          {categoryChips.map((chip) => {
-            const isSelected = activeCategory === chip.id;
-            return (
-              <button
-                key={chip.id}
-                type="button"
-                onClick={() => handleCategorySelect(chip.id)}
-                className={`px-2.5 py-1 text-xs font-black border-2 border-black transition-all ${
-                  isSelected
-                    ? 'bg-black text-white dark:bg-indigo-600 dark:text-white shadow-[2px_2px_0_0_rgba(0,0,0,1)]'
-                    : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700'
-                }`}
-              >
-                {chip.label}
-              </button>
-            );
-          })}
-        </div>
       </div>
 
       {/* Score Header Bar */}
@@ -711,9 +686,9 @@ function HangulDecoderStage() {
       />
 
       {/* Main Flashcard Stage */}
-      <div className="p-4 sm:p-6 bg-slate-50 dark:bg-slate-800 border-[3px] border-black flex flex-col">
+      <div className="p-3 sm:p-5 bg-slate-50 dark:bg-slate-800 border-[3px] border-black flex flex-col">
         {/* Flashcard Prompt Header */}
-        <div className="p-3 sm:p-4 bg-white dark:bg-slate-900 border-2 border-black flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="p-3 bg-white dark:bg-slate-900 border-2 border-black flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex flex-col">
             <span className={`text-[10px] font-black uppercase tracking-wider px-2 py-0.5 border border-black inline-block w-fit ${item.badgeColor}`}>
               {item.categoryLabel}
@@ -727,17 +702,27 @@ function HangulDecoderStage() {
 
           <div
             onClick={() => setShowFullPrompt(true)}
+            onPointerEnter={(e) => {
+              if (e.pointerType === 'pen' || e.pointerType === 'mouse') {
+                setShowFullPrompt(true);
+              }
+            }}
+            onPointerLeave={(e) => {
+              if (e.pointerType === 'pen' || e.pointerType === 'mouse') {
+                setShowFullPrompt(false);
+              }
+            }}
             className="text-2xl sm:text-3xl md:text-4xl font-black text-slate-900 dark:text-white cursor-pointer hover:opacity-80 active:opacity-60 text-left sm:text-right transition-opacity"
-            title="Tap to see full Hangul text"
+            title="Hover with S Pen or tap to see full Hangul text"
           >
             {item.hangulPrompt}
           </div>
         </div>
 
-        {/* Handwriting Canvas Box */}
+        {/* Handwriting Canvas Box with Maximized Writing Area */}
         <div
           ref={canvasBoxRef}
-          className="relative min-h-[260px] sm:min-h-[300px] bg-white dark:bg-slate-900 border-2 border-black overflow-hidden my-3 shadow-inner"
+          className="relative min-h-[320px] sm:min-h-[380px] bg-white dark:bg-slate-900 border-2 border-black overflow-hidden my-3 shadow-inner"
         >
           <div className="absolute inset-0 grid place-items-center pointer-events-none text-slate-200 dark:text-slate-800 select-none">
             <PenTool className="w-16 h-16 opacity-20" />
@@ -873,11 +858,42 @@ function HangulDecoderStage() {
         )}
       </div>
 
+      {/* Category Filter Chips Toolbar Repositioned Below the Main Stage */}
+      <div className="p-2.5 sm:p-3 bg-slate-50 dark:bg-slate-800/60 border-2 border-black flex flex-col gap-1.5">
+        <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">
+          Filter by Number Category:
+        </span>
+        <div className="flex flex-wrap gap-1.5">
+          {categoryChips.map((chip) => {
+            const isSelected = activeCategory === chip.id;
+            return (
+              <button
+                key={chip.id}
+                type="button"
+                onClick={() => handleCategorySelect(chip.id)}
+                className={`px-2.5 py-1 text-xs font-black border-2 border-black transition-all ${
+                  isSelected
+                    ? 'bg-black text-white dark:bg-indigo-600 dark:text-white shadow-[2px_2px_0_0_rgba(0,0,0,1)]'
+                    : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700'
+                }`}
+              >
+                {chip.label}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
       {/* Expanded Prompt Modal */}
       {showFullPrompt && (
         <div
           className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm p-4 grid place-items-center"
           onClick={() => setShowFullPrompt(false)}
+          onPointerLeave={(e) => {
+            if (e.pointerType === 'pen' || e.pointerType === 'mouse') {
+              setShowFullPrompt(false);
+            }
+          }}
         >
           <div
             className="w-full max-w-md bg-white dark:bg-slate-900 text-slate-900 dark:text-white border-[3px] border-black dark:border-white p-5 shadow-[5px_5px_0_0_rgba(0,0,0,1)] flex flex-col gap-3"
