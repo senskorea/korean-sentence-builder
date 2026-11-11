@@ -1,56 +1,64 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { PenTool, RotateCcw, Eraser, Eye, EyeOff, Sliders, Type } from 'lucide-react';
+import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
+import { PenTool, RotateCcw, Eraser, Eye, EyeOff, Sliders, Type, Shuffle } from 'lucide-react';
+
+function shuffleArray<T>(array: T[]): T[] {
+  const arr = [...array];
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
 
 interface LetterItem {
   char: string;
   name: string;
-  pron: string;
 }
 
 const CONSONANTS: LetterItem[] = [
-  { char: 'ㄱ', name: '기역', pron: 'g / k' },
-  { char: 'ㄴ', name: '니은', pron: 'n' },
-  { char: 'ㄷ', name: '디귿', pron: 'd / t' },
-  { char: 'ㄹ', name: '리을', pron: 'r / l' },
-  { char: 'ㅁ', name: '미음', pron: 'm' },
-  { char: 'ㅂ', name: '비읍', pron: 'b / p' },
-  { char: 'ㅅ', name: '시옷', pron: 's' },
-  { char: 'ㅇ', name: '이응', pron: 'ng / silent' },
-  { char: 'ㅈ', name: '지읒', pron: 'j / ch' },
-  { char: 'ㅊ', name: '치읓', pron: 'ch' },
-  { char: 'ㅋ', name: '키읔', pron: 'k' },
-  { char: 'ㅌ', name: '티읕', pron: 't' },
-  { char: 'ㅍ', name: '피읖', pron: 'p' },
-  { char: 'ㅎ', name: '히읗', pron: 'h' },
-  { char: 'ㄲ', name: '쌍기역', pron: 'kk' },
-  { char: 'ㄸ', name: '쌍디귿', pron: 'tt' },
-  { char: 'ㅃ', name: '쌍비읍', pron: 'pp' },
-  { char: 'ㅆ', name: '쌍시옷', pron: 'ss' },
-  { char: 'ㅉ', name: '쌍지읒', pron: 'jj' },
+  { char: 'ㄱ', name: '기역' },
+  { char: 'ㄴ', name: '니은' },
+  { char: 'ㄷ', name: '디귿' },
+  { char: 'ㄹ', name: '리을' },
+  { char: 'ㅁ', name: '미음' },
+  { char: 'ㅂ', name: '비읍' },
+  { char: 'ㅅ', name: '시옷' },
+  { char: 'ㅇ', name: '이응' },
+  { char: 'ㅈ', name: '지읒' },
+  { char: 'ㅊ', name: '치읓' },
+  { char: 'ㅋ', name: '키읔' },
+  { char: 'ㅌ', name: '티읕' },
+  { char: 'ㅍ', name: '피읖' },
+  { char: 'ㅎ', name: '히읗' },
+  { char: 'ㄲ', name: '쌍기역' },
+  { char: 'ㄸ', name: '쌍디귿' },
+  { char: 'ㅃ', name: '쌍비읍' },
+  { char: 'ㅆ', name: '쌍시옷' },
+  { char: 'ㅉ', name: '쌍지읒' },
 ];
 
 const VOWELS: LetterItem[] = [
-  { char: 'ㅏ', name: '아', pron: 'a' },
-  { char: 'ㅑ', name: '야', pron: 'ya' },
-  { char: 'ㅓ', name: '어', pron: 'eo' },
-  { char: 'ㅕ', name: '여', pron: 'yeo' },
-  { char: 'ㅗ', name: '오', pron: 'o' },
-  { char: 'ㅛ', name: '요', pron: 'yo' },
-  { char: 'ㅜ', name: '우', pron: 'u' },
-  { char: 'ㅠ', name: '유', pron: 'yu' },
-  { char: 'ㅡ', name: '으', pron: 'eu' },
-  { char: 'ㅣ', name: '이', pron: 'i' },
-  { char: 'ㅐ', name: '애', pron: 'ae' },
-  { char: 'ㅒ', name: '얘', pron: 'yae' },
-  { char: 'ㅔ', name: '에', pron: 'e' },
-  { char: 'ㅖ', name: '예', pron: 'ye' },
-  { char: 'ㅘ', name: '와', pron: 'wa' },
-  { char: 'ㅙ', name: '왜', pron: 'wae' },
-  { char: 'ㅚ', name: '외', pron: 'oe' },
-  { char: 'ㅝ', name: '워', pron: 'wo' },
-  { char: 'ㅞ', name: '웨', pron: 'we' },
-  { char: 'ㅟ', name: '위', pron: 'wi' },
-  { char: 'ㅢ', name: '의', pron: 'ui' },
+  { char: 'ㅏ', name: '아' },
+  { char: 'ㅑ', name: '야' },
+  { char: 'ㅓ', name: '어' },
+  { char: 'ㅕ', name: '여' },
+  { char: 'ㅗ', name: '오' },
+  { char: 'ㅛ', name: '요' },
+  { char: 'ㅜ', name: '우' },
+  { char: 'ㅠ', name: '유' },
+  { char: 'ㅡ', name: '으' },
+  { char: 'ㅣ', name: '이' },
+  { char: 'ㅐ', name: '애' },
+  { char: 'ㅒ', name: '얘' },
+  { char: 'ㅔ', name: '에' },
+  { char: 'ㅖ', name: '예' },
+  { char: 'ㅘ', name: '와' },
+  { char: 'ㅙ', name: '왜' },
+  { char: 'ㅚ', name: '외' },
+  { char: 'ㅝ', name: '워' },
+  { char: 'ㅞ', name: '웨' },
+  { char: 'ㅟ', name: '위' },
+  { char: 'ㅢ', name: '의' },
 ];
 
 export default function StylusTrainer() {
@@ -65,7 +73,7 @@ export default function StylusTrainer() {
     }
   });
 
-  // Toggle for letter names and romanization (hidden by default)
+  // Toggle for letter names (hidden by default)
   const [showLetterNames, setShowLetterNames] = useState<boolean>(() => {
     try {
       return localStorage.getItem('korean_stylus_show_names') === 'true';
@@ -74,7 +82,21 @@ export default function StylusTrainer() {
     }
   });
 
-  const letters = sheetType === 'consonants' ? CONSONANTS : VOWELS;
+  // Order randomization (enabled by default to avoid predictable sequence)
+  const [isRandomized, setIsRandomized] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem('korean_stylus_randomized') !== 'false';
+    } catch {
+      return true;
+    }
+  });
+  const [shuffleSeed, setShuffleSeed] = useState<number>(0);
+
+  const letters = useMemo(() => {
+    const base = sheetType === 'consonants' ? CONSONANTS : VOWELS;
+    if (!isRandomized) return base;
+    return shuffleArray(base);
+  }, [sheetType, isRandomized, shuffleSeed]);
 
   // Global Canvas Drawing State
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -295,7 +317,48 @@ export default function StylusTrainer() {
 
         {/* Action Controls */}
         <div className="flex flex-wrap items-center gap-2">
-          {/* Hide/Show Letter Names & Romanization Toggle (Hidden by default) */}
+          {/* Order Randomization Toggle & Re-shuffle */}
+          <div className="flex items-center">
+            <button
+              type="button"
+              onClick={() => {
+                setIsRandomized((prev) => {
+                  const next = !prev;
+                  try {
+                    localStorage.setItem('korean_stylus_randomized', String(next));
+                  } catch {}
+                  return next;
+                });
+                clearCanvas();
+                setRevealed(false);
+              }}
+              className={`h-9 px-3 border-2 border-black flex items-center gap-1.5 font-black text-xs shadow-[2px_2px_0_0_rgba(0,0,0,1)] transition-transform active:translate-y-0.5 ${
+                isRandomized
+                  ? 'bg-sky-500 text-white'
+                  : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-100'
+              }`}
+              title="Toggle between random shuffle and dictionary order"
+            >
+              <Shuffle className="w-3.5 h-3.5" />
+              <span>{isRandomized ? '순서: 무작위 Random' : '순서: 사전 Dict'}</span>
+            </button>
+            {isRandomized && (
+              <button
+                type="button"
+                onClick={() => {
+                  setShuffleSeed((s) => s + 1);
+                  clearCanvas();
+                  setRevealed(false);
+                }}
+                className="h-9 px-2 border-2 border-l-0 border-black bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-100 text-xs font-black shadow-[2px_2px_0_0_rgba(0,0,0,1)] active:translate-y-0.5"
+                title="순서 다시 섞기 Re-shuffle grid"
+              >
+                <RotateCcw className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
+
+          {/* Hide/Show Letter Names Toggle (Hidden by default) */}
           <button
             type="button"
             onClick={toggleShowLetterNames}
@@ -304,10 +367,10 @@ export default function StylusTrainer() {
                 ? 'bg-amber-400 text-black'
                 : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-100'
             }`}
-            title="Toggle visibility of letter names and romanization"
+            title="Toggle visibility of Korean letter names (Romanization completely stripped)"
           >
             <Type className="w-3.5 h-3.5" />
-            <span>{showLetterNames ? 'Names: Visible' : 'Names: Hidden'}</span>
+            <span>{showLetterNames ? '이름: 표시 (Names ON)' : '이름: 숨김 (Names OFF)'}</span>
           </button>
 
           {/* Stylus Mode Toggle */}
@@ -371,14 +434,13 @@ export default function StylusTrainer() {
                   : 'bg-slate-50 dark:bg-slate-800/80'
               }`}
             >
-              {/* Header Label: Name & Sound (Hidden by default unless toggled or revealed) */}
+              {/* Header Label: Pure Korean Letter Name (Romanization stripped) */}
               <div
-                className={`flex justify-between items-center text-[10px] font-black pointer-events-none transition-opacity ${
-                  showLetterNames || revealed ? 'opacity-100 text-slate-400' : 'opacity-0'
+                className={`flex justify-center items-center text-[10px] sm:text-[11px] font-black pointer-events-none transition-opacity ${
+                  showLetterNames || revealed ? 'opacity-100 text-slate-500 dark:text-slate-400' : 'opacity-0'
                 }`}
               >
                 <span>{item.name}</span>
-                <span>{item.pron}</span>
               </div>
 
               {/* Partially Masked Character */}
@@ -410,7 +472,7 @@ export default function StylusTrainer() {
       {/* Instructions footer */}
       <div className="p-3 bg-slate-50 dark:bg-slate-900/60 border-2 border-black text-xs text-slate-600 dark:text-slate-400 flex flex-wrap items-center justify-between gap-2">
         <div>
-          <strong>Active Recall Instruction:</strong> Letter names and romanizations are hidden by default. Use your Apple Pencil or stylus to write each letter directly over its box.
+          <strong>Active Recall Instruction:</strong> Letter names are hidden by default with all romanization completely stripped. Use your Apple Pencil or stylus to write each letter directly over its box.
         </div>
         <div className="font-bold">
           When finished, tap <span className="text-indigo-600 dark:text-indigo-400">"Reveal & Check"</span> to compare your handwriting against the ground truth.

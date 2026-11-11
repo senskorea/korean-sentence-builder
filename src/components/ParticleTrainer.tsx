@@ -1,5 +1,14 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
-import { Zap, BookOpen, RotateCcw, Trophy, Flame, CheckCircle2, XCircle, ArrowRight, Target, Clock, ShieldAlert, Sparkles, Layers } from 'lucide-react';
+import { Zap, BookOpen, RotateCcw, Trophy, Flame, CheckCircle2, XCircle, ArrowRight, Target, Clock, ShieldAlert, Sparkles, Layers, Shuffle } from 'lucide-react';
+
+function shuffleArray<T>(array: T[]): T[] {
+  const arr = [...array];
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
 
 // ==========================================
 // TRACK 0 DATA: CONSONANT VS VOWEL (자음 vs 모음)
@@ -362,10 +371,12 @@ export default function ParticleTrainer() {
     item: JamoItem | null;
   }>({ status: 'idle', chosen: null, item: null });
 
+  const [jamoShuffleSeed, setJamoShuffleSeed] = useState(0);
+
   const filteredJamoList = useMemo(() => {
-    if (jamoFilter === 'all') return JAMO_ITEMS;
-    return JAMO_ITEMS.filter((i) => i.category === jamoFilter);
-  }, [jamoFilter]);
+    const base = jamoFilter === 'all' ? JAMO_ITEMS : JAMO_ITEMS.filter((i) => i.category === jamoFilter);
+    return shuffleArray(base);
+  }, [jamoFilter, jamoShuffleSeed]);
 
   const currentJamo = filteredJamoList[jamoIdx % filteredJamoList.length];
 
@@ -385,18 +396,32 @@ export default function ParticleTrainer() {
       setJamoFeedback({ status: 'correct', chosen: choice, item: currentJamo });
       setTimeout(() => {
         setJamoFeedback({ status: 'idle', chosen: null, item: null });
-        setJamoIdx((prev) => prev + 1);
+        setJamoIdx((prev) => {
+          const next = prev + 1;
+          if (next >= filteredJamoList.length) {
+            setJamoShuffleSeed((s) => s + 1);
+            return 0;
+          }
+          return next;
+        });
       }, 400);
     } else {
       setJamoStreak(0);
       setJamoFeedback({ status: 'wrong', chosen: choice, item: currentJamo });
     }
-  }, [currentJamo, jamoStreak, jamoMaxStreak]);
+  }, [currentJamo, jamoStreak, jamoMaxStreak, filteredJamoList.length]);
 
   const nextJamoQuestion = useCallback(() => {
     setJamoFeedback({ status: 'idle', chosen: null, item: null });
-    setJamoIdx((prev) => prev + 1);
-  }, []);
+    setJamoIdx((prev) => {
+      const next = prev + 1;
+      if (next >= filteredJamoList.length) {
+        setJamoShuffleSeed((s) => s + 1);
+        return 0;
+      }
+      return next;
+    });
+  }, [filteredJamoList.length]);
 
   // ===============================
   // TRACK 1 STATE (RAPID REFLEX)
@@ -664,6 +689,7 @@ export default function ParticleTrainer() {
                   onClick={() => {
                     setJamoFilter(btn.key as any);
                     setJamoIdx(0);
+                    setJamoShuffleSeed((s) => s + 1);
                     setJamoFeedback({ status: 'idle', chosen: null, item: null });
                   }}
                   className={`px-2.5 py-1 font-black text-[11px] border border-black whitespace-nowrap transition-all ${
@@ -677,8 +703,21 @@ export default function ParticleTrainer() {
               ))}
             </div>
 
-            {/* Streak & Skip Button */}
+            {/* Streak & Controls */}
             <div className="flex items-center gap-2">
+              <button
+                onClick={() => {
+                  setJamoShuffleSeed((s) => s + 1);
+                  setJamoIdx(0);
+                  setJamoFeedback({ status: 'idle', chosen: null, item: null });
+                }}
+                className="px-2.5 py-1 border border-black bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold flex items-center gap-1.5 text-[11px] shadow-[1px_1px_0_0_rgba(0,0,0,1)]"
+                title="순서 무작위 섞기 Re-shuffle Drill Order"
+              >
+                <Shuffle className="w-3.5 h-3.5 text-sky-600" />
+                <span>셔플 Shuffle</span>
+              </button>
+
               <div className="flex items-center gap-1 px-2.5 py-1 bg-amber-100 dark:bg-amber-950/40 border border-black font-black text-[11px] text-amber-900 dark:text-amber-200">
                 <Flame className="w-3.5 h-3.5 text-amber-500 fill-amber-500" />
                 <span>연속 Streak: {jamoStreak}</span>
@@ -762,16 +801,15 @@ export default function ParticleTrainer() {
                   {currentJamo.prompt}
                 </span>
 
-                <div className="flex flex-col items-center gap-0.5">
-                  <span className="text-sm sm:text-base font-bold text-slate-600 dark:text-slate-300">
-                    {currentJamo.english} {currentJamo.koreanName ? `(${currentJamo.koreanName})` : ''}
-                  </span>
-                  {currentJamo.soundGuide && (
-                    <span className="text-xs font-semibold text-slate-400 dark:text-slate-400">
-                      소리 Sound: [{currentJamo.soundGuide}]
+                {currentJamo.koreanName ? (
+                  <div className="flex flex-col items-center">
+                    <span className="text-lg sm:text-xl font-black text-slate-700 dark:text-slate-200 tracking-wide">
+                      {currentJamo.koreanName}
                     </span>
-                  )}
-                </div>
+                  </div>
+                ) : (
+                  <div className="h-6" />
+                )}
 
                 <p className="text-xs sm:text-sm font-black text-slate-700 dark:text-slate-300 mt-2 bg-slate-100 dark:bg-slate-800 px-3 py-1 border border-black">
                   {currentJamo.category === 'syllable'
@@ -783,18 +821,18 @@ export default function ParticleTrainer() {
               {/* Syllable Decomposition (if syllable) */}
               {currentJamo.decomposition && (
                 <div className="flex items-center gap-2 text-xs font-bold bg-slate-50 dark:bg-slate-800/60 p-2 border border-black w-full justify-center">
-                  <span>초성(Initial): <span className="font-black text-sky-600">{currentJamo.decomposition.initial}</span></span>
+                  <span>초성: <span className="font-black text-sky-600">{currentJamo.decomposition.initial}</span></span>
                   <span>+</span>
-                  <span>중성(Vowel): <span className="font-black text-amber-600">{currentJamo.decomposition.medial}</span></span>
+                  <span>중성: <span className="font-black text-amber-600">{currentJamo.decomposition.medial}</span></span>
                   {currentJamo.decomposition.final ? (
                     <>
                       <span>+</span>
-                      <span>종성(받침): <span className="font-black text-sky-600">{currentJamo.decomposition.final}</span></span>
+                      <span>종성 (받침): <span className="font-black text-sky-600">{currentJamo.decomposition.final}</span></span>
                     </>
                   ) : (
                     <>
                       <span>+</span>
-                      <span className="text-slate-400">받침 없음 (No Batchim)</span>
+                      <span className="text-slate-400">받침 없음</span>
                     </>
                   )}
                 </div>
