@@ -64,20 +64,62 @@ function formatDuration(totalSeconds: number) {
     : `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
 }
 
+const CORE_SURVIVAL_WORDS = new Set([
+  // Core question words & interrogatives
+  '뭐', '무엇', '뭐예요?', '어디', '누구', '언제', '왜', '왜요?', '어떻게', '몇', '얼마', '얼마예요?', '무슨', '어떤',
+  // Essential pronouns & demonstratives
+  '저', '나', '우리', '너', '이거', '그거', '저거', '여기', '거기', '저기',
+  // Vital survival verbs & existence
+  '가다', '오다', '먹다', '마시다', '보다', '하다', '있다', '없다', '주세요',
+  '사다', '만나다', '알다', '모르다', '좋아하다', '공부하다', '일하다', '쉬다', '자다', '듣다', '말하다',
+  // Core descriptive adjectives
+  '좋다', '크다', '작다', '많다', '적다', '비싸다', '싸다', '맛있다', '재미있다', '바쁘다', '어렵다', '쉽다', '괜찮다',
+  // Essential conversational markers & courtesy
+  '네', '예', '아니요', '감사합니다', '고마워요', '죄송합니다', '미안해요', '실례지만', '근데', '그래서', '하지만', '그래요', '맞아요', '알겠어요', '진짜', '정말'
+]);
+
+const HIGH_FREQUENCY_DAILY_WORDS = new Set([
+  // Time anchors
+  '오늘', '어제', '내일', '지금', '아침', '점심', '저녁', '매일', '자주', '항상', '시간', '주말', '요즘',
+  // Everyday nouns & places
+  '사람', '친구', '돈', '물', '밥', '커피', '집', '회사', '학교', '한국', '서울', '이름', '전화', '일', '날씨', '한국어', '아버지', '술',
+  // Quantities, counters & adverbs
+  '하나', '둘', '셋', '개', '명', '원', '시', '분', '조금', '많이', '다', '같이', '빨리', '빨리빨리', '그냥', '혹시'
+]);
+
+const DATED_OR_DRILL_RELICS = new Set([
+  // Alphabet pronunciation drill relics (Unit 0)
+  '돼지', '기타', '공', '달', '라디오', '포도', '호랑이', '타조', '피아노', '스케이트', '스웨터',
+  // Obsolete textbook items
+  '전자 사전', 'MP3', '스카치테이프', '카세트', '플로리스트'
+]);
+
 function getSmartWeight(item: PersonalVocabItem): number {
   if (item.sensitive) return -100;
+  if (item.tags.includes('vulgar')) return -100;
+  if (item.tags.includes('slang')) return 10;
+
+  if (DATED_OR_DRILL_RELICS.has(item.korean)) {
+    return 35;
+  }
+  if (CORE_SURVIVAL_WORDS.has(item.korean)) {
+    return 100;
+  }
+  if (HIGH_FREQUENCY_DAILY_WORDS.has(item.korean)) {
+    return 85;
+  }
+
   let maxWeight = 50;
   for (const tag of item.tags) {
-    if (tag === 'vulgar') return -100;
-    if (tag === 'slang') maxWeight = Math.max(maxWeight, 10);
-    else if (tag === 'foundation') maxWeight = Math.max(maxWeight, 100);
-    else if (tag === 'classwork') maxWeight = Math.max(maxWeight, 95);
-    else if (tag === 'sogang1a') maxWeight = Math.max(maxWeight, 90);
-    else if (tag === 'pronoun' || tag === 'question') maxWeight = Math.max(maxWeight, 85);
-    else if (tag === 'counter' || tag === 'number') maxWeight = Math.max(maxWeight, 80);
-    else if (['place', 'stationery', 'item', 'beverage', 'clothing', 'country', 'occupation'].includes(tag)) maxWeight = Math.max(maxWeight, 70);
-    else if (['verb', 'adjective'].includes(tag)) maxWeight = Math.max(maxWeight, 65);
-    else if (tag === 'expression') maxWeight = Math.max(maxWeight, 60);
+    if (tag === 'question' || tag === 'pronoun') maxWeight = Math.max(maxWeight, 85);
+    else if (['verb', 'verbs', 'adjective', 'adjectives'].includes(tag)) maxWeight = Math.max(maxWeight, 75);
+    else if (tag === 'counter' || tag === 'number') maxWeight = Math.max(maxWeight, 75);
+    else if (tag === 'adverb' || tag === 'adverbs') maxWeight = Math.max(maxWeight, 70);
+    else if (tag === 'expression') maxWeight = Math.max(maxWeight, 70);
+    else if (tag === 'sogang1a') maxWeight = Math.max(maxWeight, 65);
+    else if (['place', 'places', 'food', 'beverage', 'clothing', 'item', 'stationery', 'country', 'occupation', 'people'].includes(tag)) maxWeight = Math.max(maxWeight, 65);
+    else if (tag === 'classwork') maxWeight = Math.max(maxWeight, 60);
+    else if (tag === 'foundation') maxWeight = Math.max(maxWeight, 40);
   }
   return maxWeight;
 }
